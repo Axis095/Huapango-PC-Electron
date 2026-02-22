@@ -1,0 +1,184 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+:root {
+  --primary: #6C63FF;
+  --primary-light: rgba(108, 99, 255, 0.3);
+  --primary-dark: #534bd6;
+  --secondary: #FF6584;
+  --secondary-light: rgba(255, 101, 132, 0.3);
+  --secondary-dark: #E04C7A;
+  --background: #F0F2F5;
+  --surface: #FFFFFF;
+  --text: #333;
+  --text-muted: #777;
+  --radius: 8px;
+  --transition-speed: 0.3s;
+}
+
+body.dark-mode {
+  --background: #18191A;
+  --surface: #242526;
+  --primary: #8b7cff;
+  --primary-light: rgba(139, 124, 255, 0.2);
+  --primary-dark: #534BD6;
+  --secondary: #FF6584;
+  --secondary-light: rgba(255, 101, 132, 0.2);
+  --secondary-dark: #E04C7A;
+  --text: #F0F2F5;
+  --text-muted: #aaa;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: var(--surface);
+  padding: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.menu button {
+  padding: 12px 20px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+  border-bottom: 3px solid transparent;
+  flex: 1;
+  min-width: 150px;
+  max-width: 200px;
+}
+
+.menu button:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.menu button.active {
+  background: var(--primary);
+  color: white;
+  border-bottom: 3px solid var(--secondary);
+}
+
+.menu button#btnRegreso {
+  background: var(--secondary-light);
+  color: var(--secondary-dark);
+}
+
+.menu button#btnRegreso:hover {
+  background: var(--secondary);
+  color: white;
+}
+
+.content {
+  margin-top: 80px;
+  padding: 30px;
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.content h2 {
+  font-size: 2rem;
+  color: var(--primary);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 4px solid var(--primary-light);
+}
+
+.content p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+.iframe {
+  width: 100%;
+  height: calc(100vh - 140px);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 992px) {
+  .menu button {
+    min-width: 130px;
+  }
+  
+  .content {
+    padding: 25px 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .menu {
+    padding: 10px;
+  }
+  
+  .menu button {
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    min-width: 120px;
+    max-width: none;
+  }
+  
+  .content {
+    margin-top: 130px;
+    padding: 20px 15px;
+  }
+}
+
+@media (max-width: 600px) {
+  .menu button {
+    flex: 1 0 calc(50% - 10px);
+    max-width: calc(50% - 10px);
+  }
+  
+  .content {
+    margin-top: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .menu button {
+    flex: 1 0 100%;
+    max-width: 100%;
+  }
+  
+  .content {
+    margin-top: 300px;
+  }
+}

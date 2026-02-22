@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+:root {
+  --primary: #6C63FF;
+  --primary-light: rgba(108, 99, 255, 0.3);
+  --primary-dark: #534BD6;
+  --secondary: #FF6584;
+  --background: #F0F2F5;
+  --surface: #FFFFFF;
+  --text: #333;
+  --text-muted: #777;
+  --radius: 4px;
+  --transition-speed: 0.3s;
+  --border-color: #ddd;
+}
+
+body.dark-mode {
+  --background: #18191A;
+  --surface: #242526;
+  --primary: #8b7cff;
+  --primary-light: rgba(139, 124, 255, 0.2);
+  --primary-dark: #534BD6;
+  --secondary: #FF6584;
+  --secondary-light: rgba(255, 101, 132, 0.2);
+  --secondary-dark: #E04C7A;
+  --text: #F0F2F5;
+  --text-muted: #aaa;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  line-height: 1.4;
+  padding: 20px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+h2 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 15px;
+  font-weight: 600;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  font-size: 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  margin-bottom: 15px;
+  transition: border-color var(--transition-speed);
+}
+
+input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: var(--surface);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+button:hover {
+  background: var(--primary-dark);
+}
+
+
+input {
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+}
+
+
+br {
+  display: block;
+  margin: 0;
+}
+
+
+#btnGuardarConfigBaseDatos {
+  margin-top: 10px;
+  text-align: center;
+}

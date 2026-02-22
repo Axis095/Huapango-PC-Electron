@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Parejas</title>
+    <script type="module" defer src="../Public/js/render.js"></script>
+    <style> 
+        #menu {
+            text-align: center;
+            margin-top: 40px;
+        }
+    
+        #menu h2 {
+            font-size: 2rem;
+            color: #6C63FF;
+            font-family: 'Montserrat', sans-serif;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #534bd6;
+            display: inline-block;
+            padding-bottom: 5px;
+        }
+    
+        #menu p {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+    
+        #menu button {
+            padding: 10px 16px;
+            background-color: #6C63FF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Montserrat', sans-serif;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+    
+        #menu button:hover {
+            background-color: #534BD6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+    
+        #btnModificarParejas {
+            background-color: #FF6584 !important;
+        }
+    
+        #btnModificarParejas:hover {
+            background-color: #E04C7A !important;
+        }
+    </style>
+    <link rel="stylesheet" href="../Public/css/stylesIndex.css">
+</head>
+<body>
+
+    <div class="menu">
+        <button id="btnIndex">Menú Principal</button>
+        <button id="btnRegistros">Registro de Parejas</button>
+        <button id="btnResultados">Resultados</button>        
+        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
+        <button id="btnModificarParejas">Modificación de Parejas</button>
+            <button id="btnAdministrador">Administrador</button>
+            <button id="btnRegreso">Regresar al Menú</button>
+    </div>
+
+    <div class="main-container">
+        <header>
+            <h1>Gestión de Parejas</h1>
+            <nav>
+                <button id="btnBuscarPareja">Buscar Parejas</button>
+                <button id="btnModificarParejas">Modificar Parejas</button>
+            </nav>
+        </header>
+        <main id="content">
+
+        </main>
+    </div>
+</body>
+</html>

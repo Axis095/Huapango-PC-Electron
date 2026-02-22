@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación de Parejas</title>
+    <link rel="stylesheet" href="../Public/css/stylessResultados.css">
+    <link rel="stylesheet" href="../Public/css/stylesIndex.css">
+    <script type="module" src="../Public/js/render.js"></script>
+</head>
+<body>
+
+        <div class="menu">
+        <button id="btnIndex">Menú Principal</button>
+        <button id="btnRegistros">Registro de Parejas</button>
+        <button id="btnResultados">Resultados</button>        
+        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
+        <button id="btnModificarParejas">Modificación de Parejas</button>
+            <button id="btnAdministrador">Administrador</button>
+            <button id="btnRegreso">Regresar al Menú</button>
+    </div>
+
+    <div class="contenedor-principal">
+        <header class="cabecera-app">
+            <div class="contenedor-logo">
+                <img src="../Public/images/logo-huapango.png" alt="XLIX HUAPANGO" class="imagen-logo">
+                <h1 class="titulo-app">Sistema de Evaluación <span>XLIX HUAPANGO</span></h1>
+            </div>
+            <div class="perfil-usuario">
+                <div class="avatar-usuario">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div class="info-usuario">
+                    <div class="rol-usuario">Juez Evaluador</div>
+                    <div class="acciones-usuario">
+                        <button class="boton-accion pequeno">
+                            <i class="fas fa-sign-out-alt"></i> Salir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="titulo-tablero">
+            <i class="fas fa-clipboard-list"></i>
+            <h2>Evaluación de Parejas</h2>
+        </div>
+        
+        <div class="cuadricula-contenido">
+            <!-- Sección de búsqueda de parejas -->
+            <div class="tarjeta tarjeta-busqueda">
+                <div class="cabecera-tarjeta">
+                    <i class="fas fa-search"></i>
+                    <h3>Buscar Pareja</h3>
+                </div>
+                <div class="cuerpo-tarjeta">
+                    <div class="grupo-formulario">
+                        <label for="pareja-id">ID de la Pareja</label>
+                        <div class="contenedor-input-icono">
+                            <i class="fas fa-id-card"></i>
+                            <input type="text" id="pareja-id" class="control-formulario" placeholder="Ingrese el ID">
+                        </div>
+                    </div>
+                    <button id="buscar-pareja" class="boton boton-primario">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Ficha informativa de la pareja -->
+            <div class="tarjeta tarjeta-info">
+                <div class="cabecera-tarjeta">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>Información de la Pareja</h3>
+                </div>
+                <div class="cuerpo-tarjeta">
+                    <div id="info-pareja" class="detalles-info">
+                        <div class="fila-info">
+                            <div class="etiqueta-info"><i class="fas fa-hashtag"></i> ID:</div>
+                            <div class="valor-info" id="pareja-id-info">--</div>
+                        </div>
+                        <div class="fila-info">
+                            <div class="etiqueta-info"><i class="fas fa-user-alt"></i> Participante 1:</div>
+                            <div class="valor-info" id="participante1">--</div>
+                        </div>
+                        <div class="fila-info">
+                            <div class="etiqueta-info"><i class="fas fa-user-alt"></i> Participante 2:</div>
+                            <div class="valor-info" id="participante2">--</div>
+                        </div>
+                        <div class="fila-info">
+                            <div class="etiqueta-info"><i class="fas fa-trophy"></i> Categoría:</div>
+                            <div class="valor-info" id="categoria">--</div>
+                        </div>
+                        <div class="fila-info">
+                            <div class="etiqueta-info"><i class="fas fa-trophy"></i> Estilo:</div>
+                            <div class="valor-info" id="estilo">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sección de evaluación -->
+            <div class="tarjeta tarjeta-evaluacion">
+                <div class="cabecera-tarjeta">
+                    <i class="fas fa-star"></i>
+                    <h3>Evaluación</h3>
+                </div>
+                <div class="cuerpo-tarjeta">
+                    <div class="lista-criterios">
+                        <div class="item-criterio">
+                            <label for="aspecto1">
+                                <i class="fas fa-shoe-prints"></i>
+                                Vestuario 
+                            </label>
+                            <div class="contenedor-calificacion">
+                                <input type="range" id="aspecto1" class="rango-aspecto" min="0" max="10" value="5">
+                                <div class="valor-calificacion" id="valor-aspecto1">5</div>
+                            </div>
+                        </div>
+                        
+                        <div class="item-criterio">
+                            <label for="aspecto2">
+                                <i class="fas fa-people-arrows"></i>
+                                Coreografia
+                            </label>
+                            <div class="contenedor-calificacion">
+                                <input type="range" id="aspecto2" class="rango-aspecto" min="0" max="10" value="5">
+                                <div class="valor-calificacion" id="valor-aspecto2">5</div>
+                            </div>
+                        </div>
+                        
+                        <div class="item-criterio">
+                            <label for="aspecto3">
+                                <i class="fas fa-music"></i>
+                                Ritmo 
+                            </label>
+                            <div class="contenedor-calificacion">
+                                <input type="range" id="aspecto3" class="rango-aspecto" min="0" max="10" value="5">
+                                <div class="valor-calificacion" id="valor-aspecto3">5</div>
+                            </div>
+                        </div>
+                        
+                        <div class="item-criterio">
+                            <label for="aspecto4">
+                                <i class="fas fa-tshirt"></i>
+                                Proyección Escénica
+                            </label>
+                            <div class="contenedor-calificacion">
+                                <input type="range" id="aspecto4" class="rango-aspecto" min="0" max="10" value="5">
+                                <div class="valor-calificacion" id="valor-aspecto4">5</div>
+                            </div>
+                        </div>
+                        
+                        <div class="item-criterio">
+                            <label for="aspecto5">
+                                <i class="fas fa-comments"></i>
+                                Precisión
+                            </label>
+                            <div class="contenedor-calificacion">
+                                <input type="range" id="aspecto5" class="rango-aspecto" min="0" max="10" value="5">
+                                <div class="valor-calificacion" id="valor-aspecto5">5</div>
+                            </div>
+                        </div>
+                        <div class="item-criterio">
+                            <label for="aspecto6">
+                                <i class="fas fa-comments"></i>
+                                Autenticidad
+                            </label>
+                            <div class="contenedor-calificacion">
+                                <input type="range" id="aspecto6" class="rango-aspecto" min="0" max="10" value="5">
+                                <div class="valor-calificacion" id="valor-aspecto6">5</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grupo-formulario grupo-observaciones">
+                        <label for="observaciones">
+                            <i class="fas fa-comment-alt"></i>
+                            Observaciones
+                        </label>
+                        <textarea id="observaciones" class="control-formulario" rows="4" placeholder="Escriba sus observaciones de la pareja"></textarea>
+                    </div>
+                    
+                    <div class="contenedor-envio-puntaje">
+                        <div class="puntaje-total">
+                            <div class="etiqueta-puntaje">Puntaje Total:</div>
+                            <div class="valor-puntaje">
+                                <span id="puntaje-total">25</span>
+                                <span class="puntaje-maximo">/60</span>
+                            </div>
+                        </div>
+                        <!-- <button id="btnGenerarPDFResultados" class="btn btn-pdf">Generar PDF de Resultados</button> -->
+                        <button id="btnGenerarPDFResultados" class="btn btn-pdf">Generar PDF de Resultados</button>
+                        <button id="guardar-evaluacion" class="boton boton-exito">
+                            <i class="fas fa-save"></i> Guardar Evaluación
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- <script>
+        // Actualización en tiempo real del valor del input range
+        const aspectos = document.querySelectorAll('.rango-aspecto');
+    
+        function actualizarTotal() {
+            let total = 0;
+            aspectos.forEach((input, index) => {
+                const valor = parseInt(input.value, 10);
+                total += valor;
+                document.getElementById(`valor-aspecto${index + 1}`).textContent = valor;
+            });
+            document.getElementById('puntaje-total').textContent = total;
+        }
+    
+        aspectos.forEach(input => {
+            input.addEventListener('input', actualizarTotal);
+        });
+    
+        // Inicializar valores al cargar
+        window.addEventListener('DOMContentLoaded', actualizarTotal);
+    </script> -->
+</body>
+</html>

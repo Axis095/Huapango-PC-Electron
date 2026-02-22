@@ -1,0 +1,315 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary: #6C63FF;
+  --primary-light: rgba(108, 99, 255, 0.3);
+  --primary-dark: #534BD6;
+  --secondary: #FF6584;
+  --secondary-light: rgba(255, 101, 132, 0.3);
+  --secondary-dark: #E04C7A;
+  --background: #F0F2F5;
+  --surface: #FFFFFF;
+  --text: #333333;
+  --text-muted: #777777;
+  --radius: 8px;
+  --transition-speed: 0.3s;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Montserrat';
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  padding: 20px;
+}
+
+.main-container {
+  max-width: 940px;
+  margin: 0 auto;
+  background: var(--background);
+  margin-top: 80px; 
+}
+
+header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  color: var(--primary);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+header h2 {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: var(--surface);
+  margin-bottom: 30px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 16px;
+  text-align: left;
+}
+
+.data-table thead {
+  background: var(--primary-light);
+}
+
+.data-table th {
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.data-table tbody tr:hover {
+  background: var(--primary-light);
+  cursor: pointer;
+}
+
+.section-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.section-title::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 4px;
+  background: var(--primary);
+  margin-top: 8px;
+  border-radius: var(--radius);
+}
+
+.form-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  background: var(--surface);
+  padding: 30px;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.form-label {
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.form-control {
+  padding: 12px;
+  border: 2px solid var(--primary-light);
+  border-radius: var(--radius);
+  transition: border-color var(--transition-speed);
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.custom-file-input {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.custom-file-input input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.custom-file-input::before {
+  content: attr(data-label);
+  display: inline-block;
+  background: var(--secondary);
+  color: var(--surface);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  transition: background var(--transition-speed);
+}
+
+.custom-file-input:hover::before {
+  background: var(--secondary-dark);
+}
+
+/* Contenedor de botones separado del formulario */
+.btn-container {
+  padding: 20px 0;
+  margin-top: 30px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Estilos base para botones */
+.btn {
+  padding: 14px 28px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  min-width: 160px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Botón de registrar categoría/estilo */
+.btnRegistraCatEst {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: var(--surface);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btnRegistraCatEst:hover {
+  background: linear-gradient(135deg, var(--primary-dark), #4338a8);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(108, 99, 255, 0.4);
+}
+
+/* Botones de PDF */
+.btn-pdf {
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  color: var(--surface);
+  font-weight: 500;
+}
+
+.btn-pdf:hover {
+  background: linear-gradient(135deg, #388e3c, #2e7d32);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(76, 175, 80, 0.4);
+}
+
+/* Otros botones existentes */
+.btn-search {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: var(--surface);
+}
+
+.btn-search:hover {
+  background: linear-gradient(135deg, var(--primary-dark), #4338a8);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(108, 99, 255, 0.3);
+}
+
+.btn-modify {
+  background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+  color: var(--surface);
+}
+
+.btn-modify:hover {
+  background: linear-gradient(135deg, var(--secondary-dark), #d93c5f);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 101, 132, 0.3);
+}
+
+.btn-save {
+  background: linear-gradient(135deg, var(--primary-dark), #4338a8);
+  color: var(--surface);
+}
+
+.btn-save:hover {
+  background: linear-gradient(135deg, #4338a8, #3730a3);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(83, 75, 214, 0.3);
+}
+
+/* Contenedor específico para botones de PDF */
+.pdf-buttons-container {
+  padding: 20px 0;
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Responsive design */
+@media screen and (max-width: 768px) {
+  .form-container {
+    padding: 20px;
+  }
+  
+  .btn-container {
+    padding: 15px 0;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .pdf-buttons-container {
+    padding: 15px 0;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .btn {
+    width: 100%;
+    min-width: auto;
+    justify-content: center;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .btn {
+    padding: 12px 20px;
+    font-size: 0.95rem;
+  }
+  
+  .btnRegistraCatEst {
+    font-size: 0.9rem;
+  }
+}

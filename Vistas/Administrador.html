@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista administrador</title>
+    <link rel="stylesheet" href="../Public/css/StylesAdministrador.css">
+    <link rel="stylesheet" href="../Public/css/stylesIndex.css">
+    <script type="module" src="../Public/js/render.js"></script>
+</head>
+<body>
+
+    <div class="menu">
+        <button id="btnIndex">Menú Principal</button>
+        <button id="btnRegistros">Registro de Parejas</button>
+        <button id="btnResultados">Resultados</button>        
+        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
+        <button id="btnModificarParejas">Modificación de Parejas</button>
+            <button id="btnAdministrador">Administrador</button>
+            <button id="btnRegreso">Regresar al Menú</button>
+    </div>
+
+    <div class="main-container">
+        <h1 class="main-title">Vista administrador</h1>
+        
+        <div class="header">
+            <div class="logo">
+                <img src="../Public/images/logo-huapango.png" alt="XLIX HUAPANGO">
+            </div>
+            <div class="user-profile">
+                <div class="user-icon"></div>
+                <div>Usuario</div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <!-- Seccion de eliminacion de parejas -->
+            <div class="section center-content">
+                <div class="section-title">Eliminación de parejas</div>
+                <div class="form-group">
+                    <input id="nParejaID" type="text" class="form-control" placeholder="Ingresar ID de la pareja">
+                </div>
+                <!-- <div class="form-group">
+                    <button class="btn">Consultar</button>
+                </div> -->
+                <div class="resultados-busqueda" style="display: none;">
+                    <p><strong>Nombre:</strong> <span id="nombrePareja"></span></p>
+                    <p><strong>Categoría:</strong> <span id="categoriaPareja"></span></p>
+                </div>
+                <button id="btnEliminarPareja" class="btn btn-secondary">Eliminar pareja</button>
+            </div>
+
+            <!-- Seccion de gestión de cuentas (ya unificada) -->
+            <div id="gestion-cuentas" class="section">
+                <div class="section-title">Gestión de cuentas</div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Columna izquierda - Crear cuenta -->
+                    <div class="form-column">
+                        <div class="form-fields">
+                            <h2>Crear nueva cuenta</h2>
+                            <div class="form-group">
+                                <input id="nuevoID" type="text" class="form-control" placeholder="ID del Usuario">
+                            </div>
+                            <div class="form-group">
+                                <input id="nuevoUsuario" type="text" class="form-control" placeholder="Usuario">
+                            </div>
+                            <div class="form-group">
+                                <input id="nuevaContrasena" type="password" class="form-control" placeholder="Contraseña">
+                            </div>
+                            
+                            <!-- Remplezar con radio buttons -->
+                            <div class="radio-container" style="margin-bottom: 15px;">
+                                <p><strong>Tipo de cuenta:</strong></p>
+                                <div>
+                                    <input type="radio" id="tipoUsuario" name="tipoCuenta" value="usuario" checked>
+                                    <label for="tipoUsuario">Usuario normal</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="esAdmin" name="tipoCuenta" value="admin">
+                                    <label for="esAdmin">Administrador</label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="juez" name="tipoCuenta" value="juez">
+                                    <label for="juez">Juez</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                
+                        <div class="btn-container">
+                            <button id="btnCrearUsuario" class="btn btn-add">Crear Cuenta</button>
+                        </div>
+                    </div>
+                    
+                    
+                    <div class="form-column">
+                        <div class="form-fields">
+                            <h2>Eliminar cuenta</h2>
+                            <div class="form-group">
+                                <input id="usuarioEliminar" type="text" class="form-control" placeholder="Nombre de la cuenta a eliminar">
+                            </div>
+                        </div>
+                        
+                    
+                        <div class="btn-container">
+                            <button id="btnEliminarUsuario" class="btn btn-secondary">Eliminar Cuenta</button>
+                        </div>
+                        
+                        <input type="hidden" id="usuarioAEliminar">
+                        <input type="hidden" id="juezEliminar">
+                        <input type="hidden" id="nuevoJuezID">
+                        <input type="hidden" id="nuevoJuezUsuario">
+                        <input type="hidden" id="nuevoJuezContrasena">
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <button id="btnGenerarPDFRegistros" class="btn btn-secondary">Generar PDF datos generales.</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

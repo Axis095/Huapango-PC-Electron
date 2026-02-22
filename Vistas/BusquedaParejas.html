@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta Parejas</title>
+    <script type="module" src="../Public/js/render.js"></script>
+    <link rel="stylesheet" href="../Public/css/stylesBusquedaParejas.css">
+    <link rel="stylesheet" href="../Public/css/stylesIndex.css">
+
+</head>
+<body>
+
+    <div class="menu">
+        <button id="btnIndex">Menú Principal</button>
+        <button id="btnRegistros">Registro de Parejas</button>
+        <button id="btnResultados">Resultados</button>        
+        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
+        <button id="btnModificarParejas">Modificación de Parejas</button>
+            <button id="btnAdministrador">Administrador</button>
+            <button id="btnRegreso">Regresar al Menú</button>
+    </div>
+
+    <div class="main-container">
+        <header>
+            <h1>Bienvenido a la sección de Registros para consultar Parejas</h1>
+            <h2>Datos para la consulta</h2>
+        </header>
+        
+        <main>
+            <section>
+                <table class="data-table">
+                    <tr>
+                        <th>Campo</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Nombre</td>
+                        <td>Ejemplo</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <section id="content-parejas">
+                <h2 class="section-title">Consulta de Parejas</h2>
+                
+                <div class="form-container">
+                    <!-- <div class="form-group">
+                        <label class="form-label">Nombres de la pareja:</label>
+                        <input id="nombreMasculinoPareja" type="text" class="form-control" placeholder="Nombre Masculino">
+                        <input id="nombreFemeninoPareja" type="text" class="form-control" placeholder="Nombre Femenino">
+                    </div> -->
+                    
+                    <div class="form-group">
+                        <label class="form-label">Número de pareja:</label>
+                        <input id="nParejaID" type="text" class="form-control" placeholder="1(ID)">
+                    </div>
+                </div>
+                
+                <div class="btn-container">
+                    <button id="btnBuscarPareja" class="btn btnBuscarPareja">Buscar</button>
+                    <!-- <button class="btn btn-modify">Modificar</button>
+                    <button class="btn btn-save">Guardar</button> -->
+                </div>
+                <div class="resultadosBusquedaParejas">
+                    <p><strong>cNombre:</strong> </p>
+                    <p><strong>cApellido:</strong> </p>
+                    <p><strong>ISexo:</strong> </p>
+                    <p><strong>nTelefono:</strong> </p>
+                    <p><strong>cEmail:</strong> </p>                    
+                </div>
+
+            </section>
+
+
+                    <section id="content-categorias">
+                        <h2 class="section-title">Consulta de Categorías</h2>
+
+                        <div class="form-container">
+                            <div class="form-group">
+                                <label class="form-label">Número de la pareja para consultar su Categoria:</label>
+                                <input id="nIDCategoria" type="text" class="form-control" placeholder="1(ID)">
+                            </div>
+                        </div>
+
+                        <div class="btn-container">
+                            <button id="btnBuscarCategoria" class="btn btnBuscarPareja">Buscar</button>
+                        </div>
+
+                        <div class="resultadosBusquedaCategorias">
+                            <p><strong>Categoría:</strong> <span id="categoriaNombre">--</span></p>
+                        </div>
+                    </section>
+
+
+                    <section id="content-estilos">
+                        <h2 class="section-title">Consulta de Estilos</h2>
+
+                        <div class="form-container">
+                            <div class="form-group">
+                                <label class="form-label">Número de la pareja para consultar su Estilo:</label>
+                                <input id="nEstiloID" type="text" class="form-control" placeholder="1(ID)">
+                            </div>
+                        </div>
+
+                        <div class="btn-container">
+                            <button id="btnBuscarEstilo" class="btn btnBuscarPareja">Buscar</button>
+                        </div>
+
+                        <div class="resultadosBusquedaEstilos">
+                            <p><strong>Estilo:</strong> <span id="estiloNombre">--</span></p>
+                        </div>
+                    </section>
+
+        </main>
+    </div>
+</body>
+</html>

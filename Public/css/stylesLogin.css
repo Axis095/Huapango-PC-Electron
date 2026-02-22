@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+:root {
+  --primary: #6C63FF;
+  --primary-dark: #534BD6;
+  --background: #F0F2F5;
+  --surface: #FFFFFF;
+  --text: #333;
+  --text-muted: #777;
+  --radius: 10px;
+  --transition: 0.3s ease;
+}
+
+body.dark-mode {
+  --background: #18191A;
+  --surface: #242526;
+  --primary: #8b7cff;
+  --primary-light: rgba(139, 124, 255, 0.2);
+  --primary-dark: #534BD6;
+  --secondary: #FF6584;
+  --secondary-light: rgba(255, 101, 132, 0.2);
+  --secondary-dark: #E04C7A;
+  --text: #F0F2F5;
+  --text-muted: #aaa;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
+}
+
+body {
+  background: var(--background);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: var(--text);
+}
+
+.login-container {
+  width: 100%;
+  max-width: 900px;
+  padding: 20px;
+}
+
+.login-title {
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 30px;
+}
+
+.logos {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.logo-left,
+.logo-right {
+  max-width: 180px;
+  height: auto;
+}
+
+.login-form-container {
+  background: var(--surface);
+  padding: 40px;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.user-icon-container {
+  width: 120px;
+  height: 120px;
+  background: var(--primary);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 30px;
+  font-size: 64px;
+  color: white;
+}
+
+.form-group {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border: 2px solid rgba(108, 99, 255, 0.3);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border var(--transition), box-shadow var(--transition);
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.login-button {
+  width: 100%;
+  padding: 12px;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.login-button:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+#errorMsg {
+  color: red;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 15px;
+}

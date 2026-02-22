@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Registro Parejas</title>
+    <script type="module" src="../Public/js/render.js"></script>
+    <link rel="stylesheet" href="../Public/css/StylesRegistros.css">
+    <!-- <link rel="stylesheet" href="../Public/css/stylesRegistroCategoria.css"> ESTO DESHACE EL HTML VERIFICAR EN OTRO CSS MEJOR HECHO -->
+    <link rel="stylesheet" href="../Public/css/stylesIndex.css">
+
+</head>
+<body>
+
+        <div class="menu">
+        <button id="btnIndex">Menú Principal</button>
+        <button id="btnRegistros">Registro de Parejas</button>
+        <button id="btnResultados">Resultados</button>        
+        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
+        <button id="btnModificarParejas">Modificación de Parejas</button>
+            <button id="btnAdministrador">Administrador</button>
+            <button id="btnRegreso">Regresar al Menú</button>
+    </div>
+
+    <div class="main-container">
+        <header>
+            <h1>Bienvenido a Registros</h1>
+            <h2>Datos para Registro</h2>
+        </header>
+        
+        <main>
+            <section>
+                <table class="data-table">
+                    <tr>
+                        <th>Campo</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Nombre</td>
+                        <td>Ejemplo</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <section id="content">
+                <h2 class="section-title">Registro Parejas</h2>
+                
+                <div class="form-container">
+                    <div class="form-group">
+                        <label class="form-label">Nombres de la pareja:</label>
+                        <input type="text" id="nombreMasculino" class="form-control" placeholder="Nombre participante 1">
+                        <input type="text" id="apellidoMasculino" class="form-control" placeholder="Apellido participante 1">
+                        <input type="text" id="nombreFemenino" class="form-control" placeholder="Nombre participante 2">
+                        <input type="text" id="apellidoFemenino" class="form-control" placeholder="Apellido participante 2">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Correo electrónico:</label>
+                        <input type="email" id="emailMasculino" class="form-control" placeholder="Correo participante 1">
+                        <input type="email" id="emailFemenino" class="form-control" placeholder="Correo participante 2">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Fecha de nacimiento:</label>
+                        <input type="date" id="fechaNacimientoMasculino" class="form-control">
+                        <input type="date" id="fechaNacimientoFemenino" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Teléfonos de la pareja:</label>
+                        <input type="tel" id="telefonoMasculino" class="form-control" placeholder="Número participante 1">
+                        <input type="tel" id="telefonoFemenino" class="form-control" placeholder="Número participante 2">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Fotografías:</label>
+                        <input type="file" id="fotoMasculino" class="form-control" accept="image/*">
+                        <input type="file" id="fotoFemenino" class="form-control" accept="image/*">
+                    </div>
+
+                <div class="form-group gender-section">
+    <label class="form-label">Sexo:</label>
+    <div class="gender-container">
+        <div class="gender-row">
+            <label class="gender-label">Participante 1:</label>
+            <select id="sexoMasculino" class="form-control gender-select">
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+            </select>
+        </div>
+        <div class="gender-row">
+            <label class="gender-label">Participante 2:</label>
+            <select id="sexoFemenino" class="form-control gender-select">
+                <option value="F">Femenino</option>
+                <option value="M">Masculino</option>
+            </select>
+        </div>
+    </div>
+</div>
+                    
+                    
+                    <div class="form-group">
+                        <label class="form-label">Número de pareja:</label>
+                        <input type="number" id="nParejaID" class="form-control" placeholder="Número de Pareja">
+                    </div>
+                </div>
+                
+                <div class="btn-container">
+                    <button id="BTNSave" class="btn btn-save">Guardar</button>
+                    <button id="btnGenerarPDF" class="btn btn-pdf">Generar PDF de parejas</button>
+                </div>
+            </section>
+
+
+
+            <!-- HTML DE LOS REGISTROS DE CATEGORIAS Y ESTILOS -->
+            <section>
+                <table class="data-table" style="display: none;">
+                    <tr>
+                        <th>Campo</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Nombre</td>
+                        <td>Ejemplo</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <section id="contentCategoria" style="display: none;">
+                <h2 class="section-title">Registro de categoría para la pareja</h2>
+                
+                <div class="form-group">
+                    <label for="categoriaRegistro" class="form-label">Categoría:</label>
+                    <select id="categoriaRegistro" class="form-control">
+                        <option value="">Selecciona la opción correcta</option>
+                        <option value="1">Pequeños (3-6 años)</option>
+                        <option value="2">Infantil (7-11 años)</option>
+                        <option value="3">Juvenil (12-17 años)</option>
+                        <option value="4">Adulto (18-49 años)</option>
+                        <option value="5">Grandes (50+ años)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="nIDCategoria" class="form-label">ID de la categoria:</label>
+                    <input id="nIDCategoria" type="text" class="form-control" placeholder="ID de la pareja">
+                </div>
+                <div class="form-group">
+                    <label for="nParejaID" class="form-label">ID de la pareja:</label>
+                    <input id="nParejaID" type="text" class="form-control" placeholder="ID de la pareja">
+                </div>
+                
+                <div class="btn-container">
+                    <button id="btnRegistrarCategoria" class="btn btnRegistraCatEst">Registrar Categoría</button>
+                </div>
+            </section>
+
+            <section id="contentEstilo" style="display: none;">
+                <h2 class="section-title">Registro de estilo para la pareja</h2>
+                
+                <div class="form-group">
+                    <label for="estiloRegistro" class="form-label">Estilo:</label>
+                    <select id="estiloRegistro" class="form-control">
+                        <option value="">Selecciona la opción correcta</option>
+                        <option value="1">Queretano</option>
+                        <option value="2">Veracruzano</option>
+                        <option value="3">Hidalguense</option>
+                        <option value="4">Potosino</option>
+                        <option value="5">Tamaulipeco</option>
+                        <option value="6">Poblano</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="nEstiloID" class="form-label">ID del estilo:</label>
+                    <input id="nEstiloID" type="text" class="form-control" placeholder="ID de la pareja">
+                </div>
+                <div class="form-group">
+                    <label for="nParejaIDEstilo" class="form-label">ID de la pareja:</label>
+                    <input id="nParejaIDEstilo" type="text" class="form-control" placeholder="ID de la pareja">
+                </div>
+                
+                <div class="btn-container">
+                    <button id="btnRegistrarEstilo" class="btn btnRegistraCatEst">Registrar Estilo</button>
+                </div>
+
+                <div>
+                    <button id="btnGenerarPDFCategorias" class="btn btn-pdf">Generar PDF de Categorías</button>
+                    <button id="btnGenerarPDFEstilos" class="btn btn-pdf">Generar PDF de Estilos</button>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</body>
+</html>

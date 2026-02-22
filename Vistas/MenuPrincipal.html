@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Principal - Huapango Administración</title>
+    <script type="module" src="../Public/js/render.js"></script>
+    <link rel="stylesheet" href="../Public/css/StylesMenuPrincipal.css">
+    <link rel="stylesheet" href="../Public/css/stylesIndex.css">
+</head>
+<body>
+    <div class="menu">
+        <button id="btnIndex">Menú Principal</button>
+        <button id="btnRegistros">Registro de Parejas</button>
+        <button id="btnResultados">Resultados</button>        
+        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
+        <button id="btnModificarParejas">Modificación de Parejas</button>
+            <button id="btnAdministrador">Administrador</button>
+            <button id="btnRegreso">Regresar al Menú</button>
+    </div>
+
+    <div class="container">
+        <div class="welcome-section">
+            <img src="../Public/images/logo-huapango.png" alt="Logo Huapango" class="logo-main">
+            <h1 class="welcome-title">Bienvenido al Sistema de Administración</h1>
+            <p class="welcome-subtitle">XLIX Concurso Nacional de Huapango</p>
+            <div class="divider"></div>
+            <p class="welcome-text">Selecciona una opción del menú superior para comenzar a trabajar con el sistema.</p>
+        </div>
+
+        <div class="features-section">
+            <div class="feature-card"> 
+                <div class="feature-icon">👥</div>
+                <h3>Registro de Parejas</h3>
+                <p>Administra el registro de participantes en el concurso.</p>
+                <!-- <button onclick="window.location.href='Registros.html'" class="feature-button">Abrir Registro</button> -->
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏆</div>
+                <h3>Categorías y Estilos</h3>
+                <p>Gestiona las categorías y estilos del concurso.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Resultados</h3>
+                <p>Consulta y administra los resultados de las competencias.</p>
+            </div>
+        </div>
+
+        <div class="video-section">
+            <h2>Presentación del Concurso</h2>
+            <div class="video-container">
+                <video controls class="main-video">
+                    <source src="../Public/images/presentacionconcurso.mp4" type="video/mp4">
+                    Tu navegador no soporta videos HTML5.
+                </video>
+            </div>
+        </div>
+        <!-- <div class="dark-mode">
+            <h2>MODO OSCURO</h2>
+            <button id="btnDarkMode" class="btn" style="position:fixed;top:10px;right:10px;z-index:1000;">🌙</button>
+        </div> -->
+    </div>
+</body>
+</html>

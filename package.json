@@ -1,0 +1,51 @@
+{
+  "name": "huapango-app",
+  "version": "1.0.0",
+  "main": "main.js",
+  "description": "Aplicación de registro para el evento Huapango",
+  "author": "Perro Virolo Industries",
+  "license": "ISC",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "build": "electron-builder",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "electron-reload": "^2.0.0-alpha.1",
+    "mysql2": "^3.14.0",
+    "pdfkit": "^0.17.1"
+  },
+  "devDependencies": {
+    "electron": "^34.2.0",
+    "electron-builder": "^24.6.0"
+  },
+  "build": {
+    "appId": "com.huapango.app",
+    "productName": "HuapangoApp",
+    "asar": true, 
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "config.json",
+      "Public/**/*",
+      "Vistas/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "config.json",
+        "to": "config.json"
+      },
+        {
+    "from": "uploads",
+    "to": "uploads"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "Public/images/icono.ico"
+    }
+  }
+}

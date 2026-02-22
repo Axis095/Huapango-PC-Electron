@@ -1,0 +1,7 @@
+{
+  "host": "localhost",
+  "user": 1,
+  "password": "AXIS095",
+  "database": "huapango",
+  "userRole": "admin"
+}
