@@ -21,6 +21,7 @@ if (esEmergente) {
 document.addEventListener("DOMContentLoaded", () => {
     // Configurar los botones del menú
     configurarMenu();
+    configurarMenuConScroll();
 
     // Asociar eventos a las secciones del menú
     // document.getElementById("btnIndex").addEventListener("click", () => cargarVista("MenuPrincipal"));
@@ -98,6 +99,19 @@ document.addEventListener("DOMContentLoaded", () => {
         inicializaAdministrador();
     }
 });
+
+// Oculta la barra mientras se recorre el contenido y la devuelve al inicio.
+function configurarMenuConScroll() {
+    const menu = document.querySelector('.menu');
+    if (!menu || esEmergente) return;
+
+    const actualizarVisibilidad = () => {
+        menu.classList.toggle('menu-hidden', window.scrollY > 8);
+    };
+
+    window.addEventListener('scroll', actualizarVisibilidad, { passive: true });
+    actualizarVisibilidad();
+}
 
 // Función para configurar el menú según el rol del usuario
 async function configurarMenu() {

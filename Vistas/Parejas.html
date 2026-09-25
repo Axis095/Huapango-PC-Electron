@@ -3,63 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Parejas</title>
-    <script type="module" defer src="../Public/js/render.js"></script>
-    <style> 
-        #menu {
-            text-align: center;
-            margin-top: 40px;
-        }
-    
-        #menu h2 {
-            font-size: 2rem;
-            color: #6C63FF;
-            font-family: 'Montserrat', sans-serif;
-            margin-bottom: 10px;
-            border-bottom: 3px solid #534bd6;
-            display: inline-block;
-            padding-bottom: 5px;
-        }
-    
-        #menu p {
-            font-family: 'Montserrat', sans-serif;
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-        }
-    
-        #menu button {
-            padding: 10px 16px;
-            background-color: #6C63FF;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            font-family: 'Montserrat', sans-serif;
-            transition: background-color 0.3s, transform 0.3s;
-        }
-    
-        #menu button:hover {
-            background-color: #534BD6;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-    
-        #btnModificarParejas {
-            background-color: #FF6584 !important;
-        }
-    
-        #btnModificarParejas:hover {
-            background-color: #E04C7A !important;
-        }
-    </style>
+    <title>Consulta Parejas</title>
+    <script type="module" src="../Public/js/render.js"></script>
+    <link rel="stylesheet" href="../Public/css/stylesRegistroCategoria.css">
     <link rel="stylesheet" href="../Public/css/stylesIndex.css">
+    <link rel="stylesheet" href="../Public/css/modern-ui.css">
 </head>
 <body>
 
-    <div class="menu">
+        <div class="menu">
         <button id="btnIndex">Menú Principal</button>
         <button id="btnRegistros">Registro de Parejas</button>
         <button id="btnResultados">Resultados</button>        
@@ -71,14 +23,87 @@
 
     <div class="main-container">
         <header>
-            <h1>Gestión de Parejas</h1>
-            <nav>
-                <button id="btnBuscarPareja">Buscar Parejas</button>
-                <button id="btnModificarParejas">Modificar Parejas</button>
-            </nav>
+            <h1>Bienvenido a la sección de registro de categorías y estilos para las parejas</h1>
+            <h2>Datos para la consulta</h2>
         </header>
-        <main id="content">
+        
+        <main>
+            <section>
+                <table class="data-table">
+                    <tr>
+                        <th>Campo</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Nombre</td>
+                        <td>Ejemplo</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <section id="contentCategoria">
+                <h2 class="section-title">Registro de categoría para la pareja</h2>
+                
+                <div class="form-group">
+                    <label for="categoriaRegistro" class="form-label">Categoría:</label>
+                    <select id="categoriaRegistro" class="form-control">
+                        <option value="">Selecciona la opción correcta</option>
+                        <option value="1">Pequeños (3-6 años)</option>
+                        <option value="2">Infantil (7-11 años)</option>
+                        <option value="3">Juvenil (12-17 años)</option>
+                        <option value="4">Adulto (18-49 años)</option>
+                        <option value="5">Grandes (50+ años)</option>
+                    </select>
+                </div>
 
+                <div class="form-group">
+                    <label for="nIDCategoria" class="form-label">ID de la categoria:</label>
+                    <input id="nIDCategoria" type="text" class="form-control" placeholder="ID de la pareja">
+                </div>
+                <div class="form-group">
+                    <label for="nParejaID" class="form-label">ID de la pareja:</label>
+                    <input id="nParejaID" type="text" class="form-control" placeholder="ID de la pareja">
+                </div>
+                
+                <div class="btn-container">
+                    <button id="btnRegistrarCategoria" class="btn btnRegistraCatEst">Registrar Categoría</button>
+                </div>
+            </section>
+
+            <section id="contentEstilo">
+                <h2 class="section-title">Registro de estilo para la pareja</h2>
+                
+                <div class="form-group">
+                    <label for="estiloRegistro" class="form-label">Estilo:</label>
+                    <select id="estiloRegistro" class="form-control">
+                        <option value="">Selecciona la opción correcta</option>
+                        <option value="1">Queretano</option>
+                        <option value="2">Veracruzano</option>
+                        <option value="3">Hidalguense</option>
+                        <option value="4">Potosino</option>
+                        <option value="5">Tamaulipeco</option>
+                        <option value="6">Poblano</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="nEstiloID" class="form-label">ID del estilo:</label>
+                    <input id="nEstiloID" type="text" class="form-control" placeholder="ID de la pareja">
+                </div>
+                <div class="form-group">
+                    <label for="nParejaIDEstilo" class="form-label">ID de la pareja:</label>
+                    <input id="nParejaIDEstilo" type="text" class="form-control" placeholder="ID de la pareja">
+                </div>
+                
+                <div class="btn-container">
+                    <button id="btnRegistrarEstilo" class="btn btnRegistraCatEst">Registrar Estilo</button>
+                </div>
+
+                <div>
+                    <button id="btnGenerarPDFCategorias" class="btn btn-pdf">Generar PDF de Categorías</button>
+                    <button id="btnGenerarPDFEstilos" class="btn btn-pdf">Generar PDF de Estilos</button>
+                </div>
+            </section>
         </main>
     </div>
 </body>
