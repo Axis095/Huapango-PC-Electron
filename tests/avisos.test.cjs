@@ -49,6 +49,44 @@ function preparar(api = {}) {
 }
 const turn = () => new Promise(resolve => setImmediate(resolve));
 
+test('crear cuenta: A, AB y espacios se rechazan sin IPC; corregir a Ana permite crear', async () => {
+    const llamadas = [];
+    const v = preparar({ crearUsuario: async datos => { llamadas.push(datos); return { success: true, id: 8 }; } });
+    v.add('btnCrearUsuario', '', 'button'); v.add('nuevoID', '8');
+    const nombre = v.add('nuevoUsuario'); const clave = v.add('nuevaContrasena', 'Prueba');
+    v.add('esAdmin'); v.add('juez'); v.add('tipoUsuario');
+    for (const valor of ['A', 'AB', ' A ', '   ']) {
+        nombre.value = valor; await v.context.crearUsuario();
+        assert.equal(llamadas.length, 0); assert.equal(nombre.value, valor);
+        assert.equal(nombre.disabled, false); assert.equal(clave.value, 'Prueba');
+        assert.match(v.message(), /3 caracteres|obligatorio/);
+    }
+    nombre.value = ' Ana '; await v.context.crearUsuario();
+    assert.equal(llamadas.length, 1); assert.equal(llamadas[0].cNombreUsuario, 'Ana');
+});
+
+for (const aceptar of [false, true]) {
+    test(`cuenta antigua A: ${aceptar ? 'confirmar permite eliminar' : 'cancelar la conserva'}`, async () => {
+        const llamadas = [];
+        const v = preparar({ obtenerRolUsuario: async nombre => { assert.equal(nombre, 'A'); return 'user'; },
+            eliminarUsuario: async nombre => { llamadas.push(nombre); return { success: true }; } });
+        const campo = v.add('usuarioEliminar', ' A '); v.add('btnEliminarUsuario', '', 'button');
+        const pending = v.context.eliminarUsuario(); await turn();
+        assert.ok(v.dialog()); assert.match(v.dialog().textContent, /"A"/);
+        assert.equal(llamadas.length, 0);
+        v.choose(aceptar ? 'Eliminar' : 'Cancelar'); await pending;
+        assert.deepEqual(llamadas, aceptar ? ['A'] : []);
+        assert.equal(campo.value, aceptar ? '' : ' A '); assert.equal(campo.disabled, false);
+    });
+}
+
+test('eliminar nombre vacío no consulta ni abre confirmación', async () => {
+    const v = preparar({ obtenerRolUsuario: () => assert.fail('No debe consultar') });
+    v.add('usuarioEliminar', '   '); v.add('btnEliminarUsuario', '', 'button');
+    await v.context.eliminarUsuario();
+    assert.equal(v.dialog(), undefined); assert.match(v.message(), /Ingresa el nombre/);
+});
+
 test('los avisos son texto, reutilizan el panel y no desplazan el foco', () => {
     const v = preparar(); const campo = v.add('campo', 'Borrador'); campo.focus();
     v.context.mostrarAviso('<img src=x onerror=alert(1)>');
@@ -156,6 +194,28 @@ test('modificación sin ID conserva los datos y permite corregir sin cambiar de 
     await v.context.modificarPareja();
     assert.match(v.message(), /ID.*obligatorio/); assert.equal(nombre.value, 'Prueba'); assert.equal(id.disabled, false);
 });
+
+for (const response of [
+    { success: false, code: 'NOT_FOUND', error: 'No se encontró la pareja.' },
+    { success: false, code: 'TRANSACTION_OUTCOME_UNKNOWN', error: 'Consulta la pareja antes de reintentar.' },
+    { success: true, code: 'UNCHANGED', message: 'La pareja ya tenía esos datos. No hubo cambios.' }
+]) {
+    test(`modificación muestra ${response.code} y conserva los campos editables`, async () => {
+        let llamadas = 0;
+        const v = preparar({ actualizarParejaCompleta: async () => { llamadas++; return response; } });
+        v.add('nParejaID', '7'); v.add('BTNUpdate', '', 'button');
+        for (const sexo of ['Masculino', 'Femenino']) {
+            for (const campo of ['nombre', 'apellido', 'email', 'telefono', 'fechaNacimiento']) v.add(`${campo}${sexo}Update`, 'Prueba');
+            v.add(`foto${sexo}Update`).files = [];
+        }
+        await v.context.modificarPareja();
+        assert.equal(llamadas, 1);
+        assert.match(v.message(), new RegExp(response.error || response.message));
+        const nombre = v.documento.getElementById('nombreMasculinoUpdate');
+        assert.equal(nombre.value, 'Prueba'); assert.equal(nombre.disabled, false);
+        if (!response.success) assert.doesNotMatch(v.message(), /exitosamente/);
+    });
+}
 
 test('PDF: el rechazo IPC permite reintentar y no deja botones deshabilitados', async () => {
     let success = false;

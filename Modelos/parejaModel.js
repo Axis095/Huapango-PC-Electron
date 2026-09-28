@@ -1,4 +1,4 @@
-const { queryDatabase } = require("../db");
+const { queryDatabase, withTransaction } = require("../db");
 
 
 function vacioANull(valor) {
@@ -202,94 +202,58 @@ async function buscarTodasLasParejas() {
 
 // ...existing code...
 
+function validarIDEscritura(id) {
+    const texto = typeof id === "string" ? id.trim() : typeof id === "number" ? String(id) : "";
+    if (!/^\d+$/.test(texto) || !Number.isSafeInteger(Number(texto)) || Number(texto) <= 0) {
+        const error = new Error("Ingresa un ID de pareja entero y positivo.");
+        error.code = "INVALID_ID";
+        throw error;
+    }
+    return Number(texto);
+}
+
 async function actualizarParejaCompleta(datos) {
-    try {
-        console.log("[actualizarParejaCompleta] Datos recibidos:", datos);
-
-        // Masculino
-        const sqlMasculino = `
-            UPDATE T_Participantes
-            SET cNombre = ?, cApellido = ?, cEmail = ?, nTelefono = ?, dNacimiento = ?, oFoto = COALESCE(?, oFoto)
-            WHERE nParejaID = ?
-        `;
-        console.log("[actualizarParejaCompleta] SQL Masculino:", sqlMasculino);
-        console.log("[actualizarParejaCompleta] Params Masculino:", [
-            datos.cNombreMasculino,
-            datos.cApellidoMasculino,
-            datos.cEmailMasculino,
-            datos.nTelefonoMasculino,
-            datos.dNacimientoMasculino,
-            datos.oFotoMasculino || null,
-            datos.nParejaID
-        ]);
-        const resultM = await queryDatabase(sqlMasculino, [
-            datos.cNombreMasculino,
-            datos.cApellidoMasculino,
-            datos.cEmailMasculino,
-            datos.nTelefonoMasculino,
-            datos.dNacimientoMasculino,
-            datos.oFotoMasculino || null,
-            datos.nParejaID
-        ]);
-        console.log(`Participante masculino actualizado. Filas afectadas: ${resultM.affectedRows}`);
-
-        // Femenino
-        const sqlFemenino = `
-            UPDATE T_Participantes
-            SET cNombreM = ?, cApellidoM = ?, cEmailM = ?, nTelefonoM = ?, dNacimientoM = ?, IFotoM = COALESCE(?, IFotoM)
-            WHERE nParejaID = ?
-        `;
-        console.log("[actualizarParejaCompleta] SQL Femenino:", sqlFemenino);
-        console.log("[actualizarParejaCompleta] Params Femenino:", [
-            datos.cNombreFemenino,
-            datos.cApellidoFemenino,
-            datos.cEmailFemenino,
-            datos.nTelefonoFemenino,
-            datos.dNacimientoFemenino,
-            datos.oFotoFemenino || null,
-            datos.nParejaID
-        ]);
-        const resultF = await queryDatabase(sqlFemenino, [
-            datos.cNombreFemenino,
-            datos.cApellidoFemenino,
-            datos.cEmailFemenino,
-            datos.nTelefonoFemenino,
-            datos.dNacimientoFemenino,
-            datos.oFotoFemenino || null,
-            datos.nParejaID
-        ]);
-        console.log(`Participante femenino actualizado. Filas afectadas: ${resultF.affectedRows}`);
-
-        return {
-            success: true,
-            affectedRowsMasculino: resultM.affectedRows,
-            affectedRowsFemenino: resultF.affectedRows
-        };
-    } catch (err) {
-        console.error("Error en la actualización de pareja:", err);
-        return { success: false, error: err.message };
+    const id = validarIDEscritura(datos?.nParejaID);
+    const campos = ["cNombreMasculino", "cApellidoMasculino", "cEmailMasculino", "nTelefonoMasculino", "dNacimientoMasculino",
+        "cNombreFemenino", "cApellidoFemenino", "cEmailFemenino", "nTelefonoFemenino", "dNacimientoFemenino"];
+    if (campos.some(campo => typeof datos[campo] !== "string" || !datos[campo].trim()) ||
+        [datos.oFotoMasculino, datos.oFotoFemenino].some(foto => foto != null && typeof foto !== "string")) {
+        const error = new Error("Completa los datos de ambos participantes antes de guardar. No se modificó la pareja.");
+        error.code = "INVALID_DATA";
+        throw error;
     }
+    return withTransaction(["T_Participantes"], async consultar => {
+        // Distinguir inexistente de sin cambios sin depender de CLIENT_FOUND_ROWS.
+        const filas = await consultar("SELECT nParejaID FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [id]);
+        if (!filas.length) return { success: false, code: "NOT_FOUND", affectedRows: 0 };
+        const result = await consultar(`
+            UPDATE T_Participantes
+            SET cNombre = ?, cApellido = ?, cEmail = ?, nTelefono = ?, dNacimiento = ?, oFoto = COALESCE(?, oFoto),
+                cNombreM = ?, cApellidoM = ?, cEmailM = ?, nTelefonoM = ?, dNacimientoM = ?, IFotoM = COALESCE(?, IFotoM)
+            WHERE nParejaID = ?
+        `, [
+            ...campos.slice(0, 5).map(campo => datos[campo].trim()), datos.oFotoMasculino || null,
+            ...campos.slice(5).map(campo => datos[campo].trim()), datos.oFotoFemenino || null, id
+        ]);
+        return { success: true, code: result.changedRows === 0 ? "UNCHANGED" : "UPDATED",
+            affectedRows: result.affectedRows, changedRows: result.changedRows };
+    });
 }
 
-// ...existing code...
-
-
-
-// Función para eliminar una pareja por ID
+// Una única implementación para los controladores de parejas y administración.
 async function eliminarPareja(id) {
-    try {
-        // Eliminar primero las referencias en tablas relacionadas
-        await queryDatabase("DELETE FROM T_Categoria WHERE nParejaID = ?", [id]);
-        await queryDatabase("DELETE FROM T_Estilos WHERE nParejaID = ?", [id]);
-
-        // Luego eliminar la pareja de la tabla principal
-        const result = await queryDatabase("DELETE FROM T_Participantes WHERE nParejaID = ?", [id]);
-        return result.affectedRows; // Devuelve el número de filas afectadas
-    } catch (err) {
-        throw new Error("Error al eliminar pareja: " + err.message);
-    }
+    const parejaID = validarIDEscritura(id);
+    return withTransaction(["T_Participantes", "T_Evaluaciones", "T_Categorias", "T_Estilos"], async consultar => {
+        const filas = await consultar("SELECT nParejaID FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [parejaID]);
+        if (!filas.length) return 0;
+        await consultar("DELETE FROM T_Evaluaciones WHERE nParejaID = ?", [parejaID]);
+        await consultar("DELETE FROM T_Categorias WHERE nParejaID = ?", [parejaID]);
+        await consultar("DELETE FROM T_Estilos WHERE nParejaID = ?", [parejaID]);
+        const result = await consultar("DELETE FROM T_Participantes WHERE nParejaID = ?", [parejaID]);
+        if (result.affectedRows !== 1) throw new Error("No se pudo completar la eliminación de la pareja.");
+        return result.affectedRows;
+    });
 }
-
 
 
 module.exports = { registrarPareja, buscarParejaPorID, buscarParejaParaEvaluacion, buscarTodasLasParejas, eliminarPareja, actualizarParejaCompleta };

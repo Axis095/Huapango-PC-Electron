@@ -485,14 +485,12 @@ async function modificarPareja() {
                 oFotoFemenino
             };
 
-            console.log("Enviando solicitud de actualización con datos:", datos);
             const response = await window.api.actualizarParejaCompleta(datos);
 
             if (response.success) {
-                mostrarAviso("Pareja actualizada exitosamente.");
-                // Recargar datos si es necesario
+                mostrarAviso(response.message || "Pareja actualizada exitosamente.");
             } else {
-                mostrarAviso("Error al actualizar pareja: " + response.error);
+                mostrarAviso("Error al actualizar pareja: " + (response.error || response.message || "No se pudo guardar la pareja."));
             }
         } catch (err) {
             mostrarAviso("Error: " + err.message);
@@ -622,11 +620,6 @@ async function eliminarUsuario() {
 
             const cNombreUsuario = document.getElementById("usuarioEliminar")?.value.trim();
             console.log(` Valor ingresado: '${cNombreUsuario}'`);
-
-            if (!cNombreUsuario || cNombreUsuario.length < 3) {
-                mostrarAviso("Debes ingresar un nombre de usuario válido (mínimo 3 caracteres).");
-                return;
-            }
 
             validarDatosEliminarUsuario({ cNombreUsuario });
 
