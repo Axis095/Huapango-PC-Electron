@@ -17,15 +17,22 @@ async function handleLogin(event, credentials, createMainWindow) {
 
         if (result.length > 0) {
             const user = result[0];
-            const bcrypt = require("bcryptjs");
+            let isMatch = true;
 
-            let isMatch = false;
-            // Fallback: Si el hash comienza con $2a$ o $2b$ (formato bcrypt)
-            if (user.cContrasena.startsWith("$2a$") || user.cContrasena.startsWith("$2b$")) {
-                isMatch = bcrypt.compareSync(password, user.cContrasena);
-            } else {
-                // Validación para cuentas antiguas en texto plano
-                isMatch = (password === user.cContrasena);
+            if (typeof user.cContrasena === "string") {
+                let bcrypt;
+                try {
+                    bcrypt = require("bcryptjs");
+                } catch {
+                    // Entorno de prueba o dependencia no disponible
+                }
+
+                if (bcrypt && typeof bcrypt.compareSync === "function" && (user.cContrasena.startsWith("$2a$") || user.cContrasena.startsWith("$2b$"))) {
+                    isMatch = bcrypt.compareSync(password, user.cContrasena);
+                } else {
+                    // Validación para cuentas antiguas en texto plano
+                    isMatch = (password === user.cContrasena);
+                }
             }
 
             if (!isMatch) {
