@@ -70,15 +70,6 @@ ipcMain.handle("generar-pdf-resultados", handleGenerarPDFResultados);
 ipcMain.handle("generar-pdf-estilos", handleGenerarPDFEstilos);
 ipcMain.handle("generar-pdf-registros-generales", handleGenerarPDFRegistrosGenerales);
 // Conectar el evento IPC para registrar evaluaciones
-ipcMain.handle("actualizar-estilo", requiereRol(["admin"], handleActualizarEstilo));
-ipcMain.handle("eliminar-estilo", requiereRol(["admin"], handleEliminarEstilo));
-// Conectar el evento IPC para generar el PDF
-ipcMain.handle("generar-pdf-parejas", handleGenerarPDFParejas);
-ipcMain.handle("generar-pdf-resultados", handleGenerarPDFResultados);
-ipcMain.handle("generar-pdf-estilos", handleGenerarPDFEstilos);
-ipcMain.handle("generar-pdf-registros-generales", handleGenerarPDFRegistrosGenerales);
-// Conectar el evento IPC para registrar evaluaciones
-ipcMain.handle("registrar-evaluacion", handleRegistrarEvaluacion);
 ipcMain.handle("registrar-evaluacion", requiereRol(["admin", "user", "juez"], handleRegistrarEvaluacion));
 ipcMain.handle("obtener-evaluaciones-por-pareja", handleObtenerEvaluacionesPorPareja);
 // Conectar el evento para guardar la configuración del archivo JSON dinamico.
@@ -222,9 +213,6 @@ function openNewWindow(tipo, file) {
             });
     }
 
-    ventanaEmergente.on("closed", () => {
-        ventanaEmergente = null;
-    });
     ventanaEmergente.on("closed", () => {
         ventanaEmergente = null;
     });
