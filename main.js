@@ -16,7 +16,6 @@ const { handleCrearUsuario, handleEliminarUsuario, handleEliminarPareja, handleO
 const { handleRegistrarEvaluacion, handleObtenerEvaluacionesPorPareja } = require("./Controladores/evaluacionesController");
 const { handleGenerarPDFParejas, handleGenerarPDFResultados, handleGenerarPDFCategorias, handleGenerarPDFEstilos, handleGenerarPDFRegistrosGenerales, handleDescargarManualUsuario  } = require("./Controladores/pdfController");
 const { handleGuardarConfiguracion, handleObtenerConfiguracion } = require("./Controladores/configController");
-const {handleGuardarImagenBuffer, handleGuardarImagen} = require("./Controladores/imagenesController");
 
 
 
@@ -24,6 +23,10 @@ const { obtenerBorradorRegistro, guardarBorradorRegistro, limpiarBorradorRegistr
 ipcMain.handle("obtener-borrador-registro", obtenerBorradorRegistro);
 ipcMain.handle("guardar-borrador-registro", guardarBorradorRegistro);
 ipcMain.handle("limpiar-borrador-registro", limpiarBorradorRegistro);
+const { obtenerBorradorModificacion, guardarBorradorModificacion, limpiarBorradorModificacion } = require("./Controladores/borradorModificacionController");
+ipcMain.handle("obtener-borrador-modificacion", obtenerBorradorModificacion);
+ipcMain.handle("guardar-borrador-modificacion", guardarBorradorModificacion);
+ipcMain.handle("limpiar-borrador-modificacion", limpiarBorradorModificacion);
 
 // MENSAJE GENERAL ELIMINAR POR FAVOR TODO EL CÓDIGO BASURA QUE NO SE UTILIZA, IGUAL LOS COMENTARIOS SOLO DEJAR LO QUE SEA DE UTILIDAD, IGUAL CON LAS LIBRERIAS QUE NO SE USAN
 
@@ -89,8 +92,6 @@ ipcMain.handle("continuar-configuracion", desdeConfiguracion(async (event) => {
 }));
 // Conectar el evento IPC para abrir la ventana de configuración
 ipcMain.on("abrir-ventana-emergente", () => { abrirConfiguracion(); });
-ipcMain.handle("guardarImagenBuffer", handleGuardarImagenBuffer);
-ipcMain.handle("guardarImagen", handleGuardarImagen);
 
 
 

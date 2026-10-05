@@ -1,4 +1,5 @@
 const { queryDatabase, withTransaction } = require("../db");
+const { conFotos, limpiarFotos } = require("./imagenesModel");
 
 
 function vacioANull(valor) {
@@ -35,16 +36,21 @@ function vacioANull(valor) {
 
 // Función para registrar una pareja (dos participantes)
 async function registrarPareja(datos) {
-    try {
+    validarIDEscritura(datos?.nParejaID);
+    return conFotos(datos, preparados => registrarDatosPareja(preparados));
+}
+
+async function registrarDatosPareja(datos) {
+    return withTransaction(["T_Participantes"], async consultar => {
         const sql = `
             INSERT INTO T_Participantes 
             (nParejaID, oFoto, dNacimiento, ISexo, nTelefono, cNombre, cApellido, cEmail, 
             cNombreM, cApellidoM, dNacimientoM, nTelefonoM, cEmailM, ISexoM, IFotoM)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        await queryDatabase(sql, [
+        await consultar(sql, [
             datos.nParejaID,
-            datos.oFotoMasculino || null,
+            datos.oFotoMasculino || "",
             datos.dNacimientoMasculino,
             datos.sexoMasculino,
             datos.nTelefonoMasculino,
@@ -60,9 +66,7 @@ async function registrarPareja(datos) {
             datos.oFotoFemenino || null
         ]);
         return datos.nParejaID;
-    } catch (err) {
-        throw new Error("Error al registrar pareja: " + err.message);
-    }
+    });
 }
 
 
@@ -222,9 +226,13 @@ async function actualizarParejaCompleta(datos) {
         error.code = "INVALID_DATA";
         throw error;
     }
+    return conFotos(datos, preparados => actualizarDatosPareja(preparados, id, campos), fotoEnUso);
+}
+
+async function actualizarDatosPareja(datos, id, campos) {
     return withTransaction(["T_Participantes"], async consultar => {
         // Distinguir inexistente de sin cambios sin depender de CLIENT_FOUND_ROWS.
-        const filas = await consultar("SELECT nParejaID FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [id]);
+        const filas = await consultar("SELECT nParejaID, oFoto, IFotoM FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [id]);
         if (!filas.length) return { success: false, code: "NOT_FOUND", affectedRows: 0 };
         const result = await consultar(`
             UPDATE T_Participantes
@@ -236,16 +244,19 @@ async function actualizarParejaCompleta(datos) {
             ...campos.slice(5).map(campo => datos[campo].trim()), datos.oFotoFemenino || null, id
         ]);
         return { success: true, code: result.changedRows === 0 ? "UNCHANGED" : "UPDATED",
-            affectedRows: result.affectedRows, changedRows: result.changedRows };
+            affectedRows: result.affectedRows, changedRows: result.changedRows,
+            fotosAnteriores: [datos.oFotoMasculino ? filas[0].oFoto : null, datos.oFotoFemenino ? filas[0].IFotoM : null] };
     });
 }
 
 // Una única implementación para los controladores de parejas y administración.
 async function eliminarPareja(id) {
     const parejaID = validarIDEscritura(id);
-    return withTransaction(["T_Participantes", "T_Evaluaciones", "T_Categorias", "T_Estilos"], async consultar => {
-        const filas = await consultar("SELECT nParejaID FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [parejaID]);
+    let fotosAnteriores = [];
+    const resultado = await withTransaction(["T_Participantes", "T_Evaluaciones", "T_Categorias", "T_Estilos"], async consultar => {
+        const filas = await consultar("SELECT nParejaID, oFoto, IFotoM FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [parejaID]);
         if (!filas.length) return 0;
+        fotosAnteriores = [filas[0].oFoto, filas[0].IFotoM];
         await consultar("DELETE FROM T_Evaluaciones WHERE nParejaID = ?", [parejaID]);
         await consultar("DELETE FROM T_Categorias WHERE nParejaID = ?", [parejaID]);
         await consultar("DELETE FROM T_Estilos WHERE nParejaID = ?", [parejaID]);
@@ -253,6 +264,13 @@ async function eliminarPareja(id) {
         if (result.affectedRows !== 1) throw new Error("No se pudo completar la eliminación de la pareja.");
         return result.affectedRows;
     });
+    if (resultado) await limpiarFotos(fotosAnteriores, fotoEnUso);
+    return resultado;
+}
+
+async function fotoEnUso(referencia) {
+    const filas = await queryDatabase("SELECT nParejaID FROM T_Participantes WHERE oFoto = ? OR IFotoM = ? LIMIT 1", [referencia, referencia]);
+    return filas.length > 0;
 }
 
 

@@ -38,7 +38,7 @@ function preparar(api = {}) {
     documento.getElementById = id => all().find(e => e.id === id) || null;
     const context = vm.createContext({ document: documento, window: { api, location: { search: '' } }, URLSearchParams,
         console: { log() {}, error() {}, warn() {} } });
-    const sources = ['Public/js/avisos.js', 'Public/js/validaciones.js', 'Public/js/busquedaEvaluacion.js', 'Public/js/render.js'];
+    const sources = ['Public/js/fotos.js', 'Public/js/avisos.js', 'Public/js/validaciones.js', 'Public/js/busquedaEvaluacion.js', 'Public/js/render.js'];
     vm.runInContext(sources.map(file => read(file).replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '')).join('\n'), context);
     return { documento, context,
         add(id, value = '', tag = 'input') { const e = new Elemento(tag); e.id = id; e.value = value; documento.body.append(e); return e; },
@@ -216,6 +216,27 @@ for (const response of [
         if (!response.success) assert.doesNotMatch(v.message(), /exitosamente/);
     });
 }
+
+test('modificación envía bytes junto a los datos y conserva la selección si SQL falla', async () => {
+    let success = false;
+    const llamadas = [];
+    const v = preparar({ actualizarParejaCompleta: async datos => { llamadas.push(datos); return { success, error: 'SQL rechazado' }; } });
+    v.add('nParejaID', '7'); v.add('BTNUpdate', '', 'button');
+    for (const sexo of ['Masculino', 'Femenino']) {
+        for (const campo of ['nombre', 'apellido', 'email', 'telefono', 'fechaNacimiento']) v.add(`${campo}${sexo}Update`, 'Prueba');
+        v.add(`foto${sexo}Update`).files = [];
+    }
+    const input = v.documento.getElementById('fotoMasculinoUpdate');
+    input.files = [new File(['contenido'], 'foto.png', { type: 'image/png' })]; input.value = 'foto.png';
+    await v.context.modificarPareja();
+    assert.equal(llamadas.length, 1); assert.equal(input.value, 'foto.png');
+    assert.equal(Buffer.from(llamadas[0].fotos.Masculino.bytes).toString(), 'contenido');
+    assert.equal(llamadas[0].oFotoMasculino, undefined);
+    success = true;
+    await v.context.modificarPareja();
+    assert.equal(input.value, '');
+    assert.equal(v.documento.getElementById('nombreMasculinoUpdate').value, 'Prueba');
+});
 
 test('PDF: el rechazo IPC permite reintentar y no deja botones deshabilitados', async () => {
     let success = false;

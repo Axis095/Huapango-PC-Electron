@@ -6,7 +6,7 @@ const { pathToFileURL } = require("node:url");
 const root = path.resolve(__dirname, "..");
 const read = file => fs.readFileSync(path.join(root, file), "utf8");
 const url = text => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
-const modulo = import(url(read("Public/js/registroParejas.js").replace('"./validaciones.js"', JSON.stringify(url(read("Public/js/validaciones.js"))))));
+const modulo = import(url(read("Public/js/registroParejas.js").replace('"./fotos.js"', JSON.stringify(url(read("Public/js/fotos.js")))).replace('"./validaciones.js"', JSON.stringify(url(read("Public/js/validaciones.js"))))));
 
 async function vista(apiExtra = {}, almacen = { data: null }) {
     const elementos = new Map();
@@ -72,7 +72,23 @@ test("correo vacío: conserva formulario y foto, enfoca el campo y permite corre
     v.get("emailMasculino").value = "corregido@example.test";
     await v.click("BTNSave");
     assert.equal(v.registros.length, 1);
+    assert.equal(v.registros[0].fotos.Masculino.nombre, "prueba.png");
+    assert.equal(Buffer.from(v.registros[0].fotos.Masculino.bytes).toString(), "foto");
+    assert.equal(v.registros[0].oFotoMasculino, undefined);
     assert.match(v.get("estadoRegistroPareja").textContent, /guardada en la base/);
+});
+
+test("foto demasiado grande no se lee ni se envía; corregirla permite guardar sin perder campos", async () => {
+    const v = await vista(); v.completar();
+    v.get("fotoMasculino").files = [{ name: "grande.jpg", size: 5 * 1024 * 1024 + 1,
+        arrayBuffer() { assert.fail("No cargar una foto que excede el límite"); } }];
+    await v.click("BTNSave");
+    assert.equal(v.registros.length, 0);
+    assert.match(v.get("estadoRegistroPareja").textContent, /5 MiB/);
+    assert.equal(v.get("nombreMasculino").value, "Nombre");
+    v.get("fotoMasculino").files = [new File(["foto"], "valida.jpg", { type: "image/jpeg" })];
+    await v.click("BTNSave");
+    assert.equal(v.registros.length, 1);
 });
 
 test("error de formato y rechazo de MySQL no limpian los campos ni bloquean un reintento", async () => {
@@ -120,7 +136,7 @@ test("si falla la conservación del borrador se impide navegar y se mantiene el 
 test("espera la serialización de una foto antes de navegar", async () => {
     let resolver;
     const v = await vista(); v.completar();
-    v.get("fotoMasculino").files = [{ name: "foto.png", type: "image/png", lastModified: 1,
+    v.get("fotoMasculino").files = [{ name: "foto.png", type: "image/png", lastModified: 1, size: 3,
         arrayBuffer: () => new Promise(resolve => { resolver = resolve; }) }];
     const pendiente = v.navegar();
     await new Promise(resolve => setImmediate(resolve));

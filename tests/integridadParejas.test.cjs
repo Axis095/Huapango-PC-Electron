@@ -89,7 +89,7 @@ async function preparar(opciones = {}) {
         './Modelos/configModel': { cargarConfiguracion: () => ({}), normalizarConfiguracion: x => x }
     });
     await db.inicializarBaseDatos();
-    const pareja = cargar('Modelos/parejaModel.js', { '../db': db });
+    const pareja = cargar('Modelos/parejaModel.js', { '../db': db, './imagenesModel': { conFotos: async (datos, fn) => fn({ ...datos, oFotoMasculino: null, oFotoFemenino: null }), limpiarFotos: async () => {} } });
     const admin = cargar('Modelos/adminModel.js', { '../db': db, './parejaModel': pareja });
     const controladorPareja = cargar('Controladores/parejaController.js', { '../Modelos/parejaModel': pareja });
     const controladorAdmin = cargar('Controladores/adminController.js', { '../Modelos/adminModel': admin });

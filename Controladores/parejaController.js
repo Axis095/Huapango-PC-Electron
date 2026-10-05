@@ -7,7 +7,7 @@ async function handleRegistrarPareja(event, datos) {
         return { success: true, id: parejaId };
     } catch (err) {
         console.error("Error en el controlador de registro de pareja:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code || "REGISTER_FAILED", error: err.message };
     }
 }
 
