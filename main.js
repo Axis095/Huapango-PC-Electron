@@ -14,7 +14,7 @@ const { handleRegistrarCategoria, handleActualizarCategoria, handleEliminarCateg
 const { handleRegistrarEstilo, handleActualizarEstilo, handleEliminarEstilo, handleBuscarEstiloPorID } = require("./Controladores/estiloController");
 const { handleCrearUsuario, handleEliminarUsuario, handleEliminarPareja, handleObtenerRolUsuario } = require("./Controladores/adminController");
 const { handleRegistrarEvaluacion, handleObtenerEvaluacionesPorPareja } = require("./Controladores/evaluacionesController");
-const { handleGenerarPDFParejas, handleGenerarPDFResultados, handleGenerarPDFCategorias, handleGenerarPDFEstilos, handleGenerarPDFRegistrosGenerales, handleDescargarManualUsuario } = require("./Controladores/pdfController");
+const { handleGenerarPDFParejas, handleGenerarPDFResultados, handleGenerarPDFCategorias, handleGenerarPDFEstilos, handleGenerarPDFRegistrosGenerales } = require("./Controladores/pdfController");
 const { handleGuardarConfiguracion, handleObtenerConfiguracion } = require("./Controladores/configController");
 const { handleGuardarImagenBuffer, handleGuardarImagen } = require("./Controladores/imagenesController");
 
@@ -67,6 +67,7 @@ ipcMain.handle("eliminar-estilo", requiereRol(["admin"], handleEliminarEstilo));
 // Conectar el evento IPC para generar el PDF
 ipcMain.handle("generar-pdf-parejas", handleGenerarPDFParejas);
 ipcMain.handle("generar-pdf-resultados", handleGenerarPDFResultados);
+ipcMain.handle("generar-pdf-categorias", handleGenerarPDFCategorias);
 ipcMain.handle("generar-pdf-estilos", handleGenerarPDFEstilos);
 ipcMain.handle("generar-pdf-registros-generales", handleGenerarPDFRegistrosGenerales);
 // Conectar el evento IPC para registrar evaluaciones
