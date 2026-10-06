@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld("api", {
     obtenerBorradorRegistro: () => ipcRenderer.invoke("obtener-borrador-registro"),
     guardarBorradorRegistro: (datos) => ipcRenderer.invoke("guardar-borrador-registro", datos),
     limpiarBorradorRegistro: () => ipcRenderer.invoke("limpiar-borrador-registro"),
+    obtenerBorradorModificacion: () => ipcRenderer.invoke("obtener-borrador-modificacion"),
+    guardarBorradorModificacion: (datos) => ipcRenderer.invoke("guardar-borrador-modificacion", datos),
+    limpiarBorradorModificacion: () => ipcRenderer.invoke("limpiar-borrador-modificacion"),
     getUserRole: () => ipcRenderer.invoke("get-role"), // Exponer el canal "get-role"
     registrarPareja: (datos) => ipcRenderer.invoke("registrar-pareja", datos),
     buscarParejaPorID: (id) => ipcRenderer.invoke("buscar-pareja-por-id", id),
@@ -50,8 +53,6 @@ contextBridge.exposeInMainWorld("api", {
     guardarConfiguracion: (config) => ipcRenderer.invoke("guardar-configuracion", config),
     continuarConfiguracion: () => ipcRenderer.invoke("continuar-configuracion"),
     // DAMOS PERMISO A getUsuarioID para guardar automaticamente los ID de los jueces en el sistema
-    guardarImagen: (origen, destino) => ipcRenderer.invoke("guardarImagen", origen, destino),
-    guardarImagenBuffer: (buffer, destino) => ipcRenderer.invoke("guardarImagenBuffer", buffer, destino),
 
 
     abrirVentanaEmergente: () => ipcRenderer.send("abrir-ventana-emergente"), // POIBLEMENTE ESTO TENGAMOSS QUE BORRARLO SOLO ES PARA PRUEBAS

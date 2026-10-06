@@ -34,6 +34,7 @@
         
         <div class="form-section">
             <h2 class="section-title">Modificación de parejas:</h2>
+            <p id="estadoBorradorModificacion" role="status" aria-live="polite"></p>
             
             <div class="form-group">
                         <label class="form-label">Numero de pareja:</label>
@@ -62,7 +63,7 @@
 
 
                     <div style="display: flex; gap: 10px; align-items: center;">
-    <input type="file" id="fotoMasculino" name="fotoMasculino" class="form-control" accept="image/*" required>
+    <input type="file" id="fotoMasculino" name="fotoMasculino" class="form-control" accept="image/png,image/jpeg" aria-label="Foto PNG o JPEG, máximo 5 MiB y 16 megapíxeles">
                     </div>
 
 
@@ -130,7 +131,7 @@
                         
                         
                         <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="file" id="fotoMasculinoUpdate" name="fotoMasculinoUpdate" class="form-control" accept="image/*" required>
+                        <input type="file" id="fotoMasculinoUpdate" name="fotoMasculinoUpdate" class="form-control" accept="image/png,image/jpeg">
                         </div>
                     </div>
 
@@ -155,7 +156,7 @@
                 <div style="height: 10px;"></div>
 
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="file" id="fotoFemeninoAlt" name="fotoFemeninoAlt" class="form-control" accept="image/*">
+                    <input type="file" id="fotoFemeninoAlt" name="fotoFemeninoAlt" class="form-control" accept="image/png,image/jpeg">
                 </div>
             </div>
 
@@ -174,13 +175,20 @@
                 <div style="height: 10px;"></div>
 
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="file" id="fotoFemeninoUpdate" name="fotoFemeninoAux" class="form-control" accept="image/*">
+                    <input type="file" id="fotoFemeninoUpdate" name="fotoFemeninoAux" class="form-control" accept="image/png,image/jpeg">
                 </div>
             </div>
 
+            <p>Fotos nuevas: PNG o JPEG, máximo 5 MiB y 16 megapíxeles. Si no seleccionas una, se conserva la anterior.</p>
             <button id="BTNUpdate" class="btn btn-save">
                 <span style="margin-right: 5px;">▶</span> Guardar
             </button>
+            <button id="btnLimpiarModificacion" type="button" class="btn">Limpiar formulario</button>
+            <section id="confirmarLimpiarModificacion" hidden aria-label="Confirmar limpieza del formulario">
+                <p>¿Descartar los datos y las fotos de este formulario? Los registros guardados en MySQL se conservarán.</p>
+                <button id="btnCancelarLimpiarModificacion" type="button" class="btn">Cancelar</button>
+                <button id="btnConfirmarLimpiarModificacion" type="button" class="btn">Descartar borrador</button>
+            </section>
 
 
         </div>

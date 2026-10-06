@@ -23,7 +23,7 @@ function loadCommonJS(file, dependencies) {
 }
 
 function backend(queryDatabase) {
-    const model = loadCommonJS("Modelos/parejaModel.js", { "../db": { queryDatabase } });
+    const model = loadCommonJS("Modelos/parejaModel.js", { "../db": { queryDatabase }, "./imagenesModel": { conFotos: async (datos, fn) => fn({ ...datos, oFotoMasculino: null, oFotoFemenino: null }), limpiarFotos: async () => {} } });
     const controller = loadCommonJS("Controladores/parejaController.js", { "../Modelos/parejaModel": model });
     return { model, controller };
 }

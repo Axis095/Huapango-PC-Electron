@@ -23,6 +23,10 @@ const { obtenerBorradorRegistro, guardarBorradorRegistro, limpiarBorradorRegistr
 ipcMain.handle("obtener-borrador-registro", obtenerBorradorRegistro);
 ipcMain.handle("guardar-borrador-registro", guardarBorradorRegistro);
 ipcMain.handle("limpiar-borrador-registro", limpiarBorradorRegistro);
+const { obtenerBorradorModificacion, guardarBorradorModificacion, limpiarBorradorModificacion } = require("./Controladores/borradorModificacionController");
+ipcMain.handle("obtener-borrador-modificacion", obtenerBorradorModificacion);
+ipcMain.handle("guardar-borrador-modificacion", guardarBorradorModificacion);
+ipcMain.handle("limpiar-borrador-modificacion", limpiarBorradorModificacion);
 
 // MENSAJE GENERAL ELIMINAR POR FAVOR TODO EL CÓDIGO BASURA QUE NO SE UTILIZA, IGUAL LOS COMENTARIOS SOLO DEJAR LO QUE SEA DE UTILIDAD, IGUAL CON LAS LIBRERIAS QUE NO SE USAN
 
