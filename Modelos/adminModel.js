@@ -1,6 +1,7 @@
 const { queryDatabase } = require("../db");
 const { eliminarPareja } = require("./parejaModel");
 
+
 function normalizarNombreUsuario(nombre, minimo = 1) {
     if (typeof nombre !== "string" || !nombre.trim()) {
         throw new Error("El campo 'Nombre de usuario' es obligatorio.");
@@ -12,29 +13,31 @@ function normalizarNombreUsuario(nombre, minimo = 1) {
     return normalizado;
 }
 
+
 // Crear un usuario
 async function crearUsuario(datos) {
     const nombre = normalizarNombreUsuario(datos?.cNombreUsuario, 3);
-
+    const bcrypt = require("bcryptjs");
     const sql = `
         INSERT INTO T_Usuarios (nUsuarioID, cNombreUsuario, cContrasena, rol) 
         VALUES (?, ?, ?, ?)
     `;
-    
+
     try {
         // Verificar que el rol es válido antes de insertar
         const rolesPermitidos = ["admin", "user", "juez"];
         if (!rolesPermitidos.includes(datos.rol)) {
             throw new Error(`Rol inválido: ${datos.rol}. Debe ser 'admin', 'user' o 'juez'.`);
         }
-
+        // Crear hash de la contraseña (10 rondas)
+        const saltRounds = 10;
+        const hashedPassword = bcrypt.hashSync(datos.cContrasena, saltRounds);
         const result = await queryDatabase(sql, [
             datos.nUsuarioID, // ID manual del usuario
             nombre,
-            datos.cContrasena,
+            hashedPassword, // Se guarda el hash en lugar del texto plano
             datos.rol // Se guarda directamente el rol ENUM
         ]);
-
         return datos.nUsuarioID;
         // return result.insertId; // Devuelve el ID del usuario creado este esta mal hay que borrarlo esto
     } catch (err) {
@@ -60,6 +63,7 @@ async function eliminarUsuario(cNombreUsuario) {
     }
 }
 
+
 //Obtenemos el rol del usuario para liminar la capacidad de acciones que puede hacer al eliminar otros usuarios
 async function obtenerRolUsuario(cNombreUsuario) {
     const nombre = normalizarNombreUsuario(cNombreUsuario);
@@ -73,6 +77,4 @@ async function obtenerRolUsuario(cNombreUsuario) {
         throw new Error("Error al obtener el rol del usuario: " + err.message);
     }
 }
-
-
 module.exports = { crearUsuario, eliminarUsuario, eliminarPareja, obtenerRolUsuario };
