@@ -7,7 +7,7 @@ async function handleRegistrarPareja(event, datos) {
         return { success: true, id: parejaId };
     } catch (err) {
         console.error("Error en el controlador de registro de pareja:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code || "REGISTER_FAILED", error: err.message };
     }
 }
 
@@ -61,14 +61,18 @@ async function handleBuscarTodasLasParejas(event) {
 // Controlador para actualizar una pareja
 async function handleActualizarPareja(event, datos) {
     try {
-        const filasAfectadas = await actualizarParejaCompleta(datos);
-        if (filasAfectadas === 0) {
-            return { success: false, message: "No se encontró ninguna pareja con ese ID para actualizar." };
+        const resultado = await actualizarParejaCompleta(datos);
+        if (resultado?.code === "NOT_FOUND") {
+            return { success: false, code: "NOT_FOUND", error: "No se encontró ninguna pareja con ese ID para actualizar." };
         }
-        return { success: true, message: "Pareja actualizada exitosamente." };
+        if (resultado?.success !== true || !["UPDATED", "UNCHANGED"].includes(resultado.code)) {
+            return { success: false, code: "UPDATE_FAILED", error: resultado?.error || "No se pudo confirmar la actualización de la pareja." };
+        }
+        return { success: true, code: resultado.code,
+            message: resultado.code === "UNCHANGED" ? "La pareja ya tenía esos datos. No hubo cambios." : "Pareja actualizada exitosamente." };
     } catch (err) {
         console.error("Error en el controlador de actualización de pareja:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code || "UPDATE_FAILED", error: err.message };
     }
 }
 
@@ -82,7 +86,7 @@ async function handleEliminarPareja(event, id) {
         return { success: true, message: "Pareja eliminada exitosamente." };
     } catch (err) {
         console.error("Error en el controlador al eliminar pareja:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code || "DELETE_FAILED", error: err.message };
     }
 }
 

@@ -3,7 +3,9 @@ const { crearUsuario, eliminarUsuario, eliminarPareja, obtenerRolUsuario  } = re
 // Controlador para crear un usuario
 async function handleCrearUsuario(event, datos) {
     try {
-        console.log("Datos recibidos en el controlador:", datos);
+        if (!datos || typeof datos !== "object" || Array.isArray(datos)) {
+            throw new Error("Los datos de la cuenta no son válidos.");
+        }
 
         // Validar que el rol es correcto antes de enviarlo
         const rolesPermitidos = ["admin", "user", "juez"];
@@ -66,12 +68,6 @@ async function handleObtenerRolUsuario(event, cNombreUsuario) {
 // Controlador para eliminar una pareja
 async function handleEliminarPareja(event, nParejaID) {
     try {
-                if (!nParejaID || typeof nParejaID !== "string") {
-            console.error(" Error: nParejaID no es válido.");
-            return { success: false, error: "ID de pareja inválido." };
-        }
-
-        console.log("Eliminando pareja con ID:", nParejaID);
         const affectedRows = await eliminarPareja(nParejaID);
         if (affectedRows > 0) {
             return { success: true };
@@ -80,7 +76,7 @@ async function handleEliminarPareja(event, nParejaID) {
         }
     } catch (err) {
         console.error("Error en el controlador al eliminar pareja:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code || "DELETE_FAILED", error: err.message };
     }
 }
 

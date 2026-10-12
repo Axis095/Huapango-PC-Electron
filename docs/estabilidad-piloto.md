@@ -56,14 +56,14 @@ un fallo de escritura todavía puede dejar un PDF incompleto en el destino.
 
 ## Hallazgos pendientes, por prioridad
 
-Esta revisión no certifica el proyecto completo ni incorpora el fork del equipo.
+La revisión original no incorporaba el fork. Tras el merge, el parche de
+integridad actualiza el estado del punto 1. Esto no certifica el proyecto completo.
 
-1. **Integridad al eliminar y modificar parejas.** `Modelos/adminModel.js`
-   elimina evaluaciones, categorías, estilos y participantes en consultas
-   independientes. `Modelos/parejaModel.js` actualiza los dos participantes por
-   separado. Un error intermedio puede dejar datos parcialmente modificados.
-   Revisar el esquema y el motor reales; agrupar cada operación indivisible en
-   una transacción sobre la misma conexión y probar rollback.
+1. **Integridad al eliminar y modificar parejas: parche aplicado.** Ahora se
+   usa una conexión transaccional, un UPDATE para ambos participantes y una
+   eliminación común. Se corrigieron los falsos mensajes de éxito. Ver
+   [integridad-parejas.md](integridad-parejas.md) para pruebas, límites y ensayo
+   manual pendiente.
 2. **Esperas de MySQL.** `connectTimeout` limita el establecimiento de conexión,
    no toda la consulta. El pool permite una cola ilimitada. Definir límites y
    recuperación; un tiempo agotado en la interfaz no prueba que una escritura
@@ -76,5 +76,5 @@ Esta revisión no certifica el proyecto completo ni incorpora el fork del equipo
    ventana; no protege frente a cierre o caída del proceso. Los demás formularios
    tampoco tienen una política general de recuperación al cambiar de módulo.
 
-La siguiente corrección recomendada es integridad de escrituras, coordinada con
-quien mantiene el esquema. No es necesario migrar a TypeScript para abordarla.
+La siguiente revisión recomendada es permisos y credenciales, seguida de las
+esperas de MySQL y la recuperación de trabajo. No es necesario migrar a TypeScript.

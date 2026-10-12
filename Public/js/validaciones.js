@@ -71,8 +71,11 @@ export function validarDatosModificarPareja(datos) {
 }
 
 export function validarDatosUsuario(datos) {
-    if (!datos.cNombreUsuario) {
+    if (typeof datos?.cNombreUsuario !== "string" || !datos.cNombreUsuario.trim()) {
         throw new Error("El campo 'Nombre de usuario' es obligatorio.");
+    }
+    if (datos.cNombreUsuario.trim().length < 3) {
+        throw new Error("El nombre de usuario debe tener al menos 3 caracteres.");
     }
     if (!datos.cContrasena) {
         throw new Error("El campo 'Contraseña' es obligatorio.");
@@ -80,8 +83,9 @@ export function validarDatosUsuario(datos) {
 }
 
 export function validarDatosEliminarUsuario(datos) {
-    if (!datos.cNombreUsuario || datos.cNombreUsuario.length < 3) {
-        throw new Error("El nombre de usuario debe tener al menos 3 caracteres.");
+    // Permitir limpiar cuentas antiguas que no cumplen el mínimo de creación.
+    if (typeof datos?.cNombreUsuario !== "string" || !datos.cNombreUsuario.trim()) {
+        throw new Error("Ingresa el nombre de la cuenta que deseas eliminar.");
     }
 }
 

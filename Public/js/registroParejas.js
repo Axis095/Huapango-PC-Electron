@@ -1,3 +1,4 @@
+import { leerFoto } from "./fotos.js";
 import { validarDatosPareja, validarDatosCategoria, validarDatosEstilo } from "./validaciones.js";
 
 const camposPareja = {
@@ -43,9 +44,7 @@ export async function inicializarRegistros(documento = document, api = window.ap
     }
     async function foto(file) {
         if (!file) return null;
-        if (!cacheFotos.has(file)) cacheFotos.set(file, file.arrayBuffer().then(bytes => ({
-            nombre: file.name, tipo: file.type, fecha: file.lastModified, bytes
-        })));
+        if (!cacheFotos.has(file)) cacheFotos.set(file, leerFoto(file));
         return cacheFotos.get(file);
     }
     function guardarBorrador() {
@@ -108,10 +107,13 @@ export async function inicializarRegistros(documento = document, api = window.ap
                 throw Object.assign(new Error(`Completa el campo: ${nombre}. Los demás datos se conservan.`), { campo: id });
             }
         }
-        datos.oFotoMasculino = get("fotoMasculino").files[0]?.name || "";
-        datos.oFotoFemenino = get("fotoFemenino").files[0]?.name || "";
         validarDatosPareja(datos);
         mensaje("estadoRegistroPareja", "Guardando pareja…");
+        datos.fotos = {};
+        for (const lado of ["Masculino", "Femenino"]) {
+            const archivo = get(`foto${lado}`).files[0];
+            if (archivo) datos.fotos[lado] = await foto(archivo);
+        }
         const respuesta = await api.registrarPareja(datos);
         if (!respuesta?.success) throw new Error(respuesta?.error || "No se pudo guardar la pareja. Los datos se conservan.");
         registrada = respuesta.id;
