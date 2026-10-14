@@ -98,6 +98,11 @@ test("main conecta el canal con el controlador de la búsqueda", () => {
         app: { whenReady() { return { then() { return { catch() {} }; } }; }, on() {} }
     };
     dependencies["./Controladores/parejaController"] = controller;
+    for (const nombre of Object.keys(dependencies).filter(n => n.startsWith("./Controladores/") && n !== "./Controladores/parejaController")) {
+        dependencies[nombre] = new Proxy({}, { get: () => () => ({ success: true }) });
+    }
+    // Este test solo comprueba el cableado; ipcSeguridad prueba la política real.
+    dependencies["./Seguridad/ipc"] = { crearSeguridadIPC: () => ({ proteger: (_canal, fn) => fn }) };
     loadCommonJS("main.js", dependencies);
     assert.equal(handlers.get("buscar-pareja-para-evaluacion"), controller.handleBuscarParejaParaEvaluacion);
 });

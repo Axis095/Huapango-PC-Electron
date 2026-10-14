@@ -219,7 +219,7 @@ test("el HTML no repite IDs y la vista de registro no utiliza alert ni confirm",
     assert.doesNotMatch(read("Public/js/registroParejas.js"), /\b(?:alert|confirm)\s*\(/);
     assert.doesNotMatch(read("Public/js/render.js"), /function inicializarRegistros\(/);
     for (const canal of ["obtener", "guardar", "limpiar"]) {
-        assert.ok(read("main.js").includes(`ipcMain.handle("${canal}-borrador-registro"`));
+        assert.ok(read("main.js").includes(`registrarIPC("${canal}-borrador-registro"`));
         assert.ok(read("preload.js").includes(`ipcRenderer.invoke("${canal}-borrador-registro"`));
     }
 });

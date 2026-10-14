@@ -1,70 +1,58 @@
+const bcrypt = require("bcryptjs");
 const { queryDatabase } = require("../db");
-const { guardarSesion } = require("../Modelos/sesionModel");
-
+const { guardarSesion, obtenerSesion, cerrarSesion } = require("../Modelos/sesionModel");
+const { idPositivo } = require("../Seguridad/datos");
 
 let autenticando = false;
-async function handleLogin(event, credentials, createMainWindow) {
+async function handleLogin(event, credentials, createMainWindow, siguePermitido = () => true) {
     if (autenticando) return { success: false, message: "Espera a que termine el inicio de sesión." };
+    if (obtenerSesion()) return { success: false, message: "Ya existe una sesión iniciada." };
     autenticando = true;
-
+    let sesionCreada = false;
+    const rechazado = () => ({ success: false, message: "Usuario o contraseña incorrectos" });
     try {
         const { username, password } = credentials || {};
         if (typeof username !== "string" || !username.trim() || typeof password !== "string" || !password) {
             return { success: false, message: "Completa el usuario y la contraseña." };
         }
-        const sql = "SELECT nUsuarioID, cNombreUsuario, rol, cContrasena FROM t_usuarios WHERE cNombreUsuario = ?";
-        const result = await queryDatabase(sql, [username.trim()]);
+        const result = await queryDatabase(
+            "SELECT nUsuarioID, cNombreUsuario, rol, cContrasena FROM t_usuarios WHERE cNombreUsuario = ?", [username.trim()]);
+        const user = result[0];
+        if (!user || typeof user.cContrasena !== "string" || !user.cContrasena ||
+            !["admin", "user", "juez"].includes(user.rol)) return rechazado();
+        // Columnas VARCHAR/DECIMAL pueden devolver un ID numérico como texto.
+        // Validar sin cambiar el valor de la clave que se guarda en la sesión.
+        try { idPositivo(user.nUsuarioID); }
+        catch { return rechazado(); }
 
-        if (result.length > 0) {
-            const user = result[0];
-            let isMatch = true;
-
-            if (typeof user.cContrasena === "string") {
-                let bcrypt;
-                try {
-                    bcrypt = require("bcryptjs");
-                } catch {
-                    // Entorno de prueba o dependencia no disponible
-                }
-
-                if (bcrypt && typeof bcrypt.compareSync === "function" && (user.cContrasena.startsWith("$2a$") || user.cContrasena.startsWith("$2b$"))) {
-                    isMatch = bcrypt.compareSync(password, user.cContrasena);
-                } else {
-                    // Validación para cuentas antiguas en texto plano
-                    isMatch = (password === user.cContrasena);
-                }
-            }
-
-            if (!isMatch) {
-                console.warn("Contraseña incorrecta.");
-                return { success: false, message: "Usuario o contraseña incorrectos" };
-            }
-            const userRole = user.rol; // El rol de la sesión ser "admin", "user" o "juez"
-            guardarSesion(user.nUsuarioID, userRole);
-
-            global.userRole = userRole; // Almacena el rol en una variable global
-            // global.userID = result[0].nUsuarioID; // <-- Se guarda el ID aquí
-            console.log("Enviando evento set-role con rol:", userRole);
-            // Cierra la ventana de login y abre la ventana principal
-            createMainWindow();
-            if (global.loginWindow && !global.loginWindow.isDestroyed()) {
-                global.loginWindow.close();
-            }
-            // Enviar el rol al renderizador
-            global.mainWindow.webContents.once("did-finish-load", () => {
-                global.mainWindow.webContents.send("set-role", userRole);
-            });
-            return { success: true };
+        let isMatch = false;
+        if (user.cContrasena.startsWith("$2")) {
+            // Un hash roto nunca se interpreta como una contraseña antigua de texto.
+            if (!/^\$2[aby]\$(0[4-9]|[12]\d|3[01])\$[./A-Za-z0-9]{53}$/.test(user.cContrasena) || bcrypt.truncates(password)) return rechazado();
+            isMatch = await bcrypt.compare(password, user.cContrasena);
         } else {
-            console.warn("Usuario no encontrado.");
-            return { success: false, message: "Usuario o contraseña incorrectos" };
+            // Compatibilidad temporal; no reescribir credenciales sin verificar el esquema.
+            isMatch = password === user.cContrasena;
         }
-    } catch (err) {
-        console.error("Error al validar el login:", err);
-        return { success: false, error: "Error interno al validar el login" };
+        if (!isMatch) return rechazado();
+        if (!siguePermitido()) return rechazado();
+
+        guardarSesion(user.nUsuarioID, user.rol);
+        sesionCreada = true;
+        global.userRole = user.rol;
+        await createMainWindow();
+        if (global.loginWindow && !global.loginWindow.isDestroyed()) global.loginWindow.close();
+        return { success: true };
+    } catch {
+        if (sesionCreada) {
+            cerrarSesion();
+            global.userRole = "guest";
+            if (global.mainWindow && !global.mainWindow.isDestroyed()) global.mainWindow.destroy();
+        }
+        return { success: false, error: "No se pudo iniciar sesión. Intenta nuevamente." };
     } finally {
         autenticando = false;
     }
 }
 
-module.exports = { handleLogin, guardarSesion };
+module.exports = { handleLogin, autenticacionEnCurso: () => autenticando };

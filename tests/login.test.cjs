@@ -75,7 +75,13 @@ function controlador(query) {
         mainWindow: { webContents: { once() {} } } };
     vm.runInNewContext(read('Controladores/authController.js'), { module, global,
         console: { log() {}, error() {}, warn() {} },
-        require(name) { return name === '../db' ? { queryDatabase: query } : { guardarSesion() { calls.sessions++; } }; }
+        require(name) {
+            if (name === 'bcryptjs') return require('bcryptjs');
+            if (name === '../Seguridad/datos') return require('../Seguridad/datos');
+            return name === '../db' ? { queryDatabase: query } : {
+                obtenerSesion: () => null, cerrarSesion() {}, guardarSesion() { calls.sessions++; }
+            };
+        }
     });
     return { calls, login(credentials) { return module.exports.handleLogin(null, credentials, () => { calls.windows++; }); } };
 }
@@ -85,7 +91,7 @@ test('controlador: dos IPC simultáneos crean una sola ventana y sesión', async
     const c = controlador(() => { queries++; return new Promise(r => { resolver = r; }); });
     const pending = c.login({ username: 'Operador', password: 'Prueba' });
     assert.equal((await c.login({ username: 'Otro', password: 'Prueba' })).success, false);
-    resolver([{ nUsuarioID: 1, rol: 'user' }]); assert.equal((await pending).success, true);
+    resolver([{ nUsuarioID: 1, rol: 'user', cContrasena: 'Prueba' }]); assert.equal((await pending).success, true);
     assert.equal(queries, 1); assert.equal(c.calls.windows, 1); assert.equal(c.calls.sessions, 1); assert.equal(c.calls.closed, 1);
 });
 

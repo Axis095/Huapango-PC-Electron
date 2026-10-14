@@ -13,7 +13,7 @@ function cargar(file, deps) {
     return module.exports;
 }
 function preparar(queryDatabase) {
-    const model = cargar('Modelos/adminModel.js', { '../db': { queryDatabase }, './parejaModel': {} });
+    const model = cargar('Modelos/adminModel.js', { '../db': { queryDatabase }, './parejaModel': {}, bcryptjs: require('bcryptjs') });
     const controller = cargar('Controladores/adminController.js', { '../Modelos/adminModel': model });
     const vista = vm.createContext({});
     vm.runInContext(read('Public/js/validaciones.js').replace(/^export /gm, ''), vista);
@@ -40,6 +40,8 @@ test('alta: los tres roles aceptan el límite de 3 caracteres y guardan el nombr
         v.vista.validarDatosUsuario(datos);
         assert.equal((await v.controller.handleCrearUsuario(null, datos)).success, true);
         assert.equal(consultas.at(-1).params[1], 'Ana'); assert.equal(consultas.at(-1).params[3], rol);
+        assert.notEqual(consultas.at(-1).params[2], datos.cContrasena);
+        assert.equal(await require('bcryptjs').compare(datos.cContrasena, consultas.at(-1).params[2]), true);
     }
 });
 

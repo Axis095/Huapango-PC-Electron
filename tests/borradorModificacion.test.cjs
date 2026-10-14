@@ -206,7 +206,7 @@ test('vista conecta el borrador una sola vez y registra los tres canales IPC', (
     assert.match(render, /return inicializarBorradorModificacion\(modificarPareja\)/);
     assert.doesNotMatch(render, /addEventListener\("click", modificarPareja\)/);
     for (const verbo of ['obtener', 'guardar', 'limpiar']) {
-        assert.ok(read('main.js').includes(`ipcMain.handle("${verbo}-borrador-modificacion"`));
+        assert.ok(read('main.js').includes(`registrarIPC("${verbo}-borrador-modificacion"`));
         assert.ok(read('preload.js').includes(`ipcRenderer.invoke("${verbo}-borrador-modificacion"`));
     }
     assert.doesNotMatch(read('Public/js/borradorModificacion.js'), /\b(alert|confirm)\s*\(/);

@@ -18,6 +18,13 @@ function normalizarNombreUsuario(nombre, minimo = 1) {
 async function crearUsuario(datos) {
     const nombre = normalizarNombreUsuario(datos?.cNombreUsuario, 3);
     const bcrypt = require("bcryptjs");
+    if (typeof datos.cContrasena !== "string" || !datos.cContrasena || bcrypt.truncates(datos.cContrasena)) {
+        throw new Error("La contraseña es obligatoria y no puede superar 72 bytes UTF-8.");
+    }
+    const id = typeof datos.nUsuarioID === "string" ? datos.nUsuarioID.trim() : String(datos.nUsuarioID);
+    if (!/^\d+$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+        throw new Error("El ID del usuario debe ser un entero positivo.");
+    }
     const sql = `
         INSERT INTO T_Usuarios (nUsuarioID, cNombreUsuario, cContrasena, rol) 
         VALUES (?, ?, ?, ?)
@@ -31,7 +38,7 @@ async function crearUsuario(datos) {
         }
         // Crear hash de la contraseña (10 rondas)
         const saltRounds = 10;
-        const hashedPassword = bcrypt.hashSync(datos.cContrasena, saltRounds);
+        const hashedPassword = await bcrypt.hash(datos.cContrasena, saltRounds);
         const result = await queryDatabase(sql, [
             datos.nUsuarioID, // ID manual del usuario
             nombre,

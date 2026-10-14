@@ -1,14 +1,14 @@
 // Importaciones y dependencias
-const { app, BrowserWindow, ipcMain, Menu, dialog, shell, contextBridge } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, dialog } = require("electron");
 const path = require("path");
 const { inicializarBaseDatos } = require("./db");
 const { obtenerSesion, cerrarSesion } = require("./Modelos/sesionModel");
 const { fileURLToPath } = require("url");
-const PDFDocument = require('pdfkit'); // Importación de libreria para creación de PDF's
-const fs = require('fs'); // Importación de una dependencia de la libreria para el sistema de archivos 
-const { type } = require("os");
+const { crearSeguridadIPC } = require("./Seguridad/ipc");
+const seguridad = crearSeguridadIPC({ raiz: __dirname, obtenerSesion, ventanaDe: sender => BrowserWindow.fromWebContents(sender) });
+function registrarIPC(canal, handler) { ipcMain.handle(canal, seguridad.proteger(canal, handler)); }
 //LAS EXPORTACIONES DE LOS CONTROLADORES SON LAS MÁS IMPORTANTES DEL MOMENTO
-const { handleLogin } = require("./Controladores/authController");
+const { handleLogin, autenticacionEnCurso } = require("./Controladores/authController");
 const { handleRegistrarPareja, handleBuscarParejaPorID, handleBuscarParejaParaEvaluacion, handleBuscarTodasLasParejas, handleActualizarPareja } = require("./Controladores/parejaController");
 const { handleRegistrarCategoria, handleActualizarCategoria, handleEliminarCategoria, handleBuscarCategoriaPorID } = require("./Controladores/categoriaController");
 const { handleRegistrarEstilo, handleActualizarEstilo, handleEliminarEstilo, handleBuscarEstiloPorID } = require("./Controladores/estiloController");
@@ -16,72 +16,61 @@ const { handleCrearUsuario, handleEliminarUsuario, handleEliminarPareja, handleO
 const { handleRegistrarEvaluacion, handleObtenerEvaluacionesPorPareja } = require("./Controladores/evaluacionesController");
 const { handleGenerarPDFParejas, handleGenerarPDFResultados, handleGenerarPDFCategorias, handleGenerarPDFEstilos, handleGenerarPDFRegistrosGenerales } = require("./Controladores/pdfController");
 const { handleGuardarConfiguracion, handleObtenerConfiguracion } = require("./Controladores/configController");
-const { handleGuardarImagenBuffer, handleGuardarImagen } = require("./Controladores/imagenesController");
 
 
 const { obtenerBorradorRegistro, guardarBorradorRegistro, limpiarBorradorRegistro } = require("./Controladores/borradorRegistroController");
-ipcMain.handle("obtener-borrador-registro", obtenerBorradorRegistro);
-ipcMain.handle("guardar-borrador-registro", guardarBorradorRegistro);
-ipcMain.handle("limpiar-borrador-registro", limpiarBorradorRegistro);
+registrarIPC("obtener-borrador-registro", obtenerBorradorRegistro);
+registrarIPC("guardar-borrador-registro", guardarBorradorRegistro);
+registrarIPC("limpiar-borrador-registro", limpiarBorradorRegistro);
 const { obtenerBorradorModificacion, guardarBorradorModificacion, limpiarBorradorModificacion } = require("./Controladores/borradorModificacionController");
-ipcMain.handle("obtener-borrador-modificacion", obtenerBorradorModificacion);
-ipcMain.handle("guardar-borrador-modificacion", guardarBorradorModificacion);
-ipcMain.handle("limpiar-borrador-modificacion", limpiarBorradorModificacion);
+registrarIPC("obtener-borrador-modificacion", obtenerBorradorModificacion);
+registrarIPC("guardar-borrador-modificacion", guardarBorradorModificacion);
+registrarIPC("limpiar-borrador-modificacion", limpiarBorradorModificacion);
 
 // MENSAJE GENERAL ELIMINAR POR FAVOR TODO EL CÓDIGO BASURA QUE NO SE UTILIZA, IGUAL LOS COMENTARIOS SOLO DEJAR LO QUE SEA DE UTILIDAD, IGUAL CON LAS LIBRERIAS QUE NO SE USAN
 
-// Middleware de autorización IPC
-function requiereRol(rolesPermitidos, handler) {
-    return (event, ...args) => {
-        const sesion = obtenerSesion();
-        if (!sesion || !rolesPermitidos.includes(sesion.userRole)) {
-            console.warn(`[Seguridad] Bloqueado: intento de acceso restringido. Rol actual: ${sesion?.userRole}`);
-            return { success: false, error: "No tienes permiso para realizar esta acción." };
-        }
-        return handler(event, ...args);
-    };
-}
-
 // Escuchar el evento de login y pasar createMainWindow como argumento
-ipcMain.handle("login", (event, credentials) => handleLogin(event, credentials, createMainWindow));
+registrarIPC("login", (event, credentials) => continuandoConfiguracion
+    ? { success: false, error: "Espera a que termine la configuración." }
+    : handleLogin(event, credentials, createMainWindow, () => seguridad.permitido("login", event)));
 // Conectar el evento IPC con el controlador
-ipcMain.handle("registrar-pareja", requiereRol(["admin", "user"], handleRegistrarPareja));
-ipcMain.handle("buscar-pareja-por-id", handleBuscarParejaPorID);
-ipcMain.handle("buscar-pareja-para-evaluacion", handleBuscarParejaParaEvaluacion);
+registrarIPC("registrar-pareja", handleRegistrarPareja);
+registrarIPC("buscar-pareja-por-id", handleBuscarParejaPorID);
+registrarIPC("buscar-pareja-para-evaluacion", handleBuscarParejaParaEvaluacion);
 // ipcMain.handle("actualizar-pareja", handleActualizarPareja);
 //     console.log("Enviando solicitud de actualización con datos DESDE MAIN.JS:", datos);
 //     return handleActualizarPareja(event, datos);
 // });
-ipcMain.handle("actualizar-pareja-completa", requiereRol(["admin", "user"], handleActualizarPareja));
-ipcMain.handle("buscar-todas-las-parejas", handleBuscarTodasLasParejas);
-ipcMain.handle("registrar-categoria", requiereRol(["admin"], handleRegistrarCategoria));
-ipcMain.handle("buscar-categoria-por-id", handleBuscarCategoriaPorID);
-ipcMain.handle("actualizar-categoria", requiereRol(["admin"], handleActualizarCategoria));
-ipcMain.handle("eliminar-categoria", requiereRol(["admin"], handleEliminarCategoria));
+registrarIPC("actualizar-pareja-completa", handleActualizarPareja);
+registrarIPC("buscar-todas-las-parejas", handleBuscarTodasLasParejas);
+registrarIPC("registrar-categoria", handleRegistrarCategoria);
+registrarIPC("buscar-categoria-por-id", handleBuscarCategoriaPorID);
+registrarIPC("actualizar-categoria", handleActualizarCategoria);
+registrarIPC("eliminar-categoria", handleEliminarCategoria);
 // Conectar los eventos IPC con los controladores
-ipcMain.handle("crear-usuario", requiereRol(["admin"], handleCrearUsuario));
-ipcMain.handle("eliminar-usuario", requiereRol(["admin"], handleEliminarUsuario));
-ipcMain.handle("eliminar-pareja", requiereRol(["admin"], handleEliminarPareja));
-ipcMain.handle("obtener-rol-usuario", handleObtenerRolUsuario);
+registrarIPC("crear-usuario", handleCrearUsuario);
+registrarIPC("eliminar-usuario", handleEliminarUsuario);
+registrarIPC("eliminar-pareja", handleEliminarPareja);
+registrarIPC("obtener-rol-usuario", handleObtenerRolUsuario);
 // Conectar los eventos IPC con los controladores
-ipcMain.handle("registrar-estilo", requiereRol(["admin"], handleRegistrarEstilo));
-ipcMain.handle("buscar-estilo-por-id", handleBuscarEstiloPorID);
-ipcMain.handle("actualizar-estilo", requiereRol(["admin"], handleActualizarEstilo));
-ipcMain.handle("eliminar-estilo", requiereRol(["admin"], handleEliminarEstilo));
+registrarIPC("registrar-estilo", handleRegistrarEstilo);
+registrarIPC("buscar-estilo-por-id", handleBuscarEstiloPorID);
+registrarIPC("actualizar-estilo", handleActualizarEstilo);
+registrarIPC("eliminar-estilo", handleEliminarEstilo);
 // Conectar el evento IPC para generar el PDF
-ipcMain.handle("generar-pdf-parejas", handleGenerarPDFParejas);
-ipcMain.handle("generar-pdf-resultados", handleGenerarPDFResultados);
-ipcMain.handle("generar-pdf-categorias", handleGenerarPDFCategorias);
-ipcMain.handle("generar-pdf-estilos", handleGenerarPDFEstilos);
-ipcMain.handle("generar-pdf-registros-generales", handleGenerarPDFRegistrosGenerales);
+registrarIPC("generar-pdf-parejas", handleGenerarPDFParejas);
+registrarIPC("generar-pdf-resultados", handleGenerarPDFResultados);
+registrarIPC("generar-pdf-categorias", handleGenerarPDFCategorias);
+registrarIPC("generar-pdf-estilos", handleGenerarPDFEstilos);
+registrarIPC("generar-pdf-registros-generales", handleGenerarPDFRegistrosGenerales);
 // Conectar el evento IPC para registrar evaluaciones
-ipcMain.handle("registrar-evaluacion", requiereRol(["admin", "user", "juez"], handleRegistrarEvaluacion));
-ipcMain.handle("obtener-evaluaciones-por-pareja", handleObtenerEvaluacionesPorPareja);
+registrarIPC("registrar-evaluacion", handleRegistrarEvaluacion);
+registrarIPC("obtener-evaluaciones-por-pareja", handleObtenerEvaluacionesPorPareja);
 // Conectar el evento para guardar la configuración del archivo JSON dinamico.
-ipcMain.handle("obtener-configuracion", desdeConfiguracion(handleObtenerConfiguracion));
-ipcMain.handle("guardar-configuracion", desdeConfiguracion(handleGuardarConfiguracion));
-ipcMain.handle("continuar-configuracion", desdeConfiguracion(async (event) => {
-    if (continuandoConfiguracion) return { success: false, error: "Espera a que termine la conexión." };
+registrarIPC("obtener-configuracion", desdeConfiguracion(handleObtenerConfiguracion));
+registrarIPC("guardar-configuracion", desdeConfiguracion(handleGuardarConfiguracion));
+registrarIPC("continuar-configuracion", desdeConfiguracion(async (event) => {
+    if (continuandoConfiguracion || autenticacionEnCurso()) return { success: false, error: "Espera a que termine la conexión o el inicio de sesión." };
     continuandoConfiguracion = true;
     try {
         await inicializarBaseDatos();
@@ -102,9 +91,7 @@ ipcMain.handle("continuar-configuracion", desdeConfiguracion(async (event) => {
 }));
 
 // Conectar el evento IPC para abrir la ventana de configuración
-ipcMain.on("abrir-ventana-emergente", () => { abrirConfiguracion(); });
-ipcMain.handle("guardarImagenBuffer", handleGuardarImagenBuffer);
-ipcMain.handle("guardarImagen", handleGuardarImagen);
+ipcMain.on("abrir-ventana-emergente", seguridad.proteger("abrir-ventana-emergente", () => { abrirConfiguracion(); }));
 function createLoginWindow() {
     global.loginWindow = new BrowserWindow({
         width: 1400,
@@ -120,7 +107,7 @@ function createLoginWindow() {
 
 }
 
-function createMainWindow() {
+async function createMainWindow() {
     global.mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
@@ -132,25 +119,13 @@ function createMainWindow() {
         },
     });
     global.mainWindow.maximize();
-    // global.mainWindow.loadFile("Vistas/index.html");
-    global.mainWindow.loadFile("Vistas/MenuPrincipal.html");
-    // Asegúrate de que este evento se registre después de que la ventana haya sido creada
-    global.mainWindow.webContents.once("did-finish-load", () => {
-        console.log("Enviando evento set-role con rol:", global.userRole || "guest");
-        global.mainWindow.webContents.send("set-role", global.userRole || "guest");
-    });
-    global.mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => { // CODIGO QUE HAY QUE BORRAR
-        if (errorDescription.includes("Autofill.enable") || errorDescription.includes("Autofill.setAddresses")) {
-            console.warn("Error de Autofill ignorado:", errorDescription);
-        }
-    });
-
-    console.log("Ventana principal creada.");
-
+    await global.mainWindow.loadFile(path.join(__dirname, "Vistas", "MenuPrincipal.html"));
+    global.mainWindow.webContents.send("set-role", obtenerSesion()?.userRole || "guest");
 }
 
 // Función para abrir ventanas de secciones
 function openWindow(file) {
+    if (!seguridad.puedeAbrir(file) || ["login.html", "configuracionBD.html"].includes(file)) return;
     let win = new BrowserWindow({
         width: 800,
         height: 600,
@@ -170,7 +145,7 @@ function openWindow(file) {
 // Función para abrir nuevas ventanas genéricas
 let ventanaEmergente = null; // VARIABLE GLOBAL PARA CONTROLAR LA VENTANA EMERGENTE
 function openNewWindow(tipo, file) {
-    if (!file || typeof file !== "string") {
+    if (!seguridad.puedeAbrir(file)) {
         dialog.showErrorBox("Error", "No se especificó el archivo a abrir en la ventana emergente.");
         return;
     }
@@ -372,6 +347,7 @@ function desdeConfiguracion(handler) {
 }
 
 function abrirConfiguracion(motivo = "") {
+    if (!seguridad.puedeConfigurar()) return;
     if (configWindow && !configWindow.isDestroyed()) {
         configWindow.focus();
         return;
@@ -407,15 +383,26 @@ app.on("window-all-closed", () => { app.quit(); });
 
 
 // Escuchar eventos desde el renderizador
-ipcMain.on("open-section", (event, section) => {
+ipcMain.on("open-section", seguridad.proteger("open-section", (event, section) => {
     console.log("Sección recibida:", section);
     openWindow(section);
-});
+}));
 
 // La identidad de la sesión nunca se lee del archivo de conexión a MySQL.
-ipcMain.handle("get-role", () => obtenerSesion()?.userRole || "guest");
-ipcMain.handle("get-usuario-id", () => obtenerSesion()?.userID ?? null);
+registrarIPC("get-role", () => obtenerSesion()?.userRole || "guest");
+registrarIPC("get-usuario-id", () => obtenerSesion()?.userID ?? null);
 
 
 
 
+
+app.on("web-contents-created", (_event, contents) => {
+    contents.setWindowOpenHandler(() => ({ action: "deny" }));
+    const comprobar = (event, url) => {
+        const vista = seguridad.vistaDeURL(url);
+        if (!vista || !seguridad.puedeAbrir(vista)) event.preventDefault();
+    };
+    contents.on("will-navigate", comprobar);
+    contents.on("will-redirect", comprobar);
+    contents.on("will-attach-webview", event => event.preventDefault());
+});

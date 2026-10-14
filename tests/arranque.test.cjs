@@ -163,7 +163,9 @@ test("el login mantiene la sesión en memoria y no modifica MySQL config", async
     const events = [];
     const globals = { loginWindow: { isDestroyed() { return false; }, close() { events.push("cerrar-login"); } } };
     const auth = load("Controladores/authController.js", {
-        "../db": { async queryDatabase() { return [{ nUsuarioID: 9, rol: "juez" }]; } },
+        bcryptjs: require("bcryptjs"),
+        "../Seguridad/datos": require("../Seguridad/datos"),
+        "../db": { async queryDatabase() { return [{ nUsuarioID: 9, rol: "juez", cContrasena: "clave" }]; } },
         "../Modelos/sesionModel": sesion
     }, { global: globals });
     assert.equal((await auth.handleLogin(null, { username: "juez", password: "clave" }, () => {
@@ -194,6 +196,11 @@ function mainHarness(inicializarBaseDatos) {
     const deps = Object.fromEntries([...source("main.js").matchAll(/require\(["']([^"']+)["']\)/g)].map(m => [m[1], {}]));
     deps.path = path;
     deps.url = { fileURLToPath };
+    for (const nombre of Object.keys(deps).filter(n => n.startsWith("./Controladores/"))) {
+        deps[nombre] = new Proxy({}, { get: () => () => ({ success: true }) });
+    }
+    deps["./Controladores/authController"] = { handleLogin: () => {}, autenticacionEnCurso: () => false };
+    deps["./Seguridad/ipc"] = require("../Seguridad/ipc");
     deps["./db"] = { inicializarBaseDatos };
     deps["./Modelos/sesionModel"] = load("Modelos/sesionModel.js", {});
     deps.electron = {
@@ -221,7 +228,9 @@ test("una conexión válida abre login y get-usuario-id ignora archivos", async 
     const h = mainHarness(async () => {});
     await h.ready();
     assert.equal(path.basename(h.windows[0].file), "login.html");
-    assert.equal(h.handlers.get("get-usuario-id")(), null);
+    const w = h.windows[0];
+    w.webContents.mainFrame = { url: pathToFileURL(w.file).href };
+    assert.equal(h.handlers.get("get-usuario-id")({ sender: w.webContents, senderFrame: w.webContents.mainFrame }), null);
 });
 
 test("continuar abre login tras recuperar conexión y rechaza otras vistas", async () => {
@@ -231,7 +240,8 @@ test("continuar abre login tras recuperar conexión y rechaza otras vistas", asy
     const configWindow = h.windows[0];
     configWindow.webContents.getURL = () => pathToFileURL(configWindow.file).href;
     const continuar = h.handlers.get("continuar-configuracion");
-    const event = { sender: configWindow.webContents };
+    configWindow.webContents.mainFrame = { url: pathToFileURL(configWindow.file).href };
+    const event = { sender: configWindow.webContents, senderFrame: configWindow.webContents.mainFrame };
     assert.equal((await continuar(event)).success, false);
     falla = false;
     assert.equal((await continuar(event)).success, true);

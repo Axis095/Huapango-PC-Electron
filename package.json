@@ -12,17 +12,18 @@
     "dev": "electron .",
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
+    "test:smoke": "electron scripts/smoke-fase0.cjs",
     "build": "electron-builder",
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "3.0.3",
     "mysql2": "^3.24.4",
     "pdfkit": "^0.17.1"
   },
   "devDependencies": {
     "electron": "^44.4.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.5.0"
   },
   "build": {
     "appId": "com.huapango.app",
@@ -35,14 +36,13 @@
       "**/*",
       "Public/**/*",
       "Vistas/**/*",
+      "!.tmp/**/*",
+      "!tests/**/*",
+      "!scripts/**/*",
+      "!docs/**/*",
+      "!uploads/**/*",
       "!config.json",
       "!config.json.*"
-    ],
-    "extraResources": [
-      {
-        "from": "uploads",
-        "to": "uploads"
-      }
     ],
     "win": {
       "target": "nsis",
