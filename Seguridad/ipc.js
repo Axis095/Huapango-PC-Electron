@@ -50,7 +50,8 @@ const vistas = Object.freeze({
     "Resultados.html": evaluadores, "Administrador.html": ["admin"]
 });
 
-function crearSeguridadIPC({ raiz, obtenerSesion, ventanaDe }) {
+function crearSeguridadIPC({ raiz, obtenerSesion, ventanaDe, revalidarSesion, registrarActividad = () => {},
+    recuperarSesion = async () => false, sesionPendiente = () => false }) {
     const rutas = new Map(Object.keys(vistas).map(nombre => [path.resolve(raiz, "Vistas", nombre), nombre]));
     function vistaDeURL(url) {
         try { return rutas.get(path.resolve(fileURLToPath(url))) || null; }
@@ -66,7 +67,7 @@ function crearSeguridadIPC({ raiz, obtenerSesion, ventanaDe }) {
     }
     function puedeConfigurar() {
         const sesion = obtenerSesion();
-        return !sesion || sesion.userRole === "admin";
+        return sesion ? sesion.userRole === "admin" : !sesionPendiente();
     }
     function permitido(canal, event) {
         const politica = politicas[canal];
@@ -82,10 +83,26 @@ function crearSeguridadIPC({ raiz, obtenerSesion, ventanaDe }) {
     }
     function proteger(canal, handler) {
         if (!Object.hasOwn(politicas, canal) || typeof handler !== "function") throw new Error(`IPC sin contrato: ${canal}`);
-        return (event, ...args) => {
+        return async (event, ...args) => {
+            const anterior = obtenerSesion();
+            const vista = vistaDelEmisor(event);
+            const expirada = { success: false, code: 'SESSION_EXPIRED', error: 'La sesión terminó. Vuelve a iniciar sesión.' };
+            if (!anterior && vista && vista !== 'login.html' && sesionPendiente()) {
+                await recuperarSesion(event);
+                return expirada;
+            }
             if (!permitido(canal, event)) return { success: false, code: "FORBIDDEN", error: "No tienes permiso para realizar esta acción." };
             try { validarSolicitud(canal, args); }
             catch (error) { return { success: false, code: error.code || "INVALID_DATA", error: error.message }; }
+            if (obtenerSesion() && revalidarSesion) {
+                // Denegar esta petición aunque el canal también permita primer arranque:
+                // una cuenta revocada no se convierte en configuración sin sesión.
+                if (!await revalidarSesion() || !permitido(canal, event)) {
+                    if (!obtenerSesion() && vistaDelEmisor(event)) await recuperarSesion(event, anterior);
+                    return expirada;
+                }
+                registrarActividad();
+            }
             return handler(event, ...args);
         };
     }

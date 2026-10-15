@@ -2,6 +2,12 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { aplicacion } = require('./helpers/aplicacion.cjs');
 
+function transaccionEvaluacion(insertar) { return { withTransaction: async (_tablas, fn) => fn(async (sql, params) => {
+    if (sql.includes('FROM t_participantes')) return [{ nParejaID: 4 }];
+    if (sql.startsWith('SELECT')) return [];
+    return insertar(sql, params);
+}) }; }
+
 const pareja = { nParejaID: '7', cNombreMasculino: 'Juan', cApellidoMasculino: 'Prueba',
     cEmailMasculino: 'j@example.test', nTelefonoMasculino: '5512345678', dNacimientoMasculino: '2000-01-01', sexoMasculino: 'M',
     cNombreFemenino: 'Ana', cApellidoFemenino: 'Prueba', cEmailFemenino: 'a@example.test',
@@ -9,7 +15,7 @@ const pareja = { nParejaID: '7', cNombreMasculino: 'Juan', cApellidoMasculino: '
 
 test('evaluación: identidad textual de la sesión se conserva para la clave SQL', async () => {
     let params;
-    const h = aplicacion({ queryDatabase: async (_sql, args) => { params = args; return { insertId: 1 }; } });
+    const h = aplicacion(transaccionEvaluacion(async (_sql, args) => { params = args; return { insertId: 1 }; }));
     h.sesion.guardarSesion('006', 'juez');
     const result = await h.handlers.get('registrar-evaluacion')(h.evento('Resultados.html'),
         { nJuezID: 999, nParejaID: 4, nPuntaje: 30 });
@@ -19,19 +25,19 @@ test('evaluación: identidad textual de la sesión se conserva para la clave SQL
 
 test('evaluación: juez y administrador firman con su sesión e ignoran el ID enviado', async () => {
     const queries = [];
-    const h = aplicacion({ queryDatabase: async (sql, params) => { queries.push({ sql, params }); return { insertId: 3 }; } });
+    const h = aplicacion(transaccionEvaluacion(async (sql, params) => { queries.push({ sql, params }); return { insertId: 3 }; }));
     const event = h.evento('Resultados.html');
     for (const role of ['juez', 'admin']) {
         h.sesion.guardarSesion(7, role);
         assert.equal((await h.handlers.get('registrar-evaluacion')(event,
             { nJuezID: 999, nParejaID: '4', nPuntaje: 60, cComentario: 'Prueba' })).success, true);
-        assert.deepEqual(Array.from(queries.at(-1).params), [7, 4, 60, 'Prueba']);
+        assert.deepEqual(Array.from(queries.at(-1).params), ['7', '4', 60, 'Prueba']);
     }
 });
 
 test('evaluación: límites y tipos incorrectos no llegan a SQL; corregir permite guardar', async () => {
     let writes = 0;
-    const h = aplicacion({ queryDatabase: async () => { writes++; return { insertId: 3 }; } });
+    const h = aplicacion(transaccionEvaluacion(async () => { writes++; return { insertId: 3 }; }));
     h.sesion.guardarSesion(7, 'juez'); const event = h.evento('Resultados.html');
     const fn = h.handlers.get('registrar-evaluacion');
     for (const data of [null, [], {}, { nParejaID: '4abc', nPuntaje: 20 },
@@ -60,7 +66,8 @@ test('pareja: datos inválidos se rechazan antes de iniciar SQL o procesar fotos
 test('operador: registro completo recorre handlers reales con pareja, categoría y estilo', async () => {
     const writes = [];
     const query = async (sql, args) => {
-        if (sql.startsWith('SELECT')) return [{ total: 0 }];
+        if (sql.includes('FROM t_participantes')) return [{ nParejaID: 7 }];
+        if (sql.startsWith('SELECT')) return [];
         writes.push({ sql, args }); return { insertId: 5, affectedRows: 1 };
     };
     const h = aplicacion({ queryDatabase: query, withTransaction: async (_tablas, fn) => fn(query) });
@@ -86,7 +93,7 @@ test('alta: contraseña vacía, tipo inválido o truncable e ID inválido no esc
     for (const cContrasena of ['', undefined, 123, {}, 'a'.repeat(73), 'á'.repeat(37)]) {
         assert.equal((await h.handlers.get('crear-usuario')(event, { ...cuenta, cContrasena })).success, false);
     }
-    assert.equal((await h.handlers.get('crear-usuario')(event, { ...cuenta, nUsuarioID: '8x' })).success, false);
+    assert.equal((await h.handlers.get('crear-usuario')(event, { ...cuenta, nUsuarioID: {} })).success, false);
 });
 
 test('login: si el emisor navega durante SQL, no queda sesión ni se abre principal', async () => {

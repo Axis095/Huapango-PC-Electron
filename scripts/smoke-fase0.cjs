@@ -7,8 +7,9 @@ const Module = require('node:module');
 const { fileURLToPath } = require('node:url');
 const electron = require('electron');
 const { app, BrowserWindow } = electron;
-const root = path.resolve(__dirname, '..');
-const base = path.join(root, '.tmp');
+const proyecto = path.resolve(__dirname, '..');
+const root = process.env.HUAPANGO_SMOKE_APP_ROOT ? path.resolve(process.env.HUAPANGO_SMOKE_APP_ROOT) : proyecto;
+const base = path.join(proyecto, '.tmp');
 fs.mkdirSync(base, { recursive: true });
 const profile = fs.mkdtempSync(path.join(base, 'fase0-smoke-'));
 app.setPath('userData', profile);
@@ -30,24 +31,30 @@ app.on('browser-window-created', (_event, window) => {
 class HiddenWindow extends BrowserWindow {
     constructor(options) { super({ ...options, show: false }); }
     maximize() {} // No mostrar ni maximizar ventanas de prueba.
+    show() {} focus() {}
 }
 const load = Module._load;
 Module._load = function(name, parent, isMain) {
     if (name === 'electron') return { ...electron, BrowserWindow: HiddenWindow };
     return load.call(this, name, parent, isMain);
 };
-const dbPath = require.resolve('../db');
+const dbPath = require.resolve(path.join(root, 'db.js'));
+const cuentaSmoke = { nUsuarioID: '7', cNombreUsuario: 'smoke', rol: 'user', cContrasena: 'smoke-local' };
 require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: {
     inicializarBaseDatos: async () => {},
-    queryDatabase: async sql => {
-        if (sql.includes('cContrasena FROM t_usuarios')) return [{ nUsuarioID: '7', rol: 'user', cContrasena: 'smoke-local' }];
+    queryDatabase: async (sql, params) => {
+        if (sql.startsWith('UPDATE t_usuarios SET cContrasena')) {
+            assert.equal(params[1], cuentaSmoke.nUsuarioID); assert.equal(params[2], cuentaSmoke.cContrasena);
+            cuentaSmoke.cContrasena = params[0]; return { affectedRows: 1 };
+        }
+        if (sql.includes('cContrasena FROM t_usuarios')) return [{ ...cuentaSmoke }];
         throw Error('La prueba no autoriza consultas ni escrituras SQL');
     },
     withTransaction: async () => { throw Error('La prueba no autoriza transacciones SQL'); }
 } };
 const timeout = setTimeout(() => { console.error('SMOKE_FAIL: tiempo agotado'); app.exit(1); }, 25000);
 async function ejecutar() {
-    require('../main');
+    require(path.join(root, 'main.js'));
     const login = await esperar('login.html');
     const estado = await login.webContents.executeJavaScript(`(async () => ({
         node: typeof require, api: typeof window.api, role: await window.api.getUserRole(),
@@ -60,6 +67,7 @@ async function ejecutar() {
     // La respuesta puede perderse al cerrarse la ventana; verificamos el resultado en Main.
     login.webContents.executeJavaScript(`window.api.invoke('login', { username: 'smoke', password: 'smoke-local' })`).catch(() => {});
     const principal = await esperar('MenuPrincipal.html');
+    assert.match(cuentaSmoke.cContrasena, /^\$2b\$10\$/);
     assert.equal(await principal.webContents.executeJavaScript('window.api.getUserRole()'), 'user');
     assert.equal(await principal.webContents.executeJavaScript('window.api.getUsuarioID()'), '7');
     const rechazo = await principal.webContents.executeJavaScript('window.api.registrarEvaluacion({})');
@@ -76,8 +84,19 @@ async function ejecutar() {
         assert.equal(estado.role, 'user');
         if (estado.borrador) assert.equal(estado.borrador.success, true);
     }
+    loaded.delete('login.html'); waiters.delete('login.html');
+    require(path.join(root, 'Modelos/sesionModel.js')).cerrarSesion();
+    const expirada = await principal.webContents.executeJavaScript('window.api.getUserRole()');
+    assert.equal(expirada.code, 'SESSION_EXPIRED');
+    const reingreso = await esperar('login.html');
+    assert.match(reingreso.webContents.getURL(), /sesion=expirada/);
+    const cerrado = new Promise(resolve => reingreso.once('closed', resolve));
+    reingreso.webContents.executeJavaScript(`window.api.invoke('login', { username: 'smoke', password: 'smoke-local' })`).catch(() => {});
+    await cerrado;
+    assert.equal(principal.isDestroyed(), false);
+    assert.equal(await principal.webContents.executeJavaScript('window.api.getUserRole()'), 'user');
     assert.deepEqual(failures, []);
-    console.log('SMOKE_OK: Electron real, preload, login, permisos y navegación/borradores; SQL simulado; sin escrituras reales.');
+    console.log('SMOKE_OK: Electron real, preload, login, permisos, navegación/borradores y reingreso conservando ventana; SQL simulado; sin escrituras reales.');
     clearTimeout(timeout); app.exit(0);
 }
 ejecutar().catch(error => { console.error('SMOKE_FAIL:', error.message); clearTimeout(timeout); app.exit(1); });

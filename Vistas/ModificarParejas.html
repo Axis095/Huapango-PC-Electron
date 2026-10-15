@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Busca y modificacion de parejas</title>
     <script type="module" src="../Public/js/render.js"></script>
@@ -41,13 +42,14 @@
                         <div class="bullet-point">
                             <div class="bullet"></div>
                             <input type="text" id="nParejaID" class="form-control" placeholder="Ingrese el ID de la pareja" value="">
+                            <button id="btnConsultarModificacion" type="button" class="btn">Consultar datos actuales</button>
                         </div>
                     </div>
 
             <div class="form-row">
                 <div class="form-column">
                     <div class="form-group">
-                        <label class="form-label">¡¡ADVERTENCIA!! Por razones operativas, es necesario ingresar los datos del participante que no será actualizado, así como los nuevos datos correspondientes al participante que sí será modificado.</label>
+                        <p>Consulta la pareja antes de guardar. Los datos actuales aparecen a la izquierda; completa los nuevos datos a la derecha. Si otra estación modifica la pareja, se conservará tu formulario para compararlo y consultar de nuevo.</p>
                         <label class="form-label">Datos del primer participante.</label>
                         <input type="text" id="nombreMasculino" class="form-control" placeholder="Nombre participante 1">
                         <div style="height: 10px;"></div>

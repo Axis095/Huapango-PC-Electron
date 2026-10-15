@@ -272,6 +272,26 @@ referencias de evaluación y reglas de creación de cuentas.
 
 ## Reglas de alcance
 
+### Avance posterior al checkpoint, 14–15 de octubre de 2026
+
+El trabajo continúa sobre fd1b0da, sin nuevo commit. El
+[control de cierre](cierre-fase-0.md) enlaza los bloques de identidad, conexión,
+cliente, integridad, errores públicos, recuperación de sesión y empaquetado.
+La [reevaluación 360°](reevaluacion-fase-0-2026-10-14.md) rastrea todos los hallazgos.
+
+Regresión actual: 238/238; smoke de fuentes y ASAR correcto; integración MySQL
+real en servidor temporal sobre dos esquemas. El esquema observado se obtuvo
+con consultas de lectura; no se migró ni se escribió la base del evento.
+Instalador de laboratorio generado sin firma, sin ensayo de instalación limpia.
+Las advertencias de dependencias siguen aplazadas por el usuario.
+
+La recuperación tras expirar conserva borradores solo con el mismo proceso,
+usuario y rol. Persistencia ante cierre, reconciliación de fotos, auditoría durable,
+capacidad y varios controles de despliegue siguen pendientes. Este avance no
+cierra Fase 0 ni habilita Fase 1.
+
+### Alcance registrado al crear el checkpoint
+
 Actualización del 14 de octubre de 2026: el usuario solicita guardar en Git el
 avance actual y aplazar las advertencias recientes de dependencias.
 Ver [checkpoint](checkpoint-fase-0-2026-10-14.md) para alcance y pendientes de

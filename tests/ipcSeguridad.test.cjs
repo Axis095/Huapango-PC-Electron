@@ -45,9 +45,8 @@ test('IPC: sin sesión no se consultan datos ni se escribe; tampoco se generan P
 
 test('IPC: operador completa categoría y estilo pero no administra ni evalúa', async () => {
     const queries = [];
-    const h = aplicacion({ queryDatabase: async (sql, args) => {
-        queries.push({ sql, args }); return sql.startsWith('SELECT') ? [{ total: 0 }] : { insertId: 5 };
-    } });
+    const query = async (sql, args) => { queries.push({ sql, args }); return sql.includes('FROM t_participantes') ? [{ nParejaID: 4 }] : sql.startsWith('SELECT') ? [] : { insertId: 5 }; };
+    const h = aplicacion({ queryDatabase: query, withTransaction: async (_tablas, fn) => fn(query) });
     h.sesion.guardarSesion(7, 'user'); const event = h.evento('Registros.html');
     assert.equal((await h.handlers.get('registrar-categoria')(event, { nParejaID: 4, nIDCategoria: 5, cCategoriaNombre: 'Adulto' })).success, true);
     assert.equal((await h.handlers.get('registrar-estilo')(event, { nParejaID: 4, nEstiloID: 5, cEstiloNombre: 'Potosino' })).success, true);
@@ -73,23 +72,23 @@ test('IPC: configuración inicial permitida; operador/juez no cambian la conexi�
     const security = crearSeguridadIPC({ raiz: path.resolve(__dirname, '..'), obtenerSesion: () => sesion, ventanaDe: () => ({ isDestroyed: () => false }) });
     const fn = security.proteger('guardar-configuracion', () => { calls++; return { success: true }; });
     const event = { sender, senderFrame: frame };
-    assert.equal(fn(event).success, true);
+    assert.equal((await fn(event)).success, true);
     for (const rol of ['user', 'juez']) {
         sesion = { userRole: rol };
-        assert.equal(fn(event).code, 'FORBIDDEN');
+        assert.equal((await fn(event)).code, 'FORBIDDEN');
     }
-    sesion = { userRole: 'admin' }; assert.equal(fn(event).success, true);
+    sesion = { userRole: 'admin' }; assert.equal((await fn(event)).success, true);
     assert.equal(calls, 2);
 });
 
-test('IPC: open-section rechaza traversal, archivos no permitidos y vistas de otro rol', () => {
+test('IPC: open-section rechaza traversal, archivos no permitidos y vistas de otro rol', async () => {
     const h = aplicacion(); h.sesion.guardarSesion(7, 'user'); const event = h.evento();
     const count = h.windows.length;
     for (const file of ['../uploads/x.html', 'Administrador.html', 'Resultados.html', 'https://example.com', null, {}, []]) {
-        h.listeners.get('open-section')(event, file);
+        await h.listeners.get('open-section')(event, file);
     }
     assert.equal(h.windows.length, count);
-    h.listeners.get('open-section')(event, 'Registros.html');
+    await h.listeners.get('open-section')(event, 'Registros.html');
     assert.equal(h.windows.length, count + 1);
     assert.equal(h.windows.at(-1).options.webPreferences.nodeIntegration, false);
     assert.equal(h.windows.at(-1).options.webPreferences.contextIsolation, true);
@@ -131,20 +130,46 @@ test('login y cambio de conexión no pueden ejecutarse simultáneamente', async 
     resolverSQL([]); await autenticando;
 });
 
-test('IPC: borradores conservan aislamiento y requieren sesión incluso desde la vista correcta', () => {
+test('IPC: borradores conservan aislamiento y requieren sesión incluso desde la vista correcta', async () => {
     const h = aplicacion(); const event = h.evento('Registros.html');
     const get = h.handlers.get('obtener-borrador-registro');
-    assert.equal(get(event).code, 'FORBIDDEN');
-    h.sesion.guardarSesion(7, 'user'); assert.equal(get(event).data, null);
-    assert.equal(get(h.evento('ModificarParejas.html')).code, 'FORBIDDEN');
+    assert.equal((await get(event)).code, 'FORBIDDEN');
+    h.sesion.guardarSesion(7, 'user'); assert.equal((await get(event)).data, null);
+    assert.equal((await get(h.evento('ModificarParejas.html'))).code, 'FORBIDDEN');
 });
 
 test('arranque real de módulos: login crea principal y cierra login una sola vez', async () => {
-    const h = aplicacion({ queryDatabase: async () => [{ nUsuarioID: 7, rol: 'admin', cContrasena: 'prueba' }] });
+    const usuario = { nUsuarioID: 7, rol: 'admin', cContrasena: 'prueba' };
+    const h = aplicacion({ queryDatabase: async (sql, params) => { if (sql.startsWith('UPDATE')) { usuario.cContrasena = params[0]; return { affectedRows: 1 }; } return [{ ...usuario }]; } });
     await h.ready(); const login = h.windows[0];
     const event = { sender: login.webContents, senderFrame: login.webContents.mainFrame };
     assert.equal((await h.handlers.get('login')(event, { username: 'Ana', password: 'prueba' })).success, true);
     assert.equal(h.sesion.obtenerSesion().userID, 7);
     assert.equal(login.closed, true); assert.equal(h.windows.length, 2);
     assert.equal(path.basename(h.windows[1].file), 'MenuPrincipal.html');
+});
+
+test('IPC revalida cuenta antes de escribir y rechaza revocación sin ejecutar el handler', async () => {
+    let escrituras = 0;
+    const h = aplicacion({ sesionDesdeBD: true, queryDatabase: async sql => {
+        if (sql.includes('/* validar-sesion */')) return [];
+        escrituras++; throw Error('No escribir');
+    } });
+    h.sesion.guardarSesion('U001', 'admin', { credencial: 'hash-interno' });
+    const r = await h.handlers.get('crear-usuario')(h.evento('Administrador.html'), {});
+    assert.equal(r.code, 'SESSION_EXPIRED'); assert.equal(escrituras, 0); assert.equal(h.sesion.obtenerSesion(), null);
+});
+
+test('IPC vuelve a comprobar el emisor tras esperar la consulta de sesión', async () => {
+    let resolver, escrituras = 0;
+    const h = aplicacion({ sesionDesdeBD: true, queryDatabase: async sql => {
+        if (sql.includes('/* validar-sesion */')) return new Promise(r => { resolver = r; });
+        escrituras++; throw Error('No escribir');
+    } });
+    h.sesion.guardarSesion('U001', 'admin');
+    const event = h.evento('Administrador.html');
+    const pendiente = h.handlers.get('crear-usuario')(event, {});
+    event.senderFrame.url = 'https://example.com';
+    resolver([{ nUsuarioID: 'U001', rol: 'admin' }]);
+    assert.equal((await pendiente).code, 'SESSION_EXPIRED'); assert.equal(escrituras, 0);
 });

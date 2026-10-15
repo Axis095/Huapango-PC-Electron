@@ -1,8 +1,49 @@
 const mysql = require("mysql2/promise");
 const { cargarConfiguracion, normalizarConfiguracion } = require("./Modelos/configModel");
+const { ejecutarOperacion, ejecutarCambioConfiguracion } = require("./Servicios/operaciones");
+const { setTimeout, clearTimeout } = require("node:timers");
+
+const LIMITES = Object.freeze({ conexion: 5000, espera: 5000, consulta: 30000, conexiones: 10, cola: 20 });
 
 // Importar este módulo no lee archivos ni intenta conectar con MySQL.
 let pool = null;
+
+function opcionesConexion(config) {
+    const { tls, sslCa, ...datos } = config;
+    return { ...datos, connectTimeout: LIMITES.conexion,
+        ...(tls ? { ssl: { rejectUnauthorized: true, verifyIdentity: true, minVersion: "TLSv1.2", ...(sslCa ? { ca: sslCa } : {}) } } : {}) };
+}
+
+function limitar(pendiente, milisegundos, alVencer, alLlegarTarde = () => {}) {
+    return new Promise((resolve, reject) => {
+        let vencido = false;
+        const reloj = setTimeout(() => {
+            vencido = true;
+            reject(alVencer());
+        }, milisegundos);
+        Promise.resolve(pendiente).then(resultado => {
+            clearTimeout(reloj);
+            if (vencido) alLlegarTarde(resultado);
+            else resolve(resultado);
+        }, error => { clearTimeout(reloj); if (!vencido) reject(error); });
+    });
+}
+
+async function adquirirConexion() {
+    if (!pool) throw new Error("Configura y comprueba la conexión con MySQL antes de consultar datos.");
+    return limitar(pool.getConnection(), LIMITES.espera,
+        () => Object.assign(new Error("La base de datos está ocupada. Espera y vuelve a intentar."), { code: "DB_BUSY" }),
+        connection => connection.release());
+}
+
+function comando(connection, ejecutar, descartar) {
+    return limitar(Promise.resolve().then(ejecutar), LIMITES.consulta, () => {
+        descartar();
+        connection.destroy();
+        return Object.assign(new Error("La operación excedió el tiempo permitido. Verifica el resultado antes de reintentar; no se repitió automáticamente."),
+            { code: "TRANSACTION_OUTCOME_UNKNOWN" });
+    });
+}
 
 function mensajeConexion(error) {
     const mensajes = {
@@ -12,7 +53,12 @@ function mensajeConexion(error) {
         ECONNREFUSED: "No se pudo conectar con MySQL. Comprueba que el servicio esté iniciado y el puerto sea correcto.",
         ENOTFOUND: "No se encontró el servidor. Revisa su nombre o dirección IP.",
         EHOSTUNREACH: "El servidor no está accesible desde este equipo.",
-        ETIMEDOUT: "MySQL no respondió a tiempo. Revisa el servidor, el puerto y la red."
+        ETIMEDOUT: "MySQL no respondió a tiempo. Revisa el servidor, el puerto y la red.",
+        ERR_TLS_CERT_ALTNAME_INVALID: "El nombre del servidor no coincide con su certificado TLS.",
+        CERT_HAS_EXPIRED: "El certificado TLS del servidor está caducado.",
+        DEPTH_ZERO_SELF_SIGNED_CERT: "El certificado TLS del servidor no es confiable. Configura la autoridad certificadora correcta.",
+        SELF_SIGNED_CERT_IN_CHAIN: "La autoridad del certificado TLS no es confiable. Revisa el certificado CA.",
+        UNABLE_TO_VERIFY_LEAF_SIGNATURE: "No se pudo verificar el certificado TLS del servidor. Revisa el certificado CA."
     };
     return mensajes[error.code] || "No se pudo comprobar la conexión con MySQL. Revisa la configuración y el servicio.";
 }
@@ -21,7 +67,9 @@ async function probarConexion(config) {
     const datos = normalizarConfiguracion(config);
     let connection;
     try {
-        connection = await mysql.createConnection({ ...datos, connectTimeout: 5000 });
+        connection = await limitar(mysql.createConnection(opcionesConexion(datos)), LIMITES.conexion,
+            () => Object.assign(new Error("Tiempo de conexión agotado"), { code: "ETIMEDOUT" }),
+            tardia => tardia.destroy());
     } catch (error) {
         const fallo = new Error(mensajeConexion(error));
         fallo.code = error.code;
@@ -34,50 +82,64 @@ async function probarConexion(config) {
 }
 
 async function inicializarBaseDatos() {
-    const config = await probarConexion(cargarConfiguracion());
-    const nuevoPool = mysql.createPool({ ...config, connectTimeout: 5000,
-        waitForConnections: true, connectionLimit: 10, queueLimit: 0 });
-    const anterior = pool;
-    pool = nuevoPool;
-    // Las operaciones ya iniciadas terminan en el pool anterior.
-    if (anterior) anterior.end().catch(() => console.error("No se pudo cerrar el pool anterior de MySQL."));
+    return ejecutarCambioConfiguracion(async () => {
+        const config = await probarConexion(cargarConfiguracion());
+        const nuevoPool = mysql.createPool({ ...opcionesConexion(config),
+            waitForConnections: true, connectionLimit: LIMITES.conexiones, queueLimit: LIMITES.cola });
+        const anterior = pool;
+        pool = nuevoPool;
+        if (anterior) anterior.end().catch(() => console.error("No se pudo cerrar el pool anterior de MySQL."));
+    });
 }
 
 async function queryDatabase(sql, params = []) {
+    return ejecutarOperacion(async () => {
     if (!Array.isArray(params) || params.includes(undefined)) {
         throw new Error("Los parámetros de la consulta contienen valores no definidos.");
     }
-    if (!pool) throw new Error("Configura y comprueba la conexión con MySQL antes de consultar datos.");
-    const connection = await pool.getConnection();
+    const connection = await adquirirConexion();
+    let descartada = false;
     try {
-        const [results] = await connection.execute(sql, params);
+        const [results] = await comando(connection, () => connection.execute(sql, params), () => { descartada = true; });
         return results;
+    } catch (error) {
+        if (!descartada && ["ECONNRESET", "EPIPE", "PROTOCOL_CONNECTION_LOST", "ETIMEDOUT"].includes(error.code)) {
+            descartada = true;
+            connection.destroy();
+            throw Object.assign(new Error("Se perdió la conexión durante la operación. Verifica el resultado antes de reintentar; no se repitió automáticamente."),
+                { code: "TRANSACTION_OUTCOME_UNKNOWN" });
+        }
+        throw error;
     } finally {
-        connection.release();
+        if (!descartada) connection.release();
     }
+    });
 }
 
 // El callback debe esperar todas sus consultas; nunca usar queryDatabase dentro
 // de él, porque tomaría otra conexión del pool.
 async function withTransaction(tablas, operacion) {
+    return ejecutarOperacion(async () => {
     if (!pool) throw new Error("Configura y comprueba la conexión con MySQL antes de consultar datos.");
     if (!Array.isArray(tablas) || !tablas.length || tablas.some(tabla => typeof tabla !== "string" || !tabla)) {
         throw new Error("Indica las tablas que participan en la transacción.");
     }
-    const connection = await pool.getConnection();
+    const connection = await adquirirConexion();
     let fase = "inicio";
     let descartar = false;
+    let destruida = false;
     let activa = true;
     const consultar = async (sql, params = []) => {
         if (!activa) throw new Error("La transacción ya terminó.");
         if (!Array.isArray(params) || params.includes(undefined)) {
             throw new Error("Los parámetros de la consulta contienen valores no definidos.");
         }
-        const [results] = await connection.execute(sql, params);
+        const [results] = await comando(connection, () => connection.execute(sql, params), vencimiento);
         return results;
     };
+    const vencimiento = () => { descartar = true; destruida = true; activa = false; };
     try {
-        await connection.beginTransaction();
+        await comando(connection, () => connection.beginTransaction(), vencimiento);
         fase = "operacion";
         // Comprobar en la conexión actual: no asumir que otra instalación usa InnoDB.
         const nombres = [...new Set(tablas.map(tabla => tabla.toLowerCase()))];
@@ -94,9 +156,10 @@ async function withTransaction(tablas, operacion) {
         const resultado = await operacion(consultar);
         activa = false;
         fase = "confirmacion";
-        await connection.commit();
+        await comando(connection, () => connection.commit(), vencimiento);
         return resultado;
     } catch (error) {
+        if (destruida) throw error;
         if (fase === "inicio") {
             descartar = true;
             throw error;
@@ -108,7 +171,7 @@ async function withTransaction(tablas, operacion) {
             incierto.code = "TRANSACTION_OUTCOME_UNKNOWN";
             throw incierto;
         }
-        try { await connection.rollback(); }
+        try { await comando(connection, () => connection.rollback(), vencimiento); }
         catch {
             descartar = true;
             const incierto = new Error("La conexión falló al revertir la operación. Verifica los datos antes de reintentar.");
@@ -118,9 +181,11 @@ async function withTransaction(tablas, operacion) {
         throw error;
     } finally {
         activa = false;
-        if (descartar) connection.destroy();
+        if (descartar && !destruida) connection.destroy();
+        else if (destruida) { /* Ya cerrada al vencer el plazo. */ }
         else connection.release();
     }
+    });
 }
 
 module.exports = { queryDatabase, withTransaction, probarConexion, inicializarBaseDatos };

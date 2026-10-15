@@ -2,11 +2,49 @@
 const { app, BrowserWindow, ipcMain, Menu, dialog } = require("electron");
 const path = require("path");
 const { inicializarBaseDatos } = require("./db");
-const { obtenerSesion, cerrarSesion } = require("./Modelos/sesionModel");
+const { obtenerSesion, cerrarSesion, revalidarSesion, registrarActividad } = require("./Modelos/sesionModel");
 const { fileURLToPath } = require("url");
 const { crearSeguridadIPC } = require("./Seguridad/ipc");
-const seguridad = crearSeguridadIPC({ raiz: __dirname, obtenerSesion, ventanaDe: sender => BrowserWindow.fromWebContents(sender) });
-function registrarIPC(canal, handler) { ipcMain.handle(canal, seguridad.proteger(canal, handler)); }
+const { ejecutarOperacion, ejecutarCambioConfiguracion } = require("./Servicios/operaciones");
+let propietarioVentanas = null;
+const seguridad = crearSeguridadIPC({ raiz: __dirname, obtenerSesion, revalidarSesion, registrarActividad,
+    recuperarSesion, sesionPendiente: () => !!propietarioVentanas,
+    ventanaDe: sender => BrowserWindow.fromWebContents(sender) });
+function registrarEvento(canal, handler) {
+    const protegido = seguridad.proteger(canal, handler);
+    ipcMain.on(canal, async (...args) => {
+        try { return await ejecutarOperacion(() => protegido(...args)); }
+        catch (error) {
+            if (error.code === "CONFIGURATION_BUSY") return { success: false, code: error.code };
+            console.error("Evento IPC rechazado:", canal, error.code || "INTERNAL_ERROR");
+            return { success: false, code: "INTERNAL_ERROR" };
+        }
+    });
+}
+async function recuperarSesion(_event, anterior) {
+    propietarioVentanas ||= anterior;
+    if (!propietarioVentanas) return false;
+    for (const ventana of BrowserWindow.getAllWindows()) {
+        if (ventana !== global.loginWindow) ventana.hide();
+    }
+    if (!global.loginWindow || global.loginWindow.isDestroyed()) await createLoginWindow(true);
+    else global.loginWindow.focus();
+    return true;
+}
+function registrarIPC(canal, handler) {
+    const protegido = seguridad.proteger(canal, handler);
+    const esConfiguracion = ["obtener-configuracion", "guardar-configuracion", "continuar-configuracion"].includes(canal);
+    const informarOcupado = error => {
+        if (error.code === "CONFIGURATION_BUSY") return { success: false, code: error.code, error: error.message };
+        throw error;
+    };
+    ipcMain.handle(canal, (...args) => {
+        try {
+            const resultado = esConfiguracion ? protegido(...args) : ejecutarOperacion(() => protegido(...args));
+            return resultado && typeof resultado.then === "function" ? resultado.catch(informarOcupado) : resultado;
+        } catch (error) { return informarOcupado(error); }
+    });
+}
 //LAS EXPORTACIONES DE LOS CONTROLADORES SON LAS MÁS IMPORTANTES DEL MOMENTO
 const { handleLogin, autenticacionEnCurso } = require("./Controladores/authController");
 const { handleRegistrarPareja, handleBuscarParejaPorID, handleBuscarParejaParaEvaluacion, handleBuscarTodasLasParejas, handleActualizarPareja } = require("./Controladores/parejaController");
@@ -73,8 +111,10 @@ registrarIPC("continuar-configuracion", desdeConfiguracion(async (event) => {
     if (continuandoConfiguracion || autenticacionEnCurso()) return { success: false, error: "Espera a que termine la conexión o el inicio de sesión." };
     continuandoConfiguracion = true;
     try {
+        return await ejecutarCambioConfiguracion(async () => {
         await inicializarBaseDatos();
         cerrarSesion();
+        propietarioVentanas = null;
         global.userRole = "guest";
         const origen = BrowserWindow.fromWebContents(event.sender);
         if (!global.loginWindow || global.loginWindow.isDestroyed()) await createLoginWindow();
@@ -83,16 +123,17 @@ registrarIPC("continuar-configuracion", desdeConfiguracion(async (event) => {
             if (ventana !== origen && ventana !== global.loginWindow) ventana.close();
         }
         return { success: true };
+        });
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, code: error.code };
     } finally {
         continuandoConfiguracion = false;
     }
 }));
 
 // Conectar el evento IPC para abrir la ventana de configuración
-ipcMain.on("abrir-ventana-emergente", seguridad.proteger("abrir-ventana-emergente", () => { abrirConfiguracion(); }));
-function createLoginWindow() {
+registrarEvento("abrir-ventana-emergente", () => { abrirConfiguracion(); });
+function createLoginWindow(recuperacion = false) {
     global.loginWindow = new BrowserWindow({
         width: 1400,
         height: 900,
@@ -103,11 +144,24 @@ function createLoginWindow() {
             contextIsolation: true,
         },
     });
-    return global.loginWindow.loadFile(path.join(__dirname, "Vistas", "login.html"));
+    global.loginWindow.on("closed", () => {
+        if (!obtenerSesion() && propietarioVentanas) app.quit();
+    });
+    return global.loginWindow.loadFile(path.join(__dirname, "Vistas", "login.html"),
+        recuperacion ? { query: { sesion: "expirada" } } : undefined);
 
 }
 
 async function createMainWindow() {
+    const actual = obtenerSesion();
+    const anteriores = BrowserWindow.getAllWindows().filter(w => w !== global.loginWindow);
+    const mismaIdentidad = propietarioVentanas && actual &&
+        String(propietarioVentanas.userID) === String(actual.userID) && propietarioVentanas.userRole === actual.userRole;
+    if (mismaIdentidad && global.mainWindow && !global.mainWindow.isDestroyed()) {
+        for (const ventana of anteriores) ventana.show();
+        global.mainWindow.focus();
+        return;
+    }
     global.mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
@@ -119,8 +173,12 @@ async function createMainWindow() {
         },
     });
     global.mainWindow.maximize();
+    // Cerrar antes del primer await: las ventanas de otra identidad no pueden
+    // emitir IPC mientras se carga el menú de la nueva sesión.
+    for (const ventana of anteriores) ventana.close();
     await global.mainWindow.loadFile(path.join(__dirname, "Vistas", "MenuPrincipal.html"));
     global.mainWindow.webContents.send("set-role", obtenerSesion()?.userRole || "guest");
+    propietarioVentanas = actual;
 }
 
 // Función para abrir ventanas de secciones
@@ -383,10 +441,10 @@ app.on("window-all-closed", () => { app.quit(); });
 
 
 // Escuchar eventos desde el renderizador
-ipcMain.on("open-section", seguridad.proteger("open-section", (event, section) => {
+registrarEvento("open-section", (event, section) => {
     console.log("Sección recibida:", section);
     openWindow(section);
-}));
+});
 
 // La identidad de la sesión nunca se lee del archivo de conexión a MySQL.
 registrarIPC("get-role", () => obtenerSesion()?.userRole || "guest");

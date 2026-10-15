@@ -30,7 +30,7 @@ body.dark-mode {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Montserrat', sans-serif;
+  font-family: system-ui, 'Segoe UI', sans-serif;
 }
 
 body {

@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurar conexión</title>
     <script type="module" src="../Public/js/configuracionBD.js"></script>
@@ -24,6 +25,11 @@
             <p id="ayudaContrasena">Vuelve a escribirla al cambiar la conexión. Déjala vacía solo si tu usuario no tiene contraseña.</p>
             <label for="database">Nombre de la base de datos</label>
             <input id="database" type="text" required>
+            <label for="TLSBaseDatos"><input id="TLSBaseDatos" type="checkbox"> Usar conexión cifrada TLS</label>
+            <p>Para servidores remotos usa el nombre DNS del certificado; TLS es obligatorio. El certificado debe ser confiable y corresponder al nombre del servidor.</p>
+            <label for="CABaseDatos">Certificado de la autoridad (PEM, opcional)</label>
+            <textarea id="CABaseDatos" rows="5" maxlength="65536" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+            <p>Déjalo vacío si el certificado ya es reconocido por el sistema. No pegues claves privadas.</p>
             <button id="btnGuardarConfigBaseDatos" type="submit">Comprobar y guardar</button>
         </fieldset>
     </form>

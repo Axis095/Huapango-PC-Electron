@@ -1,6 +1,6 @@
 # Guía de primera instalación — Huapango-PC-Electron
 
-Fecha: 12 de octubre de 2026. Entorno: Windows x64 y PowerShell.
+Actualizada: 14 de octubre de 2026. Entorno: Windows x64 y PowerShell.
 Proyecto actual: Electron, JavaScript y MySQL; Fase 0 reforzada. React, TypeScript y Vite todavía no están incorporados.
 
 Esta guía cubre preparación del equipo, base de laboratorio, usuarios iniciales, ejecución, pruebas y generación del instalador. Los pasos SQL son instrucciones para ejecutar: **no se ha creado una base ni instalado MySQL al redactar esta guía**.
@@ -14,7 +14,7 @@ Esta guía cubre preparación del equipo, base de laboratorio, usuarios iniciale
 | Git | Obtener/versionar fuentes | No |
 | MySQL Server | Local o accesible por red | Local o accesible por red |
 | Cliente mysql o Workbench | Crear BD y usuarios iniciales | Administración inicial |
-| Internet | npm, Electron y herramientas de empaquetado | Fuentes tipográficas remotas; conexión con MySQL si es remoto |
+| Internet | npm, Electron y herramientas de empaquetado | No requerido para fuentes; conexión con MySQL si es remoto |
 | Lector PDF | Revisar reportes | Revisar reportes |
 
 Instalar Node desde [su descarga oficial](https://nodejs.org/en/download).
@@ -42,7 +42,7 @@ Set-Location .\Huapango-PC-Electron
 git switch RefactorizacionTest-RC
 ```
 
-Los cambios de Fase 0 estaban sin commit al preparar esta guía. Una clonación remota no los incluye hasta guardarlos y publicarlos. Revisar [la bitácora y su comando de commit](migracion/fase-0.md). No sobrescribir cambios locales para obtener una instalación limpia.
+El checkpoint `fd1b0da` guarda el primer avance; el bloque posterior del 14 de octubre debe revisarse, guardarse y publicarse antes de estar disponible mediante clonación. Revisar [la bitácora y su comando de commit](migracion/fase-0.md). No sobrescribir cambios locales para obtener una instalación limpia.
 
 Usar `npm.cmd` en PowerShell para evitar restricciones de ejecución de `npm.ps1`:
 
@@ -82,7 +82,7 @@ El código mezcla nombres como `T_Usuarios` y `t_usuarios`. Esta guía requiere 
 
 ## 4. Crear la base de laboratorio
 
-**El repositorio no contiene el DDL original.** El esquema siguiente es una propuesta mínima reconstruida de las consultas activas. Tipos, longitudes, índices y restricciones son decisiones para el laboratorio; no certifican ni reproducen todas las reglas de la BD histórica. Si existe un dump oficial, restaurarlo en una BD separada y cotejarlo con los modelos.
+**Ya se conserva una copia sin datos de la estructura histórica en [sql/000-esquema-observado-2026-10-14.sql](../sql/000-esquema-observado-2026-10-14.sql).** El esquema siguiente es una propuesta mínima reconstruida de las consultas activas. Tipos, longitudes, índices y restricciones son decisiones para el laboratorio; no certifican ni reproducen todas las reglas de la BD histórica. Si existe un dump oficial, restaurarlo en una BD separada y cotejarlo con los modelos.
 
 Ejecutar solo para una base **nueva** `huapango_pruebas`. Si CREATE DATABASE informa que existe, detenerse y revisar su contenido; no continuar con el resto del bloque. No usarlo como migración de una BD del evento.
 
@@ -92,7 +92,7 @@ CREATE DATABASE huapango_pruebas
 USE huapango_pruebas;
 
 CREATE TABLE T_Usuarios (
-  nUsuarioID INT UNSIGNED NOT NULL,
+  nUsuarioID VARCHAR(50) NOT NULL,
   cNombreUsuario VARCHAR(100) NOT NULL,
   cContrasena VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   rol ENUM('admin', 'user', 'juez') NOT NULL,
@@ -101,7 +101,7 @@ CREATE TABLE T_Usuarios (
 ) ENGINE=InnoDB;
 
 CREATE TABLE T_Participantes (
-  nParejaID INT UNSIGNED NOT NULL,
+  nParejaID VARCHAR(50) NOT NULL,
   oFoto VARCHAR(512) NOT NULL DEFAULT '',
   dNacimiento DATE NOT NULL,
   ISexo ENUM('M', 'F') NOT NULL,
@@ -122,9 +122,9 @@ CREATE TABLE T_Participantes (
 ) ENGINE=InnoDB;
 
 CREATE TABLE T_Categorias (
-  nIDCategoria INT UNSIGNED NOT NULL,
+  nIDCategoria VARCHAR(50) NOT NULL,
   cCategoriaNombre VARCHAR(100) NOT NULL,
-  nParejaID INT UNSIGNED NOT NULL,
+  nParejaID VARCHAR(50) NOT NULL,
   PRIMARY KEY (nIDCategoria),
   UNIQUE KEY uq_categoria_pareja (nParejaID),
   CONSTRAINT fk_categoria_pareja FOREIGN KEY (nParejaID)
@@ -132,9 +132,9 @@ CREATE TABLE T_Categorias (
 ) ENGINE=InnoDB;
 
 CREATE TABLE T_Estilos (
-  nEstiloID INT UNSIGNED NOT NULL,
+  nEstiloID VARCHAR(50) NOT NULL,
   cEstiloNombre VARCHAR(100) NOT NULL,
-  nParejaID INT UNSIGNED NOT NULL,
+  nParejaID VARCHAR(50) NOT NULL,
   PRIMARY KEY (nEstiloID),
   UNIQUE KEY uq_estilo_pareja (nParejaID),
   CONSTRAINT fk_estilo_pareja FOREIGN KEY (nParejaID)
@@ -143,12 +143,13 @@ CREATE TABLE T_Estilos (
 
 CREATE TABLE T_Evaluaciones (
   nEvaluacionID INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  nJuezID INT UNSIGNED NOT NULL,
-  nParejaID INT UNSIGNED NOT NULL,
+  nJuezID VARCHAR(50) NOT NULL,
+  nParejaID VARCHAR(50) NOT NULL,
   nPuntaje INT NOT NULL,
   cComentario VARCHAR(255) NOT NULL DEFAULT '',
   dFechaEvaluacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (nEvaluacionID),
+  UNIQUE KEY uq_evaluacion_juez_pareja (nJuezID, nParejaID),
   KEY ix_evaluacion_pareja (nParejaID),
   CONSTRAINT fk_evaluacion_usuario FOREIGN KEY (nJuezID)
     REFERENCES T_Usuarios (nUsuarioID) ON DELETE RESTRICT,
@@ -170,7 +171,7 @@ Decisiones de este esquema:
 - Una fila guarda ambos participantes de la pareja; los teléfonos son texto.
 - Categoría/estilo son asignaciones por pareja. Sus IDs manuales identifican filas: no repetir un ID para todas las parejas de una categoría.
 - No preinsertar catálogos: la interfaz inserta las asignaciones después de guardar la pareja.
-- Se permite una categoría y un estilo por pareja, y varias evaluaciones por juez/pareja.
+- Se permite una categoría y un estilo por pareja, y una evaluación definitiva por juez/pareja. Un reenvío idéntico recupera el resultado original; un cambio posterior se rechaza.
 - No se añaden columnas cPequenos/cPotosino: los endpoints antiguos de actualización están suspendidos en Fase 0.
 - No hay triggers. El backend no escribe automáticamente en registros generales.
 - Eliminar un usuario con evaluaciones se rechaza por FK; no quitar restricciones para aparentar éxito.
@@ -275,12 +276,11 @@ SELECT nUsuarioID, cNombreUsuario, rol, CHAR_LENGTH(cContrasena) AS longitud_has
 FROM T_Usuarios ORDER BY nUsuarioID;
 ```
 
-Esperado: tres cuentas, longitud 60 y prefijo `$2b$`. El siguiente usuario necesita un ID libre, nombre de al menos tres caracteres y contraseña de máximo 72 bytes UTF-8. El texto plano se conserva solo como compatibilidad temporal para cuentas antiguas.
+Esperado: tres cuentas, longitud 60 y prefijo `$2b$`. El siguiente usuario necesita un ID libre, nombre de al menos tres caracteres y contraseña de máximo 72 bytes UTF-8. Al iniciar correctamente con una contraseña heredada se reemplaza por bcrypt; las cuentas sin usar requieren revisión antes de retirar la compatibilidad.
 
 Compatibilidad con una BD previa: un ID numérico puede llegar desde MySQL como
 texto, por ejemplo `"6"`; el login lo valida y conserva su representación.
-IDs alfanuméricos como `U001` requieren revisar el contrato de identidad y sus
-referencias antes de habilitarlos. No renumerar cuentas existentes ni alterar
+Los IDs de usuario alfanuméricos como `U001` ya se admiten (máximo 50 caracteres, letras, números, guiones y guiones bajos). Los IDs de pareja/categoría/estilo siguen admitiendo dígitos positivos y conservan ceros iniciales; se envían como texto a MySQL. No renumerar cuentas existentes ni alterar
 claves foráneas para resolver un error de login.
 
 ## 7. Primer arranque
@@ -315,11 +315,12 @@ La configuración habitual de desarrollo está en `%APPDATA%/huapango-app/config
 ```powershell
 npm.cmd test
 npm.cmd run test:smoke
+npm.cmd run test:integration
 npm.cmd audit --omit=dev
 npm.cmd audit
 ```
 
-La revisión del 12 de octubre, incluida la corrección de IDs numéricos devueltos como texto, tuvo 188/188 pruebas y SMOKE_OK. Nuevas pruebas pueden cambiar el conteo; el criterio es cero fallos.
+Consultar la [evidencia vigente de cierre](migracion/cierre-fase-0.md). El laboratorio automático usa un servidor MySQL temporal con puerto/directorio propios, sin copiar registros reales. Requiere mysqld instalado; admite la variable HUAPANGO_TEST_MYSQLD. Conserva evidencia en .tmp/mysql-fase0-* y apaga su servidor al terminar.
 
 - La suite utiliza SQL/Electron simulados y archivos temporales; no requiere MySQL real.
 - El smoke usa Electron, preload y HTML reales con ventanas ocultas, perfil aislado y SQL simulado. No verifica el servidor MySQL ni presentación visual.
@@ -441,3 +442,11 @@ La carpeta .tmp se creó en el paso 6. Conservar dump y copia de uploads fuera d
 - [ ] Evidencia y pendientes registrados en la bitácora.
 
 La guía se contrastó con consultas activas y configuración. El DDL propuesto no se ejecutó contra MySQL durante esta redacción; registrar esa validación al crear el laboratorio.
+
+## Diferencias de la instalación histórica comprobadas el 14 de octubre
+
+La base local tiene cinco tablas InnoDB, IDs VARCHAR(50), dos credenciales fuera del formato bcrypt esperado y no tiene t_registros_generales. No tiene índices únicos por pareja en categorías/estilos ni por juez/pareja en evaluaciones. El laboratorio propuesto sí incluye estas restricciones y la sexta tabla. No ejecutar altas de prueba ni ALTER sobre la base del evento.
+
+La propuesta [003-unicidad-fase0.sql](../sql/003-unicidad-fase0.sql) se ensaya únicamente sobre una copia temporal. La aplicación protege concurrencia con transacciones incluso antes de añadirla, pero la base real sigue requiriendo revisión y aplicación administrada de esos índices.
+
+El build normal puede fallar en winCodeSign por falta del privilegio de enlaces simbólicos de Windows. Un build de laboratorio sin edición/firma del ejecutable no acredita el build normal ni una instalación validada; consultar la reevaluación antes de distribuir.

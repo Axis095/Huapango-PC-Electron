@@ -347,8 +347,6 @@ async function guardarEvaluacion() {
 
             const datos = { nJuezID, nParejaID, nPuntaje, cComentario };
 
-            console.log("nJuezID:", nJuezID, "nParejaID:", nParejaID);
-            console.log("Datos de evaluación capturados:", datos);
 
             //  Validar antes de enviar
             const resultadoValidacion = validarEvaluacion(datos);
@@ -356,11 +354,9 @@ async function guardarEvaluacion() {
                 mostrarAviso(resultadoValidacion.error);
                 return;
             }
-
-            console.log("Enviando evaluación al backend:", datos);
             const response = await window.api.registrarEvaluacion(datos);
 
-            mostrarAviso(response.success ? "Evaluación guardada exitosamente." : "Error: " + response.error);
+            mostrarAviso(response.success ? (response.replayed ? "Esta evaluación ya estaba guardada; no se duplicó." : "Evaluación definitiva guardada exitosamente.") : "Error: " + response.error);
         } catch (err) {
             console.error("Error al guardar evaluación:", err);
             mostrarAviso("" + err.message);
@@ -425,7 +421,7 @@ async function guardarEvaluacion() {
 //     }
 // }
 
-async function modificarPareja() {
+async function modificarPareja({ versionEdicion } = {}) {
     return ejecutarAccion("BTNUpdate", async () => {
         try {
             const nParejaID = document.getElementById("nParejaID").value.trim();
@@ -437,6 +433,7 @@ async function modificarPareja() {
             // --- Preparar datos para el update ---
             const datos = {
                 nParejaID,
+                versionEdicion,
                 // Masculino
                 cNombreMasculino: document.getElementById("nombreMasculinoUpdate").value.trim(),
                 cApellidoMasculino: document.getElementById("apellidoMasculinoUpdate").value.trim(),
@@ -462,7 +459,7 @@ async function modificarPareja() {
                 for (const lado of ["Masculino", "Femenino"]) document.getElementById(`foto${lado}Update`).value = "";
                 mostrarAviso(response.message || "Pareja actualizada exitosamente.");
             } else {
-                mostrarAviso("Error al actualizar pareja: " + (response.error || response.message || "No se pudo guardar la pareja."));
+                mostrarAviso(response.code === 'EDIT_CONFLICT' ? 'Otra estación modificó esta pareja. Tus datos se conservan; consulta los datos actuales y compáralos antes de volver a guardar.' : "Error al actualizar pareja: " + (response.error || response.message || "No se pudo guardar la pareja."));
             }
             return response;
         } catch (err) {
@@ -483,13 +480,13 @@ async function crearUsuario() {
             // Capturar los datos del formulario
             const nUsuarioID = document.getElementById("nuevoID").value.trim(); // ID manual del usuario
             const cNombreUsuario = document.getElementById("nuevoUsuario").value.trim();
-            const cContrasena = document.getElementById("nuevaContrasena").value.trim();
+            const cContrasena = document.getElementById("nuevaContrasena").value;
             const esAdmin = document.getElementById("esAdmin").checked; // Checkbox de administrador
             const esJuez = document.getElementById("juez")?.checked || false; // Checkbox de juez
 
-            // Validar que el ID sea un número positivo
-            if (!nUsuarioID || isNaN(nUsuarioID) || parseInt(nUsuarioID) <= 0) {
-                mostrarAviso("Debes ingresar un ID de usuario válido (número positivo).");
+            // El esquema admite IDs alfanuméricos heredados, como U001.
+            if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,49}$/.test(nUsuarioID)) {
+                mostrarAviso("El ID debe tener entre 1 y 50 letras, números, guiones o guiones bajos y comenzar con letra o número.");
                 return;
             }
 
@@ -530,12 +527,12 @@ async function crearJuez() {
             // Capturar los datos específicos del juez
             const nUsuarioID = document.getElementById("nuevoJuezID").value.trim(); // Se mantiene igual
             const cNombreUsuario = document.getElementById("nuevoJuezUsuario").value.trim();
-            const cContrasena = document.getElementById("nuevoJuezContrasena").value.trim();
+            const cContrasena = document.getElementById("nuevoJuezContrasena").value;
             const esJuez = document.getElementById("juez").checked; // Checkbox para jueces
 
-            // Validar que el ID sea un número positivo
-            if (!nUsuarioID || isNaN(nUsuarioID) || parseInt(nUsuarioID) <= 0) {
-                mostrarAviso("Debes ingresar un ID de usuario válido (número positivo).");
+            // Mismo contrato que el alta unificada de cuentas.
+            if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,49}$/.test(nUsuarioID)) {
+                mostrarAviso("El ID debe tener entre 1 y 50 letras, números, guiones o guiones bajos y comenzar con letra o número.");
                 return;
             }
 
@@ -712,7 +709,7 @@ async function eliminarPareja() {
 function vincularPDF(botonID, metodo) {
     document.getElementById(botonID)?.addEventListener("click", () => ejecutarAccion(botonID, async () => {
         const response = await window.api[metodo]();
-        mostrarAviso(response?.success ? `PDF generado con éxito. Ruta: ${response.ruta}` :
+        mostrarAviso(response?.success ? `${response.warning || 'PDF generado con éxito.'} Ruta: ${response.ruta}` :
             (response?.error || response?.message || "No se pudo generar el PDF."));
     }));
 }

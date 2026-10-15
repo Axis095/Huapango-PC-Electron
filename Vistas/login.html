@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;"> DA ERROR-->
-    <title>Inicio de Sesión</title>
+        <title>Inicio de Sesión</title>
     <script type="module" src="../Public/js/login.js"></script>
     <link rel="stylesheet" href="../Public/css/stylesLogin.css">
     
@@ -38,20 +38,9 @@
                 </div>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="show-password">      <!-- ESTO DEBERIA FUNCIONAR NO TENGO IDEA DE PORQUE NO JALA -->
+                    <input type="checkbox" id="show-password">
                     <label for="show-password">Ver contraseña</label> 
                 </div>
-                                    <!-- Pequeño scrpit para que jale el ver contraseña-->
-                <script> 
-                    document.addEventListener('DOMContentLoaded', () => {
-                    const checkbox = document.getElementById('show-password');
-                    const passwordInput = document.getElementById('password');
-
-                    checkbox.addEventListener('change', () => {
-                        passwordInput.type = checkbox.checked ? 'text' : 'password';
-                    });
-                    });
-                </script>
                 <button type="submit" class="login-button" id="loginBtn">Ingresar</button>
                 <p id="errorMsg"></p>
             </form>

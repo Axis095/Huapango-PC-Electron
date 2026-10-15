@@ -1,21 +1,13 @@
+const { mensajePublico } = require("../Seguridad/errores");
 const { registrarCategoria, buscarCategoriaPorID ,actualizarCategoria, eliminarCategoria, verificarCategoriaExistente, verificarParejaEnCategoria  } = require("../Modelos/categoriaModel");
-//TODO TODO LO DE buscarCategoriaPorID lo  PUSE PARA VEER SI FUNCIONA SI NO QUITALO ALV
 // Controlador para registrar una categoría
 async function handleRegistrarCategoria(event, datos) {
     try {
-        if (await verificarParejaEnCategoria(datos.nParejaID)) {
-            throw new Error("Esta pareja ya está registrada en una categoría.");
-        }
-
-        if (await verificarCategoriaExistente(datos.nParejaID, datos.nIDCategoria)) {
-            throw new Error("Esta pareja ya está registrada en esta categoría.");
-        }
-
         const nIDCategoria = await registrarCategoria(datos);
         return { success: true, id: nIDCategoria };
     } catch (err) {
-        console.error(" Error al registrar categoría:", err);
-        return { success: false, error: err.message };
+        console.error(" Error al registrar categoría:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 
@@ -28,8 +20,8 @@ async function handleBuscarCategoriaPorID(event, id) {
         }
         return { success: true, data: result };
     } catch (err) {
-        console.error("Error en el controlador al buscar estilo:", err);
-        return { success: false, error: err.message };
+        console.error("Error en el controlador al buscar estilo:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 
@@ -39,8 +31,8 @@ async function handleActualizarCategoria(event, datos) {
         const result = await actualizarCategoria(datos);
         return { success: true, result };
     } catch (err) {
-        console.error(" Error al actualizar categoría:", err);
-        return { success: false, error: err.message };
+        console.error(" Error al actualizar categoría:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 
@@ -50,8 +42,8 @@ async function handleEliminarCategoria(event, nIDCategoria) {
         const result = await eliminarCategoria(nIDCategoria);
         return { success: true, result };
     } catch (err) {
-        console.error(" Error al eliminar categoría:", err);
-        return { success: false, error: err.message };
+        console.error(" Error al eliminar categoría:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 

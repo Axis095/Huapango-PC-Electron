@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vista administrador</title>
     <link rel="stylesheet" href="../Public/css/StylesAdministrador.css">
@@ -62,13 +63,14 @@
                         <div class="form-fields">
                             <h2>Crear nueva cuenta</h2>
                             <div class="form-group">
-                                <input id="nuevoID" type="text" class="form-control" placeholder="ID del Usuario">
+                                <input id="nuevoID" type="text" class="form-control" maxlength="50" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,49}" placeholder="ID del usuario (ejemplo: U001)">
                             </div>
                             <div class="form-group">
                                 <input id="nuevoUsuario" type="text" class="form-control" minlength="3" placeholder="Usuario (mínimo 3 caracteres)">
                             </div>
                             <div class="form-group">
                                 <input id="nuevaContrasena" type="password" class="form-control" placeholder="Contraseña">
+                                <small>Máximo 72 bytes UTF-8. Los espacios también forman parte de la contraseña.</small>
                             </div>
                             
                             <!-- Remplezar con radio buttons -->

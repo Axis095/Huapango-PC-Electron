@@ -1,39 +1,11 @@
 const { queryDatabase, withTransaction } = require("../db");
 const { conFotos, limpiarFotos } = require("./imagenesModel");
+const { versionPareja } = require('./versionPareja');
 
 
 function vacioANull(valor) {
     return (valor === undefined || valor === null || valor === '') ? null : valor;
 }
-// Función para registrar una pareja
-// async function registrarPareja(datos) {
-//     const sql = `
-//         INSERT INTO T_Participantes 
-//         (nParejaID, oFoto, dNacimiento, ISexo, nTelefono, cNombre, cApellido, cEmail, cNombreM, cApellidoM, dNacimientoM, nTelefonoM, cEmailM) 
-//         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-//     `;
-//     try {
-//         const result = await queryDatabase(sql, [
-//             datos.nParejaID,
-//             datos.oFoto,
-//             datos.dNacimiento,
-//             datos.ISexo,
-//             datos.nTelefono,
-//             datos.cNombre,
-//             datos.cApellido,
-//             datos.cEmail,
-//             datos.cNombreM,
-//             datos.cApellidoM,
-//             datos.dNacimientoM,
-//             datos.nTelefonoM,
-//             datos.cEmailM,
-//         ]);
-//         return result.insertId; // Devuelve el ID del registro insertado
-//     } catch (err) {
-//         throw new Error("Error al registrar pareja: " + err.message);
-//     }
-// }
-
 // Función para registrar una pareja (dos participantes)
 async function registrarPareja(datos) {
     validarIDEscritura(datos?.nParejaID);
@@ -49,7 +21,7 @@ async function registrarDatosPareja(datos) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         await consultar(sql, [
-            datos.nParejaID,
+            validarIDEscritura(datos.nParejaID),
             datos.oFotoMasculino || "",
             datos.dNacimientoMasculino,
             datos.sexoMasculino,
@@ -75,10 +47,10 @@ async function registrarDatosPareja(datos) {
 async function buscarParejaPorID(id) {
     const sql = "SELECT * FROM T_Participantes WHERE nParejaID = ?";
     try {
-        const result = await queryDatabase(sql, [id]);
-        return result; // Devuelve los resultados de la consulta
+        const result = await queryDatabase(sql, [validarIDEscritura(id)]);
+        return result.map(fila => ({ ...fila, versionEdicion: versionPareja(fila) }));
     } catch (err) {
-        throw new Error("Error al buscar pareja: " + err.message);
+        throw err;
     }
 }
 
@@ -96,7 +68,7 @@ async function buscarParejaParaEvaluacion(id) {
         LEFT JOIN T_Estilos AS e ON p.nParejaID = e.nParejaID
         WHERE p.nParejaID = ?
     `;
-    return queryDatabase(sql, [id]);
+    return queryDatabase(sql, [validarIDEscritura(id)]);
 }
 
 // Función para buscar todas las parejas
@@ -116,95 +88,12 @@ async function buscarTodasLasParejas() {
         const result = await queryDatabase(sql);
         return result; // Devuelve todas las parejas con los datos correctos
     } catch (err) {
-        throw new Error("Error al buscar todas las parejas: " + err.message);
+        throw err;
     }
 }
 
 
 
-
-// Función para actualizar una pareja
-// async function actualizarPareja(datos) { POSIBLE UUSO PAARA IMPLEMENTAR EL UPDATE DE MUJERES
-//     console.log("Datos recibidos para actualizar pareja:", datos);
-
-//     const sql = `
-//         UPDATE T_Participantes
-//         SET 
-//             oFoto = ?, 
-//             dNacimiento = ?, 
-//             ISexo = ?, 
-//             nTelefono = ?, 
-//             cNombre = ?, 
-//             cApellido = ?, 
-//             cEmail = ?, 
-//             cNombreM = ?, 
-//             cApellidoM = ?, 
-//             dNacimientoM = ?, 
-//             nTelefonoM = ?, 
-//             cEmailM = ?
-//         WHERE nParejaID = ?
-//     `;
-
-//     try {
-//         const result = await queryDatabase(sql, [
-//             datos.oFoto || "default.png",  // Usa un valor por defecto si está vacío
-//             datos.dNacimiento || null, // Permite valores NULL
-//             datos.ISexo || null,
-//             datos.nTelefono || null,
-//             datos.cNombre || null,
-//             datos.cApellido || null,
-//             datos.cEmail || null,
-//             datos.cNombreM || null,
-//             datos.cApellidoM || null,
-//             datos.dNacimientoM || null,
-//             datos.nTelefonoM || null,
-//             datos.cEmailM || null,
-//             datos.nParejaID,
-//         ]);
-
-//         console.log("Resultado de la actualización:", result);
-//         return { success: true, affectedRows: result.affectedRows };
-//     } catch (err) {
-//         console.error("Error en la base de datos al actualizar pareja:", err);
-//         return { success: false, error: err.message };
-//     }
-// }
-
-
-
-//Función para actualizar una pareja
-// async function actualizarPareja(datos) {
-//     console.log("Datos recibidos para actualizar pareja:", datos);
-//     const sql = `
-//         UPDATE T_Participantes 
-//         SET cNombre = ?, 
-//             nTelefono = ?, 
-//             cApellido = ?, 
-//             dNacimiento = ?, 
-//             cEmail = ?, 
-//             oFoto = ?
-//         WHERE nParejaID = ? AND ISexo = 'M'
-//     `;
-//     try {
-//         const result = await queryDatabase(sql, [
-//             datos.cNombre,
-//             datos.nTelefono,
-//             datos.cApellido,
-//             datos.dNacimiento,
-//             datos.cEmail,
-//             datos.oFoto = oFoto ?? "C:/Proyecto/uploads/default.jpg", // Usa imagen por defecto si no hay otra
-//             datos.nParejaID
-//         ]);
-//                 console.log("Ejecutando consulta SQL con:", result);
-//         return { success: true, affectedRows: result.affectedRows };
-//     } catch (err) {
-//         console.error("Error en la actualización de pareja:", err);
-//         return { success: false, error: err.message };
-//     }
-// }
-
-
-// ...existing code...
 
 function validarIDEscritura(id) {
     const texto = typeof id === "string" ? id.trim() : typeof id === "number" ? String(id) : "";
@@ -213,11 +102,14 @@ function validarIDEscritura(id) {
         error.code = "INVALID_ID";
         throw error;
     }
-    return Number(texto);
+    return texto;
 }
 
 async function actualizarParejaCompleta(datos) {
     const id = validarIDEscritura(datos?.nParejaID);
+    if (typeof datos.versionEdicion !== 'string' || !/^[a-f0-9]{64}$/.test(datos.versionEdicion)) {
+        throw Object.assign(new Error('Vuelve a consultar la pareja antes de modificarla; falta su versión de edición.'), { code: 'EDIT_VERSION_REQUIRED' });
+    }
     const campos = ["cNombreMasculino", "cApellidoMasculino", "cEmailMasculino", "nTelefonoMasculino", "dNacimientoMasculino",
         "cNombreFemenino", "cApellidoFemenino", "cEmailFemenino", "nTelefonoFemenino", "dNacimientoFemenino"];
     if (campos.some(campo => typeof datos[campo] !== "string" || !datos[campo].trim()) ||
@@ -232,8 +124,11 @@ async function actualizarParejaCompleta(datos) {
 async function actualizarDatosPareja(datos, id, campos) {
     return withTransaction(["T_Participantes"], async consultar => {
         // Distinguir inexistente de sin cambios sin depender de CLIENT_FOUND_ROWS.
-        const filas = await consultar("SELECT nParejaID, oFoto, IFotoM FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [id]);
+        const filas = await consultar("SELECT * FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [id]);
         if (!filas.length) return { success: false, code: "NOT_FOUND", affectedRows: 0 };
+        if (versionPareja(filas[0]) !== datos.versionEdicion) {
+            throw Object.assign(new Error('Otra estación cambió esta pareja. Conserva tus cambios y vuelve a consultar antes de guardar.'), { code: 'EDIT_CONFLICT' });
+        }
         const result = await consultar(`
             UPDATE T_Participantes
             SET cNombre = ?, cApellido = ?, cEmail = ?, nTelefono = ?, dNacimiento = ?, oFoto = COALESCE(?, oFoto),
@@ -243,7 +138,8 @@ async function actualizarDatosPareja(datos, id, campos) {
             ...campos.slice(0, 5).map(campo => datos[campo].trim()), datos.oFotoMasculino || null,
             ...campos.slice(5).map(campo => datos[campo].trim()), datos.oFotoFemenino || null, id
         ]);
-        return { success: true, code: result.changedRows === 0 ? "UNCHANGED" : "UPDATED",
+        const nuevas = await consultar('SELECT * FROM T_Participantes WHERE nParejaID = ?', [id]);
+        return { success: true, code: result.changedRows === 0 ? "UNCHANGED" : "UPDATED", versionEdicion: versionPareja(nuevas[0]),
             affectedRows: result.affectedRows, changedRows: result.changedRows,
             fotosAnteriores: [datos.oFotoMasculino ? filas[0].oFoto : null, datos.oFotoFemenino ? filas[0].IFotoM : null] };
     });
@@ -275,4 +171,3 @@ async function fotoEnUso(referencia) {
 
 
 module.exports = { registrarPareja, buscarParejaPorID, buscarParejaParaEvaluacion, buscarTodasLasParejas, eliminarPareja, actualizarParejaCompleta };
-// module.exports = { registrarPareja, buscarParejaPorID, buscarTodasLasParejas, actualizarPareja, eliminarPareja, actualizarParejaCompleta };

@@ -20,6 +20,7 @@ function aplicacion(db = {}) {
         }
         async loadFile(file) { this.file = file; this.webContents.mainFrame.url = pathToFileURL(file).href; }
         maximize() {} focus() {}
+        hide() { this.hidden = true; } show() { this.hidden = false; }
         isDestroyed() { return !!this.closed; }
         close() { this.closed = true; this.events.get('closed')?.(); }
         destroy() { this.close(); }
@@ -45,14 +46,24 @@ function aplicacion(db = {}) {
         const requireLocal = createRequire(absolute);
         vm.runInNewContext(fs.readFileSync(absolute, 'utf8'), {
             module, exports: module.exports, __dirname: path.dirname(absolute), __filename: absolute,
-            global: globals, Buffer, URL, console: { log() {}, warn() {}, error() {} },
+            global: globals, Buffer, URL, setTimeout, clearTimeout, console: { log() {}, warn() {}, error() {} },
             require(name) {
                 if (name === 'electron') return electron;
                 const resolved = requireLocal.resolve(name);
                 if (resolved === path.join(root, 'db.js')) return {
                     inicializarBaseDatos: async () => {},
                     queryDatabase: async () => { throw Error('SQL no previsto'); },
-                    withTransaction: async () => { throw Error('Transacción no prevista'); }, ...db
+                    withTransaction: async () => { throw Error('Transacción no prevista'); }, ...db,
+                    // Las pruebas de contratos parten de una sesión vigente. Las de
+                    // revocación pueden usar sesionDesdeBD:true y su propio fake SQL.
+                    queryDatabase: async (sql, args) => {
+                        if (sql.includes('/* validar-sesion */') && !db.sesionDesdeBD) {
+                            const actual = cargar('Modelos/sesionModel.js').obtenerSesion();
+                            return actual ? [{ nUsuarioID: actual.userID, rol: actual.userRole, cContrasena: null }] : [];
+                        }
+                        if (!db.queryDatabase) throw Error('SQL no previsto');
+                        return db.queryDatabase(sql, args);
+                    }
                 };
                 if (name.startsWith('.')) return cargar(resolved);
                 return requireLocal(name);

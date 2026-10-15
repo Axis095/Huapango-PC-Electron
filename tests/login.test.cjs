@@ -77,7 +77,7 @@ function controlador(query) {
         console: { log() {}, error() {}, warn() {} },
         require(name) {
             if (name === 'bcryptjs') return require('bcryptjs');
-            if (name === '../Seguridad/datos') return require('../Seguridad/datos');
+            if (name === '../Seguridad/identidad') return require('../Seguridad/identidad');
             return name === '../db' ? { queryDatabase: query } : {
                 obtenerSesion: () => null, cerrarSesion() {}, guardarSesion() { calls.sessions++; }
             };
@@ -88,11 +88,17 @@ function controlador(query) {
 
 test('controlador: dos IPC simultáneos crean una sola ventana y sesión', async () => {
     let resolver; let queries = 0;
-    const c = controlador(() => { queries++; return new Promise(r => { resolver = r; }); });
+    const usuario = { nUsuarioID: 1, rol: 'user', cContrasena: 'Prueba' };
+    const c = controlador((sql, params) => {
+        queries++;
+        if (sql.startsWith('UPDATE')) { usuario.cContrasena = params[0]; return { affectedRows: 1 }; }
+        if (sql.includes('confirmar-login')) return [usuario];
+        return new Promise(r => { resolver = r; });
+    });
     const pending = c.login({ username: 'Operador', password: 'Prueba' });
     assert.equal((await c.login({ username: 'Otro', password: 'Prueba' })).success, false);
-    resolver([{ nUsuarioID: 1, rol: 'user', cContrasena: 'Prueba' }]); assert.equal((await pending).success, true);
-    assert.equal(queries, 1); assert.equal(c.calls.windows, 1); assert.equal(c.calls.sessions, 1); assert.equal(c.calls.closed, 1);
+    resolver([usuario]); assert.equal((await pending).success, true);
+    assert.equal(queries, 3); assert.equal(c.calls.windows, 1); assert.equal(c.calls.sessions, 1); assert.equal(c.calls.closed, 1);
 });
 
 test('controlador: entrada inválida y error SQL liberan el turno para reintentar', async () => {

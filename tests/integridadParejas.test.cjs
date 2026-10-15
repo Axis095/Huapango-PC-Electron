@@ -9,10 +9,12 @@ const quiet = { log() {}, error() {}, warn() {} };
 function cargar(file, deps) {
     const module = { exports: {} };
     vm.runInNewContext(read(file), { module, console: quiet, require(name) {
+        if (name === "../Seguridad/errores") return require("../Seguridad/errores");
         assert.ok(name in deps, `Dependencia inesperada: ${name}`); return deps[name];
     } });
     return module.exports;
 }
+const { versionPareja } = require('../Modelos/versionPareja');
 const columnas = ['cNombre', 'cApellido', 'cEmail', 'nTelefono', 'dNacimiento', 'oFoto',
     'cNombreM', 'cApellidoM', 'cEmailM', 'nTelefonoM', 'dNacimientoM', 'IFotoM'];
 const datos = { nParejaID: '7', cNombreMasculino: 'Ana', cApellidoMasculino: 'Prueba',
@@ -26,6 +28,8 @@ function inicial() {
         'Luis', 'Prueba', 'b@example.test', '5598765432', '2000-02-02', 'foto-b.jpg'][i]; });
     return Object.fromEntries(tablas.map(tabla => [tabla, tabla === 't_participantes' ? [fila, { ...fila, nParejaID: 9 }] : [{ nParejaID: 7 }, { nParejaID: 9 }]]));
 }
+
+datos.versionEdicion = versionPareja(inicial().t_participantes[0]);
 
 // Driver simulado con estado confirmado y estado de transacción separados.
 // Se cargan el db, modelos y controladores reales; nunca se conecta con MySQL.
@@ -46,15 +50,16 @@ async function preparar(opciones = {}) {
                 if (opciones.metadata) throw fallo('ACCESS_DENIED');
                 return [params.filter(nombre => nombre !== opciones.faltante).map(nombre => ({ nombre, motor: nombre === opciones.noTransaccional ? 'MyISAM' : 'InnoDB' }))];
             }
+            if (normalizado.startsWith('SELECT * FROM T_Participantes')) return [trabajo.t_participantes.filter(f => String(f.nParejaID) === String(params[0])).map(f => ({ ...f }))];
             if (normalizado.startsWith('SELECT nParejaID')) {
                 assert.match(normalizado, /FOR UPDATE$/);
-                return [trabajo.t_participantes.filter(f => f.nParejaID === params[0]).map(f => ({ nParejaID: f.nParejaID }))];
+                return [trabajo.t_participantes.filter(f => String(f.nParejaID) === String(params[0])).map(f => ({ nParejaID: f.nParejaID }))];
             }
             if (normalizado.startsWith('UPDATE ')) {
                 assert.equal((normalizado.match(/\?/g) || []).length, params.length);
                 assert.match(normalizado, /cNombre = .*cNombreM = /);
                 if (opciones.update) throw fallo('ER_DUP_ENTRY');
-                const fila = trabajo.t_participantes.find(f => f.nParejaID === params[12]);
+                const fila = trabajo.t_participantes.find(f => String(f.nParejaID) === String(params[12]));
                 if (!fila) return [{ affectedRows: 0, changedRows: 0 }];
                 const anterior = JSON.stringify(fila);
                 columnas.forEach((columna, i) => { if (params[i] !== null) fila[columna] = params[i]; });
@@ -64,7 +69,7 @@ async function preparar(opciones = {}) {
             assert.ok(tablas.includes(tabla), `SQL inesperado: ${normalizado}`);
             if (opciones.delete === tabla) throw fallo('DELETE_ERROR');
             const antes = trabajo[tabla].length;
-            trabajo[tabla] = trabajo[tabla].filter(f => f.nParejaID !== params[0]);
+            trabajo[tabla] = trabajo[tabla].filter(f => String(f.nParejaID) !== String(params[0]));
             return [{ affectedRows: opciones.ceroFinal && tabla === 't_participantes' ? 0 : antes - trabajo[tabla].length }];
         },
         async commit() {
@@ -80,6 +85,7 @@ async function preparar(opciones = {}) {
         destroy() { historial.push('destroy'); trabajo = null; }
     };
     const db = cargar('db.js', {
+        './Servicios/operaciones': require('../Servicios/operaciones'), 'node:timers': require('node:timers'),
         'mysql2/promise': {
             async createConnection() { return { destroy() {} }; },
             createPool() { return { async getConnection() {
@@ -89,10 +95,10 @@ async function preparar(opciones = {}) {
         './Modelos/configModel': { cargarConfiguracion: () => ({}), normalizarConfiguracion: x => x }
     });
     await db.inicializarBaseDatos();
-    const pareja = cargar('Modelos/parejaModel.js', { '../db': db, './imagenesModel': { conFotos: async (datos, fn) => fn({ ...datos, oFotoMasculino: null, oFotoFemenino: null }), limpiarFotos: async () => {} } });
-    const admin = cargar('Modelos/adminModel.js', { '../db': db, './parejaModel': pareja });
+    const pareja = cargar('Modelos/parejaModel.js', { './versionPareja': require('../Modelos/versionPareja'), '../db': db, './imagenesModel': { conFotos: async (datos, fn) => fn({ ...datos, oFotoMasculino: null, oFotoFemenino: null }), limpiarFotos: async () => {} } });
+    const admin = cargar('Modelos/adminModel.js', { '../db': db, './parejaModel': pareja, '../Seguridad/identidad': require('../Seguridad/identidad') });
     const controladorPareja = cargar('Controladores/parejaController.js', { '../Modelos/parejaModel': pareja });
-    const controladorAdmin = cargar('Controladores/adminController.js', { '../Modelos/adminModel': admin });
+    const controladorAdmin = cargar('Controladores/adminController.js', { '../Modelos/adminModel': admin, '../Modelos/sesionModel': { obtenerSesion: () => ({ userID: 'admin', userRole: 'admin' }) } });
     return { db, pareja, admin, controladorPareja, controladorAdmin, historial, consultas,
         get confirmado() { return confirmado; }, get adquisiciones() { return adquisiciones; } };
 }

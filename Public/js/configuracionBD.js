@@ -13,6 +13,8 @@ async function cargar() {
             document.getElementById("PuertoBaseDatos").value = config.port;
             document.getElementById("UsuarioBaseDatos").value = config.user;
             document.getElementById("database").value = config.database;
+            document.getElementById("TLSBaseDatos").checked = config.tls === true;
+            document.getElementById("CABaseDatos").value = config.sslCa || "";
         }
         const motivo = new URLSearchParams(window.location.search).get("motivo");
         estado.textContent = respuesta.error || motivo || "Completa los datos y comprueba la conexión.";
@@ -37,7 +39,9 @@ formulario.addEventListener("submit", async (event) => {
             port: document.getElementById("PuertoBaseDatos").value,
             user: document.getElementById("UsuarioBaseDatos").value,
             password: document.getElementById("ContrasenaBaseDatos").value,
-            database: document.getElementById("database").value
+            database: document.getElementById("database").value,
+            tls: document.getElementById("TLSBaseDatos").checked,
+            sslCa: document.getElementById("CABaseDatos").value
         });
         estado.textContent = respuesta.success ? "Conexión comprobada y configuración guardada." : respuesta.error;
         continuar.hidden = !respuesta.success;

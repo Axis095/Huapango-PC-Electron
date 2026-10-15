@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { fileURLToPath } = require("node:url");
+const { prepararBorrador } = require('./borradorDatos');
 
 // Separado de Registro, aislado por ventana y conservado solo en memoria.
 const borradores = new WeakMap();
@@ -15,8 +16,10 @@ function obtenerBorradorModificacion(event) {
     return { success: true, data: borradores.get(event.sender) ?? null };
 }
 function guardarBorradorModificacion(event, datos) {
-    if (!permitido(event) || !datos || datos.version !== 1 || !datos.campos || !datos.fotos) return { success: false };
-    borradores.set(event.sender, datos);
+    if (!permitido(event)) return { success: false };
+    const validado = prepararBorrador(datos, borradores.get(event.sender), 'modificacion');
+    if (!validado) return { success: false, code: 'INVALID_DRAFT', error: 'Borrador inválido o demasiado grande.' };
+    borradores.set(event.sender, validado);
     return { success: true };
 }
 function limpiarBorradorModificacion(event) {

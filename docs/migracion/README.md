@@ -24,6 +24,13 @@ Tras cada merge, volver a medir la línea base y revisar módulos reales.
 
 ## Estado de la revisión del 12 de octubre de 2026
 
+> Estado histórico. La revisión vigente está en el
+> [control de cierre](cierre-fase-0.md), la
+> [reevaluación 360°](reevaluacion-fase-0-2026-10-14.md) y la
+> [verificación del 15 de octubre](bloque-verificacion-2026-10-15.md).
+> Última regresión: 238/238; smoke de fuentes/ASAR correcto; MySQL aislado probado.
+> Fase 0 abierta: faltan hallazgos y ensayo funcional/instalación completos.
+
 188/188 pruebas correctas tras corregir IDs numéricos devueltos como texto;
 smoke de Electron real correcto con SQL simulado;
 instalación limpia verificada. Auditoría npm: cero avisos de producción, ocho

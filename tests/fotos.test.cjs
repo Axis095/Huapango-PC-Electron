@@ -5,6 +5,7 @@ const path = require('node:path');
 const os = require('node:os');
 const vm = require('node:vm');
 const { crearAlmacenFotos, MAX_BYTES } = require('../Modelos/almacenFotos');
+const { versionPareja } = require('../Modelos/versionPareja');
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS1sAAAAASUVORK5CYII=', 'base64');
 const foto = () => ({ nombre: '../../original.jpg', tipo: 'image/jpeg', bytes: Buffer.from(png) });
 const datos = { nParejaID: '1', cNombreMasculino: 'Juan', cApellidoMasculino: 'Prueba', cEmailMasculino: 'j@example.test', nTelefonoMasculino: '5512345678', dNacimientoMasculino: '2000-01-01', sexoMasculino: 'M',
@@ -25,6 +26,7 @@ async function preparar(t, opciones = {}) {
             try {
                 const resultado = await fn(async (sql, p) => {
                     estado.historial.push(sql.trim().split(/\s+/)[0]);
+                    if (sql.startsWith('SELECT * FROM T_Participantes')) return estado.fila ? [{ ...estado.fila }] : [];
                     if (sql.includes('FOR UPDATE')) return estado.fila ? [{ ...estado.fila }] : [];
                     if (opciones.sql) throw Object.assign(new Error('SQL rechazado'), { code: 'ER_DUP_ENTRY' });
                     if (sql.includes('INSERT INTO')) {
@@ -57,6 +59,7 @@ async function preparar(t, opciones = {}) {
     const module = { exports: {} };
     const codigo = await fs.readFile(path.join(__dirname, '../Modelos/parejaModel.js'), 'utf8');
     vm.runInNewContext(codigo, { module, console, require(nombre) {
+        if (nombre === './versionPareja') return require('../Modelos/versionPareja');
         if (nombre === '../db') return db;
         if (nombre === './imagenesModel') return { conFotos: almacen.conFotos, limpiarFotos: almacen.limpiar };
         throw new Error(nombre);
@@ -111,7 +114,7 @@ test('fallo SQL elimina solo fotos nuevas y conserva las anteriores', async t =>
     const v = await preparar(t, { sql: true });
     const anterior = await v.almacen.guardar(foto());
     v.estado.fila = { nParejaID: 1, oFoto: anterior };
-    await assert.rejects(v.modelo.actualizarParejaCompleta({ ...datos, fotos: { Masculino: foto() } }), { code: 'ER_DUP_ENTRY' });
+    await assert.rejects(v.modelo.actualizarParejaCompleta({ ...datos, versionEdicion: versionPareja(v.estado.fila || {}), fotos: { Masculino: foto() } }), { code: 'ER_DUP_ENTRY' });
     assert.equal(v.estado.fila.oFoto, anterior); assert.equal((await v.archivos()).length, 1);
     assert.deepEqual(await v.leer(anterior), png);
 });
@@ -120,9 +123,9 @@ test('actualización sin foto conserva refs antiguas; reemplazo confirmado limpi
     const v = await preparar(t);
     await v.modelo.registrarPareja({ ...datos, fotos: { Masculino: foto(), Femenino: foto() } });
     const anterior = { ...v.estado.fila };
-    await v.modelo.actualizarParejaCompleta(datos);
+    await v.modelo.actualizarParejaCompleta({ ...datos, versionEdicion: versionPareja(v.estado.fila || {}) });
     assert.deepEqual(v.estado.fila, anterior);
-    await v.modelo.actualizarParejaCompleta({ ...datos, fotos: { Masculino: foto() } });
+    await v.modelo.actualizarParejaCompleta({ ...datos, versionEdicion: versionPareja(v.estado.fila || {}), fotos: { Masculino: foto() } });
     assert.equal(v.estado.fila.IFotoM, anterior.IFotoM);
     assert.notEqual(v.estado.fila.oFoto, anterior.oFoto);
     await assert.rejects(v.leer(anterior.oFoto), { code: 'ENOENT' });
@@ -131,7 +134,7 @@ test('actualización sin foto conserva refs antiguas; reemplazo confirmado limpi
 
 test('ID inexistente limpia los archivos preparados sin anunciar éxito', async t => {
     const v = await preparar(t);
-    const resultado = await v.modelo.actualizarParejaCompleta({ ...datos, fotos: { Masculino: foto() } });
+    const resultado = await v.modelo.actualizarParejaCompleta({ ...datos, versionEdicion: versionPareja(v.estado.fila || {}), fotos: { Masculino: foto() } });
     assert.equal(resultado.code, 'NOT_FOUND'); assert.equal((await v.archivos()).length, 0);
 });
 
@@ -139,7 +142,7 @@ test('COMMIT incierto conserva fotos nuevas y antiguas para no romper referencia
     const v = await preparar(t, { incierto: true });
     const anterior = await v.almacen.guardar(foto());
     v.estado.fila = { nParejaID: 1, oFoto: anterior };
-    await assert.rejects(v.modelo.actualizarParejaCompleta({ ...datos, fotos: { Masculino: foto() } }), { code: 'TRANSACTION_OUTCOME_UNKNOWN' });
+    await assert.rejects(v.modelo.actualizarParejaCompleta({ ...datos, versionEdicion: versionPareja(v.estado.fila || {}), fotos: { Masculino: foto() } }), { code: 'TRANSACTION_OUTCOME_UNKNOWN' });
     assert.equal((await v.archivos()).length, 2);
     assert.deepEqual(await v.leer(v.estado.fila.oFoto), png);
 });
@@ -148,7 +151,7 @@ for (const opcion of ['compartida', 'consultaLimpieza']) test(`limpieza conserva
     const v = await preparar(t, { [opcion]: true });
     const anterior = await v.almacen.guardar(foto());
     v.estado.fila = { nParejaID: 1, oFoto: anterior };
-    const resultado = await v.modelo.actualizarParejaCompleta({ ...datos, fotos: { Masculino: foto() } });
+    const resultado = await v.modelo.actualizarParejaCompleta({ ...datos, versionEdicion: versionPareja(v.estado.fila || {}), fotos: { Masculino: foto() } });
     assert.equal(resultado.success, true); assert.equal((await v.archivos()).length, 2);
 });
 

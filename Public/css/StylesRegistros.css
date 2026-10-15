@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 
 :root {
   --primary: #6C63FF;
@@ -19,7 +18,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Montserrat';
+  font-family: system-ui, 'Segoe UI', sans-serif;
   scroll-behavior: smooth;
 }
 

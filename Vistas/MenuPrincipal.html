@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menú Principal - Huapango Administración</title>
     <script type="module" src="../Public/js/render.js"></script>
@@ -51,7 +52,7 @@
         <div class="video-section">
             <h2>Presentación del Concurso</h2>
             <div class="video-container">
-                <video controls class="main-video">
+                <video controls preload="none" class="main-video">
                     <source src="../Public/images/presentacionconcurso.mp4" type="video/mp4">
                     Tu navegador no soporta videos HTML5.
                 </video>

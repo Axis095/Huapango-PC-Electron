@@ -67,9 +67,15 @@ contextBridge.exposeInMainWorld("api", {
     receive: (channel, callback) => {
         // Lista de canales permitidos
         const validChannels = ["set-role", "login-failed", "login-success", "login-error"];
-        if (validChannels.includes(channel)) {
-            ipcRenderer.on(channel, (event, ...args) => callback(...args));
-        }
+        if (!validChannels.includes(channel) || typeof callback !== 'function') return () => {};
+        const listener = (_event, ...args) => callback(...args);
+        ipcRenderer.on(channel, listener);
+        let activa = true;
+        return () => {
+            if (!activa) return;
+            activa = false;
+            ipcRenderer.removeListener(channel, listener);
+        };
     },
     invoke: (channel, data) => {
         // Lista de canales permitidos para invocación

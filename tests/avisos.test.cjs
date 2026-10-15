@@ -36,7 +36,7 @@ function preparar(api = {}) {
     documento.querySelector = selector => all().find(e => e.className === selector.slice(1));
     documento.querySelectorAll = () => all().filter(e => ['input', 'button', 'select', 'textarea'].includes(e.tagName));
     documento.getElementById = id => all().find(e => e.id === id) || null;
-    const context = vm.createContext({ document: documento, window: { api, location: { search: '' } }, URLSearchParams,
+    const context = vm.createContext({ TextEncoder,  document: documento, window: { api, location: { search: '' } }, URLSearchParams,
         console: { log() {}, error() {}, warn() {} } });
     const sources = ['Public/js/fotos.js', 'Public/js/avisos.js', 'Public/js/validaciones.js', 'Public/js/busquedaEvaluacion.js', 'Public/js/render.js'];
     vm.runInContext(sources.map(file => read(file).replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '')).join('\n'), context);

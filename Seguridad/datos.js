@@ -7,7 +7,9 @@ function idPositivo(valor) {
     if (!/^\d+$/.test(texto) || !Number.isSafeInteger(Number(texto)) || Number(texto) <= 0) {
         throw new Error("El ID debe ser un entero positivo.");
     }
-    return Number(texto);
+    // La BD histórica usa VARCHAR: conservar ceros y enviar parámetros de texto
+    // evita que MySQL convierta claves distintas ("7", "07", "7A") a números.
+    return texto;
 }
 function texto(valor, campo) {
     if (typeof valor !== "string" || !valor.trim()) throw new Error(`Completa el campo ${campo}.`);
@@ -17,6 +19,9 @@ function validarPareja(datos, alta) {
     objeto(datos); idPositivo(datos.nParejaID);
     for (const persona of ["Masculino", "Femenino"]) {
         for (const campo of ["cNombre", "cApellido", "cEmail", "nTelefono", "dNacimiento"]) texto(datos[campo + persona], campo);
+        for (const [campo, limite] of Object.entries({ cNombre: 100, cApellido: 100, cEmail: 150, nTelefono: 20, dNacimiento: 10 })) {
+            if (datos[campo + persona].trim().length > limite) throw new Error(`El campo ${campo} admite hasta ${limite} caracteres.`);
+        }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos["cEmail" + persona].trim())) throw new Error("El correo no tiene un formato válido.");
         if (!/^\+?[0-9]{1,3}[-\s]?[0-9]{8,15}$/.test(datos["nTelefono" + persona].trim())) throw new Error("El teléfono no tiene un formato válido.");
         const fecha = datos["dNacimiento" + persona];
@@ -36,7 +41,7 @@ function validarSolicitud(canal, args) {
         idPositivo(datos[categoria ? "nIDCategoria" : "nEstiloID"]);
         texto(datos[categoria ? "cCategoriaNombre" : "cEstiloNombre"], categoria ? "categoría" : "estilo");
     }
-    if (["buscar-pareja-por-id", "eliminar-pareja", "buscar-categoria-por-id", "buscar-estilo-por-id", "eliminar-categoria", "eliminar-estilo"].includes(canal)) idPositivo(datos);
+    if (["buscar-pareja-por-id", "eliminar-pareja", "buscar-categoria-por-id", "buscar-estilo-por-id", "eliminar-categoria", "eliminar-estilo"].includes(canal)) args[0] = idPositivo(datos);
     // Estos endpoints no tienen consumidor activo y su SQL usa columnas sin
     // correspondencia con las altas actuales. No ejecutar escrituras ambiguas.
     if (["actualizar-categoria", "actualizar-estilo"].includes(canal)) {

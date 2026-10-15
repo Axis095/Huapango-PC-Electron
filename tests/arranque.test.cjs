@@ -14,7 +14,8 @@ const configValida = { host: "127.0.0.1", port: 3306, user: "operador", password
 function load(file, deps, extra = {}) {
     const module = { exports: {} };
     vm.runInNewContext(source(file), { module, console: quiet, __dirname: root,
-        require(name) { assert.ok(name in deps, `Dependencia inesperada: ${name}`); return deps[name]; },
+        require(name) {
+        if (name === "../Seguridad/errores") return require("../Seguridad/errores"); assert.ok(name in deps, `Dependencia inesperada: ${name}`); return deps[name]; },
         ...extra
     }, { filename: file });
     return module.exports;
@@ -29,7 +30,7 @@ function configuracion(t, fsModule = fs) {
         assert.ok(path.basename(real).startsWith("huapango-startup-"));
         fs.rmSync(real, { recursive: true });
     });
-    return load("Modelos/configModel.js", { fs: fsModule, path, crypto,
+    return load("Modelos/configModel.js", { fs: fsModule, path, crypto, "node:net": require("node:net"),
         electron: { app: { getPath() { return path.join(temp, "usuario-nuevo"); } } }
     });
 }
@@ -45,7 +46,8 @@ function database(config, overrides = {}) {
             } };
         }, ...overrides
     };
-    return { calls, db: load("db.js", { "mysql2/promise": driver, "./Modelos/configModel": config }) };
+    return { calls, db: load("db.js", { "mysql2/promise": driver, "./Modelos/configModel": config,
+        "./Servicios/operaciones": require("../Servicios/operaciones"), "node:timers": require("node:timers") }) };
 }
 
 test("primer arranque crea directorio y configuración sin credenciales", (t) => {
@@ -143,7 +145,8 @@ test("el controlador conserva lo guardado ante conexión fallida y permite reint
     const model = configuracion(t);
     model.guardarConfiguracion(configValida);
     let falla = true;
-    const controller = load("Controladores/configController.js", { "../Modelos/configModel": model, "../db": {
+    const controller = load("Controladores/configController.js", { "../Modelos/configModel": model,
+        "../Servicios/operaciones": require("../Servicios/operaciones"), "../db": {
         async probarConexion() { if (falla) throw new Error("Credenciales incorrectas"); }
     } });
     const original = fs.readFileSync(model.configPath, "utf8");
@@ -159,13 +162,17 @@ test("el login mantiene la sesión en memoria y no modifica MySQL config", async
     const model = configuracion(t);
     model.guardarConfiguracion(configValida);
     const original = fs.readFileSync(model.configPath, "utf8");
-    const sesion = load("Modelos/sesionModel.js", {});
+    const sesion = load("Modelos/sesionModel.js", { "../Seguridad/identidad": require("../Seguridad/identidad") });
     const events = [];
     const globals = { loginWindow: { isDestroyed() { return false; }, close() { events.push("cerrar-login"); } } };
+    const usuario = { nUsuarioID: 9, rol: "juez", cContrasena: "clave" };
     const auth = load("Controladores/authController.js", {
         bcryptjs: require("bcryptjs"),
-        "../Seguridad/datos": require("../Seguridad/datos"),
-        "../db": { async queryDatabase() { return [{ nUsuarioID: 9, rol: "juez", cContrasena: "clave" }]; } },
+        "../Seguridad/identidad": require("../Seguridad/identidad"),
+        "../db": { async queryDatabase(sql, params) {
+            if (sql.startsWith("UPDATE")) { usuario.cContrasena = params[0]; return { affectedRows: 1 }; }
+            return [{ ...usuario }];
+        } },
         "../Modelos/sesionModel": sesion
     }, { global: globals });
     assert.equal((await auth.handleLogin(null, { username: "juez", password: "clave" }, () => {
@@ -202,7 +209,8 @@ function mainHarness(inicializarBaseDatos) {
     deps["./Controladores/authController"] = { handleLogin: () => {}, autenticacionEnCurso: () => false };
     deps["./Seguridad/ipc"] = require("../Seguridad/ipc");
     deps["./db"] = { inicializarBaseDatos };
-    deps["./Modelos/sesionModel"] = load("Modelos/sesionModel.js", {});
+    deps["./Modelos/sesionModel"] = load("Modelos/sesionModel.js", { "../Seguridad/identidad": require("../Seguridad/identidad") });
+    deps["./Servicios/operaciones"] = require("../Servicios/operaciones");
     deps.electron = {
         BrowserWindow: Window,
         app: { whenReady() { return { then(fn) { ready = fn; return { catch() {} }; } }; }, on(name, fn) { appEvents.set(name, fn); }, quit() { quit++; } },
@@ -230,7 +238,7 @@ test("una conexión válida abre login y get-usuario-id ignora archivos", async 
     assert.equal(path.basename(h.windows[0].file), "login.html");
     const w = h.windows[0];
     w.webContents.mainFrame = { url: pathToFileURL(w.file).href };
-    assert.equal(h.handlers.get("get-usuario-id")({ sender: w.webContents, senderFrame: w.webContents.mainFrame }), null);
+    assert.equal(await h.handlers.get("get-usuario-id")({ sender: w.webContents, senderFrame: w.webContents.mainFrame }), null);
 });
 
 test("continuar abre login tras recuperar conexión y rechaza otras vistas", async () => {
