@@ -11,13 +11,9 @@ async function crearUsuario(datos) {
     const id = idUsuario(datos.nUsuarioID);
     if (!roles.includes(datos.rol)) throw Object.assign(new Error("El rol debe ser admin, user o juez."), { code: "INVALID_DATA" });
     const hashedPassword = await bcrypt.hash(datos.cContrasena, 10);
-    try {
-        await queryDatabase("INSERT INTO T_Usuarios (nUsuarioID, cNombreUsuario, cContrasena, rol) VALUES (?, ?, ?, ?)",
-            [id, nombre, hashedPassword, datos.rol]);
-        return id;
-    } catch {
-        throw new Error("No se pudo crear la cuenta. Verifica que el ID y el nombre estén disponibles.");
-    }
+    await queryDatabase("INSERT INTO T_Usuarios (nUsuarioID, cNombreUsuario, cContrasena, rol) VALUES (?, ?, ?, ?)",
+        [id, nombre, hashedPassword, datos.rol]);
+    return id;
 }
 
 function prohibido(code, mensaje) {

@@ -7,6 +7,7 @@ const operadores = ["admin", "user"];
 const evaluadores = ["admin", "juez"];
 const politicas = Object.freeze({
     login: { vistas: ["login.html"], sinSesion: true },
+    "cerrar-sesion": { roles: todos },
     "get-role": {}, "get-usuario-id": {},
     "obtener-configuracion": { configuracion: true },
     "guardar-configuracion": { configuracion: true },

@@ -6,6 +6,19 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
+for (const aceptar of [false, true]) {
+    test(`salida: ${aceptar ? 'confirmar llama cierre' : 'cancelar conserva sesión y campos'}`, async () => {
+        let cierres = 0;
+        const v = preparar({ cerrarSesion: async () => { cierres++; return { success: true }; } });
+        v.add('btnCerrarSesion', '', 'button'); const campo = v.add('observaciones', 'Sin guardar');
+        const pendiente = v.context.salirDeSesion();
+        assert.match(v.dialog().textContent, /trabajo sin guardar/);
+        v.choose(aceptar ? 'Cerrar sesión' : 'Cancelar'); await pendiente;
+        assert.equal(cierres, aceptar ? 1 : 0); assert.equal(campo.value, 'Sin guardar');
+        assert.equal(campo.disabled, false);
+    });
+}
+
 // DOM mínimo: las pruebas verifican flujo y estado, no el foco nativo de Electron.
 function preparar(api = {}) {
     const documento = { activeElement: null, addEventListener() {} };

@@ -1,6 +1,10 @@
 # Ensayo manual de cierre de Fase 0
 
 Estado del ensayo visual: **pendiente**. Actualización: 15 de octubre de 2026.
+
+Revisión posterior: [cobertura V01–V10/F01–F17 al 17 de octubre](revision-pruebas-2026-10-17.md).
+El usuario reportó mayoría exitosa sin individualizar casos; no se marcaron
+casillas automáticamente. Alta de cuentas y salida del juez se revisan en F0-15.
 El usuario confirmó que no dispone de una base de pruebas permanente. Ya se
 ejecutó integración automática en un MySQL temporal independiente; eso no sustituye
 la revisión visual de la aplicación ni certifica los datos del evento.
@@ -35,7 +39,8 @@ git diff --check
 
 El smoke usa Electron real, SQL simulado, ventanas ocultas y un perfil temporal;
 no permite escribir SQL. Conserva sus perfiles en `.tmp` para inspección. No
-certifica el driver, el servidor MySQL ni la presentación visual.
+certifica el driver ni el servidor MySQL. Desde F0-14 incorpora comprobaciones
+visuales parciales de login/menú/video; no certifica toda la interfaz.
 
 La integración sí usa MySQL real en un proceso, puerto y datadir propios con datos
 ficticios. Requiere mysqld instalado; no lee la configuración privada de la app.

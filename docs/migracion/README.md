@@ -16,37 +16,51 @@ Tras cada merge, volver a medir la línea base y revisar módulos reales.
 
 | Fase | Evidencia necesaria | Estado |
 | --- | --- | --- |
-| 0 | Autenticación, permisos, arranque, integridad y ensayo funcional documentados | En curso; ver [bitácora](fase-0.md) |
-| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | Pendiente |
+| 0 | Autenticación, permisos, arranque, integridad y ensayo funcional documentados | En curso; ver [control de cierre](cierre-fase-0.md) |
+| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | Pendiente; [plan preparado](plan-fase-1.md) |
 | 2 | Contratos y API específica, validación en ejecución y consumidores adaptados | Pendiente |
 | 3 | Paridad por vista, pruebas de permisos/errores y rollback | Pendiente |
 | 4 | Retirada selectiva del legado y ensayo de instalación/actualización | Pendiente |
 
-## Estado de la revisión del 12 de octubre de 2026
+## Estado vigente · 17 de octubre de 2026
 
-> Estado histórico. La revisión vigente está en el
-> [control de cierre](cierre-fase-0.md), la
-> [reevaluación 360°](reevaluacion-fase-0-2026-10-14.md) y la
-> [verificación del 15 de octubre](bloque-verificacion-2026-10-15.md).
-> Última regresión: 238/238; smoke de fuentes/ASAR correcto; MySQL aislado probado.
-> Fase 0 abierta: faltan hallazgos y ensayo funcional/instalación completos.
+[F0-16: evaluación y transición](evaluacion-transicion-2026-10-17.md) compara los
+27 hallazgos con los seis pilares y las puertas de salida. Regresión repetida:
+245/245; smoke de fuentes correcto, incluidas presentación, cuentas y salida.
+Integración MySQL y smoke ASAR correctos son evidencia previa de F0-15, no nuevas
+ejecuciones de F0-16. Instalador de laboratorio identificado por hash; falta
+ensayar instalación/actualización del candidato.
 
-188/188 pruebas correctas tras corregir IDs numéricos devueltos como texto;
-smoke de Electron real correcto con SQL simulado;
-instalación limpia verificada. Auditoría npm: cero avisos de producción, ocho
-moderados en tooling. Fase 0 sigue abierta: ensayo real y decisiones pendientes.
+**Fase 0 sigue abierta.** Restan historial/reporte general, recuperación durable,
+preparación de controles/esquema de instalación, capacidad y aceptación funcional
+individual. El siguiente bloque recomendado es historial operativo y reporte.
+La Fase 1 está planificada y no se ha iniciado.
+
+Correcciones recientes: [F0-14, presentación](bloque-paridad-visual-2026-10-16.md)
+y [F0-15, cuentas y salida](bloque-cuentas-salida-2026-10-17.md). La conformidad
+general del usuario no se convierte en aprobación individual de todas las pruebas.
 
 - [Bitácora, cambios y autoevaluación](fase-0.md)
 - [Inventario de permisos IPC](inventario-ipc.md)
 - [Ensayo manual y casillas de evidencia](ensayo-fase-0.md)
+- [Cobertura V01–V10/F01–F17](revision-pruebas-2026-10-17.md)
 - [Guía de primera instalación y preparación del laboratorio](../guia-primera-instalacion.md)
+
+## Evidencia histórica
+
+La [bitácora inicial](fase-0.md), el [checkpoint del 14](checkpoint-fase-0-2026-10-14.md),
+la [reevaluación del 14](reevaluacion-fase-0-2026-10-14.md) y la
+[verificación del 15](bloque-verificacion-2026-10-15.md) conservan sus resultados
+originales. Las cifras de 188/233/238 pruebas, el estado de dependencias y las
+comprobaciones de instalación anteriores no certifican el candidato actual.
+Los documentos externos de plan/traspaso también son históricos; prevalecen las
+decisiones actuales del usuario y el control de cierre con su evidencia.
 
 ## Autoevaluación por bloque
 
-Checkpoint actual: [avance de Fase 0 del 14 de octubre](checkpoint-fase-0-2026-10-14.md).
-Incluye las decisiones de guardado, el estado de dependencias y el inventario
-de pendientes de la auditoría 360°. Las verificaciones del 12 de octubre de arriba
-son históricas y no certifican el empaquetador modificado posteriormente.
+Usar la evaluación vigente y el control de cierre para escoger el siguiente
+bloque. El checkpoint histórico aporta el inventario de origen; no reemplaza
+el estado actual ni las comprobaciones de la sesión en curso.
 
 1. ¿El defecto se reprodujo o solo se infirió? ¿Qué prueba lo detecta?
 2. ¿Se preservaron los cambios ajenos y los flujos autorizados?

@@ -82,7 +82,6 @@ test('todas las vistas activan CSP antes de recursos y carecen de scripts/evento
         assert.doesNotMatch(html, /(?:src|href)=["']https?:\/\//i, file);
     }
     for (const file of fs.readdirSync(path.join(root, 'Public/css'))) assert.doesNotMatch(read(`Public/css/${file}`), /https?:\/\//i, file);
-    assert.match(read('Vistas/MenuPrincipal.html'), /<video\b[^>]*preload="none"/);
 });
 
 test('preload devuelve cancelación idempotente y nunca expone el evento Electron', () => {

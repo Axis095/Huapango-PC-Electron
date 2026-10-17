@@ -1,11 +1,12 @@
 # Inventario IPC de Fase 0
 
-Fuente: `Seguridad/ipc.js`. Actualizado el 2026-10-12.
+Fuente: `Seguridad/ipc.js`. Actualizado el 2026-10-17.
 Todos los canales requieren un frame principal de una ventana local reconocida.
 
 | Canal | Permisos adicionales | Origen específico |
 | --- | --- | --- |
 | login | Sin sesión | login.html |
+| cerrar-sesion | admin, user, juez; sin otras operaciones pendientes | Vista del catálogo local |
 | get-role | Identidad actual; guest/null sin sesión | Vista del catálogo local |
 | get-usuario-id | Identidad actual; guest/null sin sesión | Vista del catálogo local |
 | obtener-configuracion | Sin sesión o admin | configuracionBD.html |

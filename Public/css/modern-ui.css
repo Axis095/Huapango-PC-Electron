@@ -1,3 +1,4 @@
+@import url('./fonts.css');
 
 :root {
     --ui-purple: #6258ee;
@@ -19,7 +20,7 @@
 }
 
 body {
-    font-family: system-ui, 'Segoe UI', sans-serif;
+    font-family: 'DM Sans', system-ui, sans-serif;
     color: var(--ui-ink);
     background: radial-gradient(circle at 8% 4%, rgba(255, 101, 132, .16), transparent 28rem), linear-gradient(135deg, #f4f1fa 0%, var(--ui-page) 100%);
     min-height: 100vh;
@@ -110,7 +111,7 @@ button.btn:hover,
 h1,
 h2,
 h3 {
-    font-family: system-ui, 'Segoe UI', sans-serif;
+    font-family: 'Space Grotesk', sans-serif;
     color: var(--ui-ink);
     letter-spacing: -.03em;
 }

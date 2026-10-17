@@ -2,6 +2,11 @@
 
 Fecha: 14-10-2026. Hallazgos: M1, M5, M6, M10, L2, L3; integración con M7.
 
+Corrección posterior: [F0-14 del 16 de octubre](bloque-paridad-visual-2026-10-16.md)
+sustituye la decisión de fuentes del sistema y preload=none por fuentes originales
+locales, portada y metadatos. El texto de abajo conserva la evidencia histórica
+del cambio que originó las diferencias reportadas por el usuario.
+
 ## Defecto y cambios
 
 - Todas las vistas declaran CSP antes de los recursos. Scripts solo del proyecto,

@@ -84,6 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btnRegreso")?.addEventListener("click", () => {
         window.location.href = "../Vistas/MenuPrincipal.html";
     });
+    document.getElementById("btnCerrarSesion")?.addEventListener("click", salirDeSesion);
 
         // Detectar la vista actual y ejecutar la inicialización correspondiente
     const ruta = window.location.pathname;
@@ -472,6 +473,19 @@ async function modificarPareja({ versionEdicion } = {}) {
 
 
 // Crear un usuario
+async function salirDeSesion() {
+    return ejecutarAccion("btnCerrarSesion", async () => {
+        const aceptado = await confirmarEliminacion(
+            "Se cerrarán las ventanas de esta sesión. Las evaluaciones ya guardadas se conservan; el trabajo sin guardar se perderá. ¿Deseas continuar?",
+            document, { titulo: "Cerrar sesión", accion: "Cerrar sesión" });
+        if (!aceptado) return;
+        try {
+            const respuesta = await window.api.cerrarSesion();
+            if (!respuesta?.success) mostrarAviso(respuesta?.error || "No se pudo cerrar la sesión. Intenta nuevamente.");
+        } catch { mostrarAviso("No se pudo confirmar el cierre de sesión."); }
+    });
+}
+
 async function crearUsuario() {
     return ejecutarAccion("btnCrearUsuario", async () => {
         try {

@@ -1,3 +1,4 @@
+@import url('./fonts.css');
 
 :root {
   --primary: #6C63FF;
@@ -31,7 +32,7 @@ body.dark-mode {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: system-ui, 'Segoe UI', sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 body {

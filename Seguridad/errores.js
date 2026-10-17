@@ -4,6 +4,7 @@ const publicos = new Set(['INVALID_DATA', 'INVALID_ID', 'INVALID_PHOTO', 'NOT_FO
 function mensajePublico(error) {
     if (publicos.has(error?.code)) return error.message;
     if (error?.code === 'ER_DUP_ENTRY') return 'Ya existe un registro con ese ID o dato único. Consulta los datos antes de reintentar.';
+    if (['ER_TABLEACCESS_DENIED_ERROR', 'ER_DBACCESS_DENIED_ERROR'].includes(error?.code)) return 'La cuenta de conexión a MySQL no tiene permisos suficientes para esta operación. Revisa sus permisos con el administrador de la base.';
     if (['ER_ROW_IS_REFERENCED_2', 'ER_NO_REFERENCED_ROW_2'].includes(error?.code)) return 'La operación no es compatible con los registros relacionados. Revisa sus relaciones antes de continuar.';
     if (error?.code === 'ER_NO_SUCH_TABLE') return 'La base configurada no dispone de la tabla necesaria para esta función. Revisa el diagnóstico del esquema.';
     return 'No se pudo completar la operación. Comprueba la conexión y consulta los datos antes de reintentar.';

@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 // Exponer una API segura al renderizador
 contextBridge.exposeInMainWorld("api", {
+    cerrarSesion: () => ipcRenderer.invoke("cerrar-sesion"),
     obtenerBorradorRegistro: () => ipcRenderer.invoke("obtener-borrador-registro"),
     guardarBorradorRegistro: (datos) => ipcRenderer.invoke("guardar-borrador-registro", datos),
     limpiarBorradorRegistro: () => ipcRenderer.invoke("limpiar-borrador-registro"),

@@ -5,7 +5,7 @@ const { inicializarBaseDatos } = require("./db");
 const { obtenerSesion, cerrarSesion, revalidarSesion, registrarActividad } = require("./Modelos/sesionModel");
 const { fileURLToPath } = require("url");
 const { crearSeguridadIPC } = require("./Seguridad/ipc");
-const { ejecutarOperacion, ejecutarCambioConfiguracion } = require("./Servicios/operaciones");
+const { ejecutarOperacion, ejecutarCambioConfiguracion, ejecutarCierreSesion } = require("./Servicios/operaciones");
 let propietarioVentanas = null;
 const seguridad = crearSeguridadIPC({ raiz: __dirname, obtenerSesion, revalidarSesion, registrarActividad,
     recuperarSesion, sesionPendiente: () => !!propietarioVentanas,
@@ -71,6 +71,28 @@ registrarIPC("limpiar-borrador-modificacion", limpiarBorradorModificacion);
 registrarIPC("login", (event, credentials) => continuandoConfiguracion
     ? { success: false, error: "Espera a que termine la configuración." }
     : handleLogin(event, credentials, createMainWindow, () => seguridad.permitido("login", event)));
+registrarIPC("cerrar-sesion", async () => {
+    try {
+        return await ejecutarCierreSesion(async () => {
+            // La reserva impide cerrar ventanas durante otra escritura. Preparar
+            // el acceso primero conserva la sesión si falla la carga del HTML.
+            const anteriores = BrowserWindow.getAllWindows();
+            try { await createLoginWindow(); }
+            catch {
+                if (global.loginWindow && !global.loginWindow.isDestroyed()) global.loginWindow.destroy();
+                return { success: false, error: "No se pudo abrir el acceso. La sesión sigue activa." };
+            }
+            cerrarSesion();
+            propietarioVentanas = null;
+            global.userRole = "guest";
+            for (const ventana of anteriores) ventana.close();
+            return { success: true };
+        });
+    } catch (error) {
+        if (error.code === "CONFIGURATION_BUSY") return { success: false, code: error.code, error: "Espera a que termine la operación en curso antes de cerrar sesión." };
+        throw error;
+    }
+});
 // Conectar el evento IPC con el controlador
 registrarIPC("registrar-pareja", handleRegistrarPareja);
 registrarIPC("buscar-pareja-por-id", handleBuscarParejaPorID);

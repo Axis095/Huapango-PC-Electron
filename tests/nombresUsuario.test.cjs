@@ -24,6 +24,17 @@ function preparar(queryDatabase) {
 }
 const cuenta = { nUsuarioID: '8', cNombreUsuario: 'Ana', cContrasena: 'Prueba', rol: 'user' };
 
+test('alta: duplicado conserva código y muestra aviso seguro; fallo desconocido no expone SQL', async () => {
+    for (const code of ['ER_DUP_ENTRY', 'ER_TABLEACCESS_DENIED_ERROR', 'TRANSACTION_OUTCOME_UNKNOWN']) {
+        const v = preparar(async () => { throw Object.assign(new Error('SQL privado y contraseña secreta'), { code }); });
+        const r = await v.controller.handleCrearUsuario(null, cuenta);
+        assert.equal(r.success, false); assert.equal(r.code, code);
+        if (code === 'ER_DUP_ENTRY') assert.match(r.error, /Ya existe/);
+        if (code === 'ER_TABLEACCESS_DENIED_ERROR') assert.match(r.error, /permisos suficientes/);
+        if (code !== 'TRANSACTION_OUTCOME_UNKNOWN') assert.doesNotMatch(r.error, /SQL privado|secreta/);
+    }
+});
+
 test('alta: vista y backend rechazan nombres inválidos sin consultar SQL', async () => {
     const v = preparar(() => assert.fail('No consultar SQL para datos inválidos'));
     for (const nombre of ['', ' ', 'A', 'AB', ' A ', undefined, null, 123, {}, []]) {

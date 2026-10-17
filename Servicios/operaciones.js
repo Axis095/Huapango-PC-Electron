@@ -38,4 +38,14 @@ async function ejecutarCambioConfiguracion(operacion) {
     finally { cambio = null; }
 }
 
-module.exports = { ejecutarOperacion, ejecutarCambioConfiguracion };
+// Solo se invoca desde un handler ya reservado con ejecutarOperacion. La
+// revalidación SQL terminó; no se permiten otras operaciones durante el cierre.
+async function ejecutarCierreSesion(operacion) {
+    if (cambio || operaciones !== 1) throw ocupado();
+    const reserva = {};
+    cambio = reserva;
+    try { return await operacion(); }
+    finally { cambio = null; }
+}
+
+module.exports = { ejecutarOperacion, ejecutarCambioConfiguracion, ejecutarCierreSesion };

@@ -2,6 +2,56 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { aplicacion } = require('./helpers/aplicacion.cjs');
 
+test('cerrar sesión revoca acceso, cierra ventanas previas y abre login para los tres roles', async () => {
+    for (const rol of ['admin', 'user', 'juez']) {
+        const h = aplicacion();
+        h.sesion.guardarSesion('U001', rol);
+        const evento = h.evento('Resultados.html'); const anterior = h.windows[0];
+        assert.equal((await h.handlers.get('cerrar-sesion')(evento)).success, true);
+        assert.equal(h.sesion.obtenerSesion(), null);
+        assert.equal(anterior.closed, true);
+        assert.match(h.globals.loginWindow.file, /login.html$/);
+        assert.equal((await h.handlers.get('get-role')(evento)).code, 'FORBIDDEN');
+    }
+});
+
+test('cierre durante otra operación se rechaza conservando sesión y ventana', async () => {
+    const h = aplicacion(); h.sesion.guardarSesion('U001', 'juez');
+    const evento = h.evento('Resultados.html'); let liberar;
+    const pendiente = h.cargar('Servicios/operaciones.js').ejecutarOperacion(() => new Promise(r => { liberar = r; }));
+    try {
+        assert.equal((await h.handlers.get('cerrar-sesion')(evento)).code, 'CONFIGURATION_BUSY');
+        assert.equal(h.sesion.obtenerSesion().userRole, 'juez'); assert.equal(h.windows[0].closed, undefined);
+    } finally { liberar(); await pendiente; }
+});
+
+test('fallo al cargar acceso durante cierre conserva sesión y permite reintentar', async () => {
+    const h = aplicacion(); h.sesion.guardarSesion('U001', 'juez');
+    const evento = h.evento('Resultados.html'); const proto = Object.getPrototypeOf(h.windows[0]);
+    const cargar = proto.loadFile;
+    proto.loadFile = async function(file) { if (file.endsWith('login.html')) throw Error('Carga fallida'); return cargar.call(this, file); };
+    assert.equal((await h.handlers.get('cerrar-sesion')(evento)).success, false);
+    assert.equal(h.sesion.obtenerSesion().userRole, 'juez'); assert.equal(h.windows[0].closed, undefined);
+    proto.loadFile = cargar;
+    assert.equal((await h.handlers.get('cerrar-sesion')(evento)).success, true);
+});
+
+test('mientras carga el acceso de salida no entran nuevas operaciones ni navegación', async () => {
+    const h = aplicacion(); h.sesion.guardarSesion('U001', 'juez');
+    const evento = h.evento('Resultados.html'); const proto = Object.getPrototypeOf(h.windows[0]);
+    const cargar = proto.loadFile; let continuar;
+    proto.loadFile = async function(file) {
+        await cargar.call(this, file);
+        if (file.endsWith('login.html')) await new Promise(r => { continuar = r; });
+    };
+    const pendiente = h.handlers.get('cerrar-sesion')(evento);
+    await new Promise(r => setImmediate(r));
+    assert.equal((await h.handlers.get('get-role')(evento)).code, 'CONFIGURATION_BUSY');
+    assert.equal((await h.listeners.get('open-section')(evento, 'MenuPrincipal.html')).code, 'CONFIGURATION_BUSY');
+    assert.equal(h.sesion.obtenerSesion().userRole, 'juez');
+    continuar(); assert.equal((await pendiente).success, true); assert.equal(h.sesion.obtenerSesion(), null);
+});
+
 async function escenario() {
     const cuenta = { nUsuarioID: 'U001', rol: 'admin', cContrasena: 'clave-local' };
     const h = aplicacion({ sesionDesdeBD: true, queryDatabase: async (sql, args) => {

@@ -76,6 +76,38 @@ Una prueba con mocks no certifica MySQL real; el smoke no certifica instalación
 Si un comando falla o no puede ejecutarse, registra el motivo y la validación
 pendiente. No presentes una comprobación histórica como resultado de esta sesión.
 
+## Objetivo y aceptación de la migración
+
+La migración debe mejorar seguridad, mantenibilidad y confiabilidad conservando
+los flujos y la presentación aprobados por el usuario. No introducir rediseños
+ni cambios de comportamiento ajenos al bloque solicitado.
+
+Antes de cada bloque:
+
+- Consultar la auditoría vigente y su matriz de hallazgos desde el índice de
+  docs/migracion/README.md, además del control de cierre.
+- Identificar el hallazgo o regresión atendidos, el comportamiento que debe
+  conservarse y la evidencia necesaria para aceptar el cambio.
+- Respetar las decisiones funcionales documentadas; si existe una contradicción,
+  señalarla antes de cambiar el comportamiento afectado.
+
+Para cambios visuales o de interacción, comparar con la referencia aprobada
+usando iguales dimensiones, escala, zoom y rol. Verificar recursos sin internet
+y comportamiento en la aplicación empaquetada. Las pruebas unitarias no
+sustituyen esta comparación.
+
+Mantener trazabilidad entre hallazgo, modificación, prueba y resultado.
+Registrar por separado: implementado, verificado automáticamente, validado
+manualmente y aceptado por el usuario. No tratar pendientes como aprobados.
+
+El visto bueno de un bloque no cierra una fase. Antes de avanzar, comprobar
+las puertas de salida y actualizar la evaluación de arquitectura, seguridad,
+rendimiento, calidad, dependencias/distribución y pruebas.
+
+Las referencias antiguas indicadas como solo lectura no se modifican.
+El progreso, las decisiones y la evidencia se guardan en docs/migracion;
+AGENTS.md contiene únicamente las reglas estables para consultarlos y actuar.
+
 ## Continuidad entre sesiones
 
 Para cambios de la migración, sigue el método de `docs/migracion/README.md`:

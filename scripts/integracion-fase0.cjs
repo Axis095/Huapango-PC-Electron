@@ -79,6 +79,19 @@ async function probar(cargar, connection, estricto) {
     assert.equal(usuarios[0].nUsuarioID, 'U001');
     assert.equal(await bcrypt.compare('SoloLaboratorio-2026!', usuarios[0].cContrasena), true);
     console.log('MYSQL_OK alta de usuario VARCHAR y bcrypt');
+    const altas = cargar('Controladores/adminController.js');
+    for (const rol of ['admin', 'user', 'juez']) {
+        const nueva = { nUsuarioID: 'ROL-' + rol, cNombreUsuario: 'cuenta_' + rol, cContrasena: 'SoloLaboratorio!', rol };
+        assert.equal((await altas.handleCrearUsuario(null, nueva)).success, true);
+        const duplicado = await altas.handleCrearUsuario(null, nueva);
+        assert.equal(duplicado.code, 'ER_DUP_ENTRY'); assert.match(duplicado.error, /Ya existe/);
+        const mismoNombre = await altas.handleCrearUsuario(null, { ...nueva, nUsuarioID: 'OTRO-' + rol });
+        assert.equal(mismoNombre.code, 'ER_DUP_ENTRY');
+        const [filas] = await connection.execute('SELECT rol, cContrasena FROM t_usuarios WHERE nUsuarioID = ?', [nueva.nUsuarioID]);
+        assert.equal(filas.length, 1); assert.equal(filas[0].rol, rol);
+        assert.equal(await bcrypt.compare(nueva.cContrasena, filas[0].cContrasena), true);
+    }
+    console.log('MYSQL_OK altas de tres roles y duplicados por ID/nombre, mensajes seguros');
     await connection.execute('INSERT INTO t_usuarios VALUES (?, ?, ?, ?)', ['LEG-1', 'legado_prueba', 'ClaveTemporal!', 'admin']);
     assert.equal((await auth.handleLogin(null, { username: 'legado_prueba', password: 'ClaveTemporal!' }, async () => {})).success, true);
     const [migrados] = await connection.execute('SELECT cContrasena FROM t_usuarios WHERE nUsuarioID = ?', ['LEG-1']);
