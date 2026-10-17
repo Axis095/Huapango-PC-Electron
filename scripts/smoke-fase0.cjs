@@ -71,7 +71,8 @@ require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: {
 } };
 const timeout = setTimeout(() => { console.error('SMOKE_FAIL: tiempo agotado'); app.exit(1); }, 25000);
 async function ejecutar() {
-    require(path.join(root, 'main.js'));
+    const manifiesto = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    require(path.join(root, manifiesto.main));
     const login = await esperar('login.html');
     await verificarPresentacion(login, 'login', profile);
     const estado = await login.webContents.executeJavaScript(`(async () => ({

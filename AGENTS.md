@@ -32,10 +32,13 @@ contradictorios, revisa la evidencia y señala la discrepancia.
 - `Seguridad/`: permisos IPC, identidad, datos y tratamiento de errores.
 - `Servicios/`: lógica compartida de servicios.
 - `sql/`: scripts SQL; `tests/` y `scripts/`: pruebas y laboratorios.
+- `electron/main.cts`, `tsconfig.main.json`: entrada TypeScript y compilación
+  gradual; `build/app` es salida generada, separada de instaladores en `dist`.
 
-El código actual usa JavaScript con CommonJS. Conserva las convenciones del módulo
-que edites y la capitalización de las rutas. Consulta el plan de migración antes
-de introducir TypeScript, Vite u otro cambio de arquitectura.
+El código usa principalmente JavaScript con CommonJS y una entrada TypeScript de
+Fase 1. Conserva las convenciones y capitalización de rutas. Consulta la bitácora
+de Fase 1 antes de ampliar TypeScript/Vite o modificar la resolución de vistas;
+la compilación gradual no significa que los contratos del legado estén tipados.
 
 ## Límites y criterios del proyecto
 
@@ -61,6 +64,9 @@ en `package.json` (`engines`).
 | Comando | Uso |
 | --- | --- |
 | `npm.cmd start` | Abrir la aplicación; puede usar la configuración local |
+| `npm.cmd run compile:main` | Generar el árbol de ensayo en build/app |
+| `npm.cmd run typecheck` | Comprobar la configuración y entradas TypeScript actuales |
+| `npm.cmd run start:compiled` | Abrir build/app; usa configuración local |
 | `npm.cmd test` | Regresión con el ejecutor de pruebas de Node |
 | `npm.cmd run test:smoke` | Smoke con Electron real y SQL simulado |
 | `npm.cmd run test:integration` | Laboratorio MySQL desechable; revisar sus requisitos antes de ejecutarlo |

@@ -7,6 +7,23 @@ el instalador, consultar la [guía de primera instalación](docs/guia-primera-in
 El progreso de la refactorización y sus verificaciones se registran en
 [el control de migración](docs/migracion/README.md).
 
+## Compilación gradual · Fase 1
+
+La primera entrega permite comprobar un árbol compilado conservando las vistas
+actuales. Desde la raíz en PowerShell, después de instalar dependencias:
+
+```powershell
+npm.cmd run compile:main
+npm.cmd run typecheck
+npm.cmd run start:compiled
+```
+
+La salida está en `build/app`; `npm.cmd start` continúa abriendo las fuentes.
+Ambas entradas usan la configuración local de la aplicación. El smoke usa un
+perfil temporal y SQL simulado; los detalles y límites están en la
+[bitácora de Fase 1](docs/migracion/fase-1.md). Vite está instalado; la integración
+de su servidor y la salida multipágina corresponde a la siguiente entrega.
+
 ## Trabajo con Codex
 
 Las instrucciones compartidas del proyecto están en [AGENTS.md](AGENTS.md), en

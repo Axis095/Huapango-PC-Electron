@@ -4,6 +4,11 @@ Fecha: 17 de octubre de 2026. Base: `cb8c93f71adf036bfe62836d0ebac7fd93c78500`
 con cambios locales de F0-14/F0-15, AGENTS y documentación todavía sin commit.
 Estado: **evaluación terminada; Fase 0 abierta; Fase 1 no iniciada**.
 
+Actualización posterior F0-17: el usuario solicita una ruta mínima para avanzar.
+El [control de cierre](cierre-fase-0.md) acota la entrada a Fase 1 y asigna destino
+explícito a los pendientes. El orden amplio y las puertas siguientes se conservan
+como evidencia de esta evaluación, no como ejecución inmediata de seis bloques.
+
 ## Motivo, alcance y aceptación del bloque
 
 El usuario considera satisfactorio el avance y solicita comparar el estado de

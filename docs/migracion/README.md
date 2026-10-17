@@ -16,13 +16,35 @@ Tras cada merge, volver a medir la línea base y revisar módulos reales.
 
 | Fase | Evidencia necesaria | Estado |
 | --- | --- | --- |
-| 0 | Autenticación, permisos, arranque, integridad y ensayo funcional documentados | En curso; ver [control de cierre](cierre-fase-0.md) |
-| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | Pendiente; [plan preparado](plan-fase-1.md) |
+| 0 | Cierre técnico acotado según F0-17/18; deuda con destino explícito | Cerrada en ese alcance; validación manual/operativa pendiente en [acta](cierre-fase-0.md) |
+| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | En curso; primera entrega en [bitácora](fase-1.md) |
 | 2 | Contratos y API específica, validación en ejecución y consumidores adaptados | Pendiente |
 | 3 | Paridad por vista, pruebas de permisos/errores y rollback | Pendiente |
 | 4 | Retirada selectiva del legado y ensayo de instalación/actualización | Pendiente |
 
 ## Estado vigente · 17 de octubre de 2026
+
+**Hito de cierre técnico de Fase 0 y apertura de Fase 1.** El usuario solicita
+guardar esta transición en un commit. El [acta](cierre-fase-0.md) registra el
+alcance reducido acordado, la evidencia previa y los pendientes trasladados.
+La primera entrega de Fase 1 está verificada; la fase completa sigue en curso.
+
+**F0-18 / inicio de Fase 1.** Pase automático por capas correcto: 245/245,
+smoke de fuentes y laboratorio MySQL en Node/Electron. El modo Electron comprueba
+dos fotos reales; ambos generan PDF y prueban ingreso de cuentas nuevas. Se
+habilita tooling con deuda explícita y validación manual/operativa pendiente.
+Primera entrega F1-01/02: TypeScript/Vite fijados, compilación en build/app,
+typecheck y smoke del árbol compilado correctos. La segunda entrega conectará
+Vite con las rutas/seguridad; instalación queda para el paquete compilado final.
+
+**F0-17: ruta mínima.** Por solicitud del usuario, la transición se concentra en
+tres pasos: acotar pendientes, un pase de aceptación crítica y registro de
+entrada a Fase 1. Ver el [control de cierre](cierre-fase-0.md), que define destinos
+de deuda y qué defectos siguen bloqueando. Referencia guardada: `98331dc`.
+Historial/recuperación se programan en Fase 2; capacidad antes de migrar vistas
+afectadas; instalación completa sobre el paquete compilado en Fase 1.
+Ese ajuste documental no ejecutó código; el pase posterior F0-18 aporta la
+evidencia y la decisión de entrada registradas arriba.
 
 [F0-16: evaluación y transición](evaluacion-transicion-2026-10-17.md) compara los
 27 hallazgos con los seis pilares y las puertas de salida. Regresión repetida:
@@ -31,10 +53,10 @@ Integración MySQL y smoke ASAR correctos son evidencia previa de F0-15, no nuev
 ejecuciones de F0-16. Instalador de laboratorio identificado por hash; falta
 ensayar instalación/actualización del candidato.
 
-**Fase 0 sigue abierta.** Restan historial/reporte general, recuperación durable,
-preparación de controles/esquema de instalación, capacidad y aceptación funcional
-individual. El siguiente bloque recomendado es historial operativo y reporte.
-La Fase 1 está planificada y no se ha iniciado.
+**La preparación técnica permite avanzar; la deuda permanece abierta.**
+Historial/reporte, recuperación durable, controles de despliegue y capacidad
+conservan sus hallazgos con destino en F0-17. La siguiente acción es F1-03/04:
+integrar Vite multipágina y la identificación de rutas/origen en conjunto.
 
 Correcciones recientes: [F0-14, presentación](bloque-paridad-visual-2026-10-16.md)
 y [F0-15, cuentas y salida](bloque-cuentas-salida-2026-10-17.md). La conformidad

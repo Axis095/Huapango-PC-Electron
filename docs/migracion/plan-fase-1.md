@@ -1,7 +1,7 @@
 # Preparación de Fase 1 — Compilación conservando la aplicación
 
-Fecha: 17 de octubre de 2026. Estado: **propuesta preparada, ejecución pendiente
-del cierre de Fase 0**. Consultar la [evaluación vigente](evaluacion-transicion-2026-10-17.md)
+Fecha: 17 de octubre de 2026. Estado: **en curso, primera entrega verificada**;
+evidencia actual en la [bitácora](fase-1.md). Consultar la [evaluación vigente](evaluacion-transicion-2026-10-17.md)
 y el [control de cierre](cierre-fase-0.md).
 
 ## Objetivo y fronteras
@@ -31,13 +31,22 @@ iniciar cambios. Necesita estas precisiones basadas en el código actual:
 
 ## Entrada obligatoria
 
-Acta de Fase 0 con revisión/candidato identificados, pruebas funcionales e
-instalación, matriz sin bloqueantes sin tratamiento y decisiones explícitas de
-deuda. Conservar comparación visual a igual resolución/escala/zoom, recursos
-offline y copia recuperable del candidato. No mezclar cambios sin identificar
-con la línea base de comparación; un commit requerirá la instrucción correspondiente.
+Desde F0-17 se usa la ruta mínima del [control de cierre](cierre-fase-0.md):
+referencia `98331dc`, pase crítico consolidado con resultado registrado y deuda
+con destino explícito. Resolver cualquier fallo nuevo de permisos, guardado o
+integridad antes de avanzar. Las funciones aplazadas no se consideran terminadas.
+La instalación/actualización completa se verifica en F1-05/06 con el paquete
+compilado. Conservar comparación visual a igual resolución/escala/zoom, recursos
+offline y copia recuperable del candidato. Los commits posteriores requieren su
+instrucción correspondiente.
 
 ## Ejecución por bloques pequeños
+
+Para reducir procesos, ejecutar en **tres entregas**, conservando los IDs de la
+tabla para trazabilidad: (1) F1-01/02 inventario y compilación; (2) F1-03/04 rutas,
+seguridad y multipágina; (3) F1-05/06 distribución y validación final. Una bitácora
+de Fase 1 basta para las tres entregas; repetir checks por cambios o fallos,
+sin crear un informe separado por cada tarea.
 
 | Bloque | Trabajo | Aceptación antes de continuar |
 | --- | --- | --- |
@@ -47,6 +56,11 @@ con la línea base de comparación; un commit requerirá la instrucción corresp
 | F1-04 Renderer multipágina | Configurar Vite para todas las entradas activas; adaptar importaciones, navegación relativa, CSS y assets. | Login, menú, registro, modificación, búsqueda, categorías/estilos, resultados, administración y configuración operativos; ventanas auxiliares y borradores intactos. |
 | F1-05 Distribución compilada | Actualizar entrada Electron y allowlist del paquete; separar outputs y limpiar solo lo generado. | ASAR contiene código/recursos necesarios, excluye secretos/datos/tests; funciona sin servidor de desarrollo ni árbol de fuentes. |
 | F1-06 Comparación y cierre | Ejecutar regresión, integración pertinente, smoke desarrollo/producción, comparación visual y ensayo de instalación/actualización. | Evidencias ligadas a candidato, diferencias explicadas y aprobadas; sin regresiones de Fase 0; acta antes de abrir Fase 2. |
+
+Avance F1-01/02: compilación de ensayo y typecheck correctos, entrada Main
+TypeScript y preload JavaScript emitido; smoke del árbol compilado correcto.
+Vite instalado, aún sin conectar servidor ni multipágina. No confundir esta
+entrega con el pipeline completo o con contratos ya tipados.
 
 ### Decisiones técnicas que deben quedar verificadas
 

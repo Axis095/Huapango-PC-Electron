@@ -11,6 +11,9 @@ const assert = require('node:assert/strict');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const root = path.resolve(__dirname, '..');
+// El mismo laboratorio puede ejecutarse con Electron para verificar su
+// decodificador real; con Node se conserva el ensayo de modelos sin fotos.
+const electronReal = process.versions.electron ? require('electron') : null;
 const exe = process.env.HUAPANGO_TEST_MYSQLD || 'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -43,7 +46,7 @@ function cargarAplicacion(config) {
             module, exports: module.exports, __dirname: path.dirname(absolute), __filename: absolute,
             Buffer, URL, console, global: {}, setTimeout, clearTimeout,
             require(name) {
-                if (name === 'electron') return { app: { getPath: () => perfil }, nativeImage: { createFromBuffer() { throw Error('Fotos no cubiertas por este laboratorio de modelos'); } } };
+                if (name === 'electron') return { app: { getPath: () => perfil }, nativeImage: electronReal?.nativeImage || { createFromBuffer() { throw Error('Ejecutar con Electron para cubrir fotos reales'); } } };
                 if (name.startsWith('.')) {
                     const resolved = local.resolve(name);
                     if (resolved === path.join(root, 'Modelos/configModel.js')) {
@@ -57,6 +60,7 @@ function cargarAplicacion(config) {
         }, { filename: absolute });
         return module.exports;
     }
+    cargar.perfil = perfil;
     return cargar;
 }
 
@@ -90,6 +94,10 @@ async function probar(cargar, connection, estricto) {
         const [filas] = await connection.execute('SELECT rol, cContrasena FROM t_usuarios WHERE nUsuarioID = ?', [nueva.nUsuarioID]);
         assert.equal(filas.length, 1); assert.equal(filas[0].rol, rol);
         assert.equal(await bcrypt.compare(nueva.cContrasena, filas[0].cContrasena), true);
+        assert.equal((await auth.handleLogin(null, { username: nueva.cNombreUsuario, password: nueva.cContrasena }, async () => {})).success, true);
+        assert.equal(sesion.obtenerSesion().userID, nueva.nUsuarioID);
+        assert.equal(sesion.obtenerSesion().userRole, rol);
+        sesion.cerrarSesion();
     }
     console.log('MYSQL_OK altas de tres roles y duplicados por ID/nombre, mensajes seguros');
     await connection.execute('INSERT INTO t_usuarios VALUES (?, ?, ?, ?)', ['LEG-1', 'legado_prueba', 'ClaveTemporal!', 'admin']);
@@ -101,7 +109,19 @@ async function probar(cargar, connection, estricto) {
     await connection.execute('UPDATE t_usuarios SET rol = ? WHERE nUsuarioID = ?', ['user', 'LEG-1']);
     assert.equal(await sesion.revalidarSesion(), null);
     console.log('MYSQL_OK login legado migra bcrypt y cambio de rol revoca sesión');
-    await pareja.registrarPareja(datos);
+    const fotoBytes = electronReal?.nativeImage.createFromBitmap(Buffer.from([80, 100, 200, 255]), { width: 1, height: 1 }).toPNG();
+    await pareja.registrarPareja({ ...datos, ...(fotoBytes ? { fotos: {
+        Masculino: { bytes: fotoBytes }, Femenino: { bytes: fotoBytes }
+    } } : {}) });
+    if (fotoBytes) {
+        const [conFotos] = await pareja.buscarParejaPorID(7);
+        const perfil = cargar.perfil;
+        for (const referencia of [conFotos.oFoto, conFotos.IFotoM]) {
+            assert.match(referencia, /^uploads\/fotos\/[a-f0-9-]+\.png$/);
+            assert.deepEqual(fs.readFileSync(path.join(perfil, referencia)), fotoBytes);
+        }
+        console.log('MYSQL_OK dos fotos: decodificador Electron real, disco y referencias MySQL');
+    }
     await pareja.registrarPareja({ ...datos, nParejaID: '07', cEmailMasculino: 'tres@example.test', cEmailFemenino: 'cuatro@example.test' });
     assert.equal((await pareja.buscarParejaPorID('07')).length, 1);
     assert.equal((await pareja.buscarParejaPorID('07'))[0].nParejaID, '07');
@@ -122,6 +142,18 @@ async function probar(cargar, connection, estricto) {
     assert.equal((await connection.execute('SELECT COUNT(*) AS total FROM t_evaluaciones'))[0][0].total, 1);
     if (estricto) await assert.rejects(connection.execute('INSERT INTO t_evaluaciones(nJuezID,nParejaID,nPuntaje) VALUES (?,?,?)', ['U001', '7', 55]), { code: 'ER_DUP_ENTRY' });
     console.log('MYSQL_OK evaluación única, reenvío idempotente y corrección rechazada');
+    const pdf = cargar('Modelos/pdfModel.js');
+    const perfilPDF = cargar.perfil;
+    fs.mkdirSync(perfilPDF, { recursive: true });
+    for (const [metodo, archivo] of [['generarPDFParejas', 'parejas.pdf'], ['generarPDFResultados', 'resultados.pdf']]) {
+        const destino = path.join(perfilPDF, archivo);
+        await pdf[metodo](destino);
+        const contenido = fs.readFileSync(destino);
+        assert.equal(contenido.subarray(0, 5).toString(), '%PDF-');
+        assert.ok(contenido.length > 1000);
+        assert.match(contenido.subarray(-32).toString(), /%%EOF/);
+    }
+    console.log('MYSQL_OK PDF reales de parejas y resultados con PDFKit y datos SQL');
     const [antes] = await pareja.buscarParejaPorID(7);
     const mod = { ...datos, versionEdicion: antes.versionEdicion, cNombreMasculino: 'Cambio' };
     const carreras = await Promise.allSettled([pareja.actualizarParejaCompleta(mod), pareja.actualizarParejaCompleta({ ...mod, cNombreMasculino: 'Otro cambio' })]);
@@ -141,6 +173,7 @@ async function probar(cargar, connection, estricto) {
         const [filas] = await connection.execute(`SELECT COUNT(*) AS total FROM ${tabla}`);
         assert.equal(filas[0].total, 0);
     }
+    if (fotoBytes) assert.deepEqual(fs.readdirSync(path.join(cargar.perfil, 'uploads/fotos')), []);
     console.log('MYSQL_OK rollback y eliminación con relaciones');
 }
 
@@ -149,6 +182,12 @@ async function probar(cargar, connection, estricto) {
     const base = path.join(root, '.tmp'); fs.mkdirSync(base, { recursive: true });
     const work = fs.mkdtempSync(path.join(base, 'mysql-fase0-'));
     const datadir = path.join(work, 'data'); fs.mkdirSync(datadir);
+    if (electronReal) {
+        const perfilElectron = path.join(work, 'electron');
+        fs.mkdirSync(perfilElectron);
+        electronReal.app.setPath('userData', perfilElectron);
+        electronReal.app.disableHardwareAcceleration();
+    }
     const log = path.join(work, 'servidor.log');
     const port = await puertoLibre();
     const password = randomBytes(24).toString('hex');
@@ -196,4 +235,7 @@ async function probar(cargar, connection, estricto) {
         }
         console.log(`MYSQL_LAB evidencia local: ${work}`);
     }
-})().then(() => process.exit(0), error => { console.error(error.message); process.exit(1); });
+})().then(() => electronReal ? electronReal.app.exit(0) : process.exit(0), error => {
+    console.error(error.message);
+    if (electronReal) electronReal.app.exit(1); else process.exit(1);
+});
