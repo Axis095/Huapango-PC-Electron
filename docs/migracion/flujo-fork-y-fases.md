@@ -690,7 +690,7 @@ Ventana de acceso nativa visible y URL de la base confirmadas. El título identi
 `ENSAYO BASE 2e913c3`; no se modificó el código del candidato.
 
 Entorno separado: `.tmp/control-git-2026-10-17-e19042d/manual-base-Gi0jUG/`,
-con directorio MySQL nuevo, loopback en puerto `57264`, perfil propio y dos PNG
+con directorio MySQL nuevo, loopback y puerto libre exclusivo, perfil propio y dos PNG
 ficticios en `fotos-ficticias/`. La cuenta SQL solo tiene SELECT/INSERT/UPDATE/DELETE
 en la base de laboratorio. Se verificó que puede consultar las tres cuentas
 bcrypt de la [guía de instalación](../guia-primera-instalacion.md#6-insertar-admin-operador-y-juez-con-bcrypt).
@@ -701,6 +701,15 @@ El supervisor mantiene el MySQL mientras se prueba la aplicación. Al cerrar
 Electron apaga únicamente ese servidor y conserva los archivos del ensayo.
 Preparación verificada; recorrido manual y aceptación del usuario **pendientes**.
 Los resultados se añadirán después de la prueba, sin marcar casillas por inferencia.
+
+La primera sesión terminó correctamente y su servidor se apagó. El usuario
+indicó que necesitaba reabrirla para probar. Se reabrieron el mismo directorio
+MySQL y perfil, conservando datos y asignando otro puerto libre; acceso visible
+confirmado otra vez. Todavía no se ha comunicado un resultado funcional manual.
+
+La rama de Vite está publicada en el fork: `77c8528` agrega exclusivamente la
+evidencia documental al código probado de `e19042d`. Los hashes remotos
+confirman main en `7de3b2e`, la base en `2e913c3` y la rama histórica intacta.
 
 Siguiente acción: registrar el recorrido de la base antes de promover el PR;
 diagnosticar la diferencia de tamaño del menú Vite (tamaño nativo/viewport,

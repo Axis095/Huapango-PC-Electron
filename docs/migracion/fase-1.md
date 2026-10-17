@@ -294,7 +294,7 @@ integración con Electron/MySQL sí se ejecutó nuevamente en su worktree aislad
 
 El [PR #1 de base](https://github.com/cazarau/Huapango-PC-Electron-refactorizacion/pull/1)
 conserva exactamente `2e913c3` y no incluye Vite ni este registro. El usuario
-prefiere ensayarlo antes de fusionar. Hay un acceso visible abierto con perfil,
+prefiere ensayarlo antes de fusionar. Se abrió un acceso visible con perfil,
 MySQL y fotos ficticias separados; preparar el entorno no constituye completar
 el recorrido ni obtener aceptación. `main` permanece en `7de3b2e`.
 
