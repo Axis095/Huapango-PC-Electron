@@ -5,7 +5,8 @@
 Para separar la versión funcional del fork y promover entregas mediante PR,
 consultar la [guía de organización del fork y fases](flujo-fork-y-fases.md).
 Incluye comandos PowerShell, aislamiento de trabajo/datos, aceptación y recuperación.
-Es un procedimiento propuesto; su publicación no ejecuta cambios en Git ni cierra fases.
+Su adopción está en curso; el [registro operativo](flujo-fork-y-fases.md#13-adopción-del-flujo--17-de-octubre-de-2026)
+distingue ramas publicadas, pruebas actuales y aceptación pendiente. No cierra fases.
 
 Cada modificación se agrupa en un bloque auditable con identificador estable.
 Antes de editar: registrar defecto, evidencia, alcance y criterio de aceptación.
@@ -22,14 +23,24 @@ Tras cada merge, volver a medir la línea base y revisar módulos reales.
 | Fase | Evidencia necesaria | Estado |
 | --- | --- | --- |
 | 0 | Cierre técnico acotado según F0-17/18; deuda con destino explícito | Cerrada en ese alcance; validación manual/operativa pendiente en [acta](cierre-fase-0.md) |
-| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | Dos entregas verificadas; distribución/instalación pendientes en [bitácora](fase-1.md) |
+| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | F1-01/02 verificada; F1-03/04 guardada con fallo actual de paridad dev; distribución/instalación pendientes en [bitácora](fase-1.md) |
 | 2 | Contratos y API específica, validación en ejecución y consumidores adaptados | Pendiente |
 | 3 | Paridad por vista, pruebas de permisos/errores y rollback | Pendiente |
 | 4 | Retirada selectiva del legado y ensayo de instalación/actualización | Pendiente |
 
 ## Estado vigente · 17 de octubre de 2026
 
-**F1-03/04 verificado.** Vite multipágina y resolver común para navegación, IPC y
+**Control Git y nueva comprobación.** El trabajo F1-03/04 quedó guardado en
+`e19042d`, rama `codex/fase-1-vite`. Regresión 252/252, tipos, compilación y smoke
+de fuentes/compilado correctos; Vite falla dos veces al comparar la geometría del
+menú. Login sí coincide. No promover esa entrega hasta resolver la diferencia.
+La base `2e913c3` tiene rama independiente y [PR #1 del fork](https://github.com/cazarau/Huapango-PC-Electron-refactorizacion/pull/1)
+en borrador: 245/245, tipos, smoke de fuentes/compilado e integración MySQL con
+Electron correctos. El usuario prefiere ensayarla antes de fusionar; se abrió un
+laboratorio manual con perfil y servidor propios. `main` sigue en `7de3b2e`.
+Detalle y siguiente acción en el registro operativo y al final de la bitácora.
+
+**Evidencia previa de F1-03/04.** Vite multipágina y resolver común para navegación, IPC y
 borradores; servidor limitado a frontend/loopback. Regresión 252/252 y smoke en
 fuentes, Vite y compilado correctos. Comparación de estilos/geometría de login y
 menú correcta tras preservar el orden CSS. Próximo trabajo: F1-05/06, distribución
@@ -75,8 +86,9 @@ ensayar instalación/actualización del candidato.
 
 **La preparación técnica permite avanzar; la deuda permanece abierta.**
 Historial/reporte, recuperación durable, controles de despliegue y capacidad
-conservan sus hallazgos con destino en F0-17. F1-03/04 está verificado; la siguiente
-acción es adaptar distribución y completar la aceptación de Fase 1.
+conservan sus hallazgos con destino en F0-17. La siguiente acción es registrar el
+ensayo de la base y resolver el fallo actual de paridad dev de F1-03/04;
+distribución y aceptación completa de Fase 1 mantienen sus pendientes.
 
 Correcciones recientes: [F0-14, presentación](bloque-paridad-visual-2026-10-16.md)
 y [F0-15, cuentas y salida](bloque-cuentas-salida-2026-10-17.md). La conformidad

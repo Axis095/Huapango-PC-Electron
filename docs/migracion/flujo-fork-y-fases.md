@@ -1,8 +1,9 @@
 # Organización del fork y promoción de las fases de migración
 
 Fecha de preparación: 17 de octubre de 2026.
-Estado: procedimiento propuesto; crear este documento no ejecuta sus comandos,
-no cambia ramas ni publica commits o PR. Las validaciones se registran al realizarlas.
+Estado: procedimiento documentado; adopción en curso según el [registro operativo](#13-adopción-del-flujo--17-de-octubre-de-2026).
+La preparación original no ejecutó comandos; las acciones posteriores se registran
+por separado, sin convertir publicación ni pruebas parciales en aceptación.
 
 ## 1. Objetivo y referencias
 
@@ -625,3 +626,83 @@ Mensaje sugerido para continuar en otro chat:
 Registro de preparación de esta guía: cambio exclusivamente documental. No se
 crearon ramas/worktrees, no se hicieron commits/push/PR y no se ejecutaron pruebas
 de aplicación. La comprobación de este documento es de contenido, enlaces y diff.
+
+## 13. Adopción del flujo — 17 de octubre de 2026
+
+Necesidad y evidencia inicial: 14 archivos modificados y ocho nuevos en
+`RefactorizacionTest-RC`, HEAD `2e913c3`, mezclaban F1-03/04 con la referencia
+histórica. Alcance autorizado: conservar ese trabajo en una rama de fase,
+preparar por separado la base del fork y registrar validaciones reales.
+Aceptación del bloque de control: candidatos identificados, ramas separadas,
+diff revisado, publicaciones solo al fork y promoción pendiente de aceptación.
+El usuario confirma que las operaciones Git quedan concentradas en este chat.
+
+### Ramas y propuesta de base
+
+- `fetch origin` y `fetch upstream` correctos: ambos main siguen en `7de3b2e`;
+  la rama histórica del fork sigue en `2e913c3`. Push de upstream: `DISABLED`.
+- Rama de fase: `codex/fase-1-vite`; commit de código/documentación original
+  `e19042dcb9e9f090ef8366a6482a10927dc38378`, 22 archivos; árbol limpio después
+  de guardarlo. Las actualizaciones de control posteriores solo modifican Markdown.
+- Base: `codex/base-funcional-2e913c3`, exactamente
+  `2e913c347d00ddb706124cfc1854600681df9561`, en worktree administrado
+  `base-funcional-2e913c3/Huapango-PC-Electron`, independiente y limpio.
+- La rama de base está publicada y tiene [PR #1](https://github.com/cazarau/Huapango-PC-Electron-refactorizacion/pull/1)
+  **en borrador**, destino main del fork. Incluye seis commits y 133 archivos.
+  GitHub ofreció inicialmente el original como destino; se seleccionó y comprobó
+  el fork antes de crear el PR. No se modificó el PR existente del original.
+- El usuario decide ensayar la base antes de fusionarla. No se cambió el
+  seguimiento de main, no se fusionó el PR ni se creó etiqueta funcional.
+  El PR de Vite espera a la promoción de la base para mostrar solo su delta.
+
+### Validación ejecutada sobre ambos candidatos
+
+Entorno: Windows, Node 26.4.0, npm 12.0.2, Electron 44.4.0, TypeScript 7.0.2,
+Vite 8.3.4 y MySQL 8.0 del equipo únicamente como ejecutable de laboratorios.
+Evidencia local en `.tmp/control-git-2026-10-17-e19042d/` del proyecto de integración.
+
+| Candidato | Comprobación actual | Resultado |
+| --- | --- | --- |
+| Base `2e913c3` | `npm.cmd ci --prefer-offline --no-audit --no-fund`, `npm.cmd ls --depth=0`, `npm.cmd run typecheck` | Correctos; 356 paquetes. Aviso de script bloqueado de electron-winstaller; no se ensaya el instalador normal. |
+| Base `2e913c3` | `npm.cmd test` | 245/245; cero fallos, 999.3239 ms; `base-regresion.log`. |
+| Base `2e913c3` | Smoke de fuentes, compile:main y smoke del compilado | SMOKE_OK y CUENTAS_SALIDA_OK; `base-smoke.log` y `base-smoke-compilado.log`. |
+| Base `2e913c3` | Electron con `scripts/integracion-fase0.cjs` | MYSQL_INTEGRACION_OK: ambos esquemas, fotos, PDF, concurrencia y rollback; `base-integracion-electron.log`. |
+| Vite `e19042d` | Dependencias, tipos, regresión y compile | Correctos; 252/252, cero fallos, 984.3368 ms y diez vistas; `regresion-fuera-sandbox.log` y `compilacion.log`. |
+| Vite `e19042d` | Smoke de fuentes y compilado con referencia de fuentes | Correctos; compilado con PARIDAD_OK login/menu; `smoke-fuentes.log` y `smoke-compilado.log`. |
+| Vite `e19042d` | Smoke Vite con referencia, dos intentos | Fallo de paridad del menú: body 769 px frente a 1265 px; login coincide. VITE_DETENIDO, código 1; `smoke-vite.log` y `smoke-vite-repeticion.log`. |
+
+El primer intento de regresión de Vite falló por acceso a perfiles temporales del
+sandbox; fuera de él pasó sin cambios. El fallo de paridad Vite es posterior e
+independiente: permanece abierto. La compilación y los otros smoke no lo suplen.
+No se actualizaron dependencias ni se modificaron fuentes de producción durante
+esta adopción. No se habilitaron funciones aplazadas ni se cerraron fases.
+
+Perfiles de la base: `.tmp/fase0-smoke-qjiU0e` (fuentes),
+`.tmp/fase0-smoke-QTqxCM` (compilado) y `.tmp/mysql-fase0-P7ozXU` (integración),
+relativos a su worktree. Los servidores automáticos terminaron al finalizar.
+Los duplicados SQL registrados corresponden a rechazos esperados con datos ficticios.
+
+### Ensayo manual preparado, pendiente de resultado
+
+Se abrió Main real de `2e913c3` desde el worktree limpio, mediante un lanzador
+local ignorado que fija userData y sessionData antes de importar la aplicación.
+Ventana de acceso nativa visible y URL de la base confirmadas. El título identifica
+`ENSAYO BASE 2e913c3`; no se modificó el código del candidato.
+
+Entorno separado: `.tmp/control-git-2026-10-17-e19042d/manual-base-Gi0jUG/`,
+con directorio MySQL nuevo, loopback en puerto `57264`, perfil propio y dos PNG
+ficticios en `fotos-ficticias/`. La cuenta SQL solo tiene SELECT/INSERT/UPDATE/DELETE
+en la base de laboratorio. Se verificó que puede consultar las tres cuentas
+bcrypt de la [guía de instalación](../guia-primera-instalacion.md#6-insertar-admin-operador-y-juez-con-bcrypt).
+Las credenciales SQL aleatorias permanecen en la configuración local ignorada;
+no se copian a documentación, commits ni logs. No se leyó configuración del evento.
+
+El supervisor mantiene el MySQL mientras se prueba la aplicación. Al cerrar
+Electron apaga únicamente ese servidor y conserva los archivos del ensayo.
+Preparación verificada; recorrido manual y aceptación del usuario **pendientes**.
+Los resultados se añadirán después de la prueba, sin marcar casillas por inferencia.
+
+Siguiente acción: registrar el recorrido de la base antes de promover el PR;
+diagnosticar la diferencia de tamaño del menú Vite (tamaño nativo/viewport,
+escala y zoom) y revalidar lo afectado. Distribución e instalación siguen en
+F1-05/06; el fallo de Vite no pertenece al diff del PR de base.

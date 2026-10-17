@@ -2,7 +2,8 @@
 
 Fecha de inicio: 17 de octubre de 2026. Referencia recuperable: `98331dc`.
 Entrada técnica: pase F0-18 del [control de cierre](cierre-fase-0.md).
-Estado: **primera y segunda entregas verificadas; distribución pendiente**, sin retirada de vistas
+Estado: **primera entrega verificada; segunda guardada con paridad dev pendiente;
+distribución pendiente**, sin retirada de vistas
 ni contratos heredados.
 
 Hito solicitado por el usuario: commit de cierre técnico acotado de Fase 0 y
@@ -261,3 +262,43 @@ manual del compilado y el recorrido completo conservan sus pendientes.
 Estado: corrección implementada, verificada y apertura dev confirmada por el
 usuario. F1-05/06 sigue siendo el siguiente bloque: distribución desde build/app,
 inspección del paquete y ensayo de instalación/actualización. Fase 1 abierta.
+
+## Control Git y comprobación del candidato — 17 de octubre de 2026
+
+Necesidad: separar el trabajo sin commit de F1-03/04 de la base publicada, antes
+de promover cambios al main del fork. El usuario concentra aquí las operaciones
+Git y solicita continuar el flujo. Se conservan los 22 archivos pendientes en
+`e19042dcb9e9f090ef8366a6482a10927dc38378`, rama `codex/fase-1-vite`, sin cambios
+adicionales de producción. El [registro operativo](flujo-fork-y-fases.md#13-adopción-del-flujo--17-de-octubre-de-2026)
+contiene las ramas, el PR de base y la evidencia de ambos candidatos.
+
+Comprobaciones nuevas sobre `e19042d`: dependencias/tipos correctos, regresión
+252/252 (984.3368 ms), compilación de las diez vistas y smoke de fuentes correctos.
+El smoke compilado coincide con la referencia de fuentes en login y menú.
+El primer pase de regresión falló al acceder a temporales del sandbox; la
+repetición fuera de él pasó sin modificar código.
+
+**Fallo actual reproducido dos veces:** el smoke Vite compara correctamente
+login, pero rechaza la geometría del menú. El ancho medido de body es 769 frente
+a 1265 en fuentes; los estilos y familias reportados coinciden. La causa de esa
+diferencia de tamaño no está confirmada: no se atribuye a CSS ni se relaja la
+comparación para obtener éxito. Ambos intentos terminaron Vite con código 1.
+El primer perfil fallido es `.tmp/fase0-smoke-8HZvTH`; logs del pase y repetición
+en `.tmp/control-git-2026-10-17-e19042d/`.
+
+La evidencia anterior de paridad correcta sigue siendo histórica. El resultado
+de esta sesión impide considerar aceptado el candidato actual en los tres modos.
+Fuentes: `.tmp/fase0-smoke-77wu4c`; compilado: `.tmp/fase0-smoke-dmBmPx`.
+No se repitió integración sobre Vite: no cambia SQL respecto de la base, cuya
+integración con Electron/MySQL sí se ejecutó nuevamente en su worktree aislado.
+
+El [PR #1 de base](https://github.com/cazarau/Huapango-PC-Electron-refactorizacion/pull/1)
+conserva exactamente `2e913c3` y no incluye Vite ni este registro. El usuario
+prefiere ensayarlo antes de fusionar. Hay un acceso visible abierto con perfil,
+MySQL y fotos ficticias separados; preparar el entorno no constituye completar
+el recorrido ni obtener aceptación. `main` permanece en `7de3b2e`.
+
+Siguiente acción: recoger el resultado del ensayo de la base; diagnosticar tamaño
+nativo, viewport, escala y zoom del smoke Vite antes de modificar producción.
+F1-05/06 y el cierre de Fase 1 siguen pendientes. Esta actualización posterior
+solo cambia documentación y no presenta una nueva ejecución de pruebas de código.
