@@ -1,15 +1,13 @@
-const path = require("node:path");
-const { fileURLToPath } = require("node:url");
+const { obtenerRutasAplicacion } = require('../Servicios/rutasVistas');
 const { prepararBorrador } = require('./borradorDatos');
 
 // Borradores en memoria por ventana. No se escriben fotos ni datos personales a disco.
 const borradores = new WeakMap();
-const vista = path.resolve(__dirname, "../Vistas/Registros.html");
 
 function permitido(event) {
     try {
         return event.senderFrame === event.sender.mainFrame &&
-            path.resolve(fileURLToPath(event.senderFrame.url)) === vista;
+            obtenerRutasAplicacion().vistaDeURL(event.senderFrame.url) === 'Registros.html';
     } catch { return false; }
 }
 

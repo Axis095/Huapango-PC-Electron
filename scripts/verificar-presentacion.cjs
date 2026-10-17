@@ -20,6 +20,24 @@ async function verificarPresentacion(ventana, vista, destino) {
     assert.deepEqual(fuentes.cargadas, [true, true, true], 'Las familias deben existir y cargar, no usar fallback');
     assert.match(fuentes.titulo, /Space Grotesk/);
     assert.match(fuentes.cuerpo, /DM Sans/);
+    const disposicion = await ventana.webContents.executeJavaScript(`(() => {
+        const selectores = ['body', '.menu', 'h1', '.welcome-section', '.login-container', 'video'];
+        return Object.fromEntries(selectores.map(selector => {
+            const nodo = document.querySelector(selector);
+            if (!nodo) return [selector, null];
+            const css = getComputedStyle(nodo), rect = nodo.getBoundingClientRect();
+            return [selector, { fondo: css.backgroundColor, imagenFondo: css.backgroundImage,
+                posicion: css.position, fuente: css.fontFamily, color: css.color,
+                caja: [rect.x, rect.y, rect.width, rect.height].map(n => Math.round(n * 100) / 100) }];
+        }));
+    })()`);
+    const presentacion = { fuentes, disposicion };
+    fs.writeFileSync(path.join(destino, vista + '-presentacion.json'), JSON.stringify(presentacion, null, 2));
+    if (process.env.HUAPANGO_SMOKE_REFERENCIA) {
+        const referencia = JSON.parse(fs.readFileSync(path.join(process.env.HUAPANGO_SMOKE_REFERENCIA, vista + '-presentacion.json'), 'utf8'));
+        assert.deepEqual(presentacion, referencia, 'La composición visual debe conservar la referencia de fuentes');
+        console.log('PARIDAD_OK:', vista);
+    }
     fs.writeFileSync(path.join(destino, vista + '.png'), (await ventana.webContents.capturePage()).toPNG());
     if (vista !== 'menu') return;
     const video = await ventana.webContents.executeJavaScript(`(async () => {

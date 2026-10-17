@@ -9,20 +9,41 @@ El progreso de la refactorización y sus verificaciones se registran en
 
 ## Compilación gradual · Fase 1
 
-La primera entrega permite comprobar un árbol compilado conservando las vistas
-actuales. Desde la raíz en PowerShell, después de instalar dependencias:
+Desde la raíz en PowerShell, después de instalar dependencias:
 
 ```powershell
-npm.cmd run compile:main
+npm.cmd run compile
 npm.cmd run typecheck
 npm.cmd run start:compiled
 ```
 
-La salida está en `build/app`; `npm.cmd start` continúa abriendo las fuentes.
-Ambas entradas usan la configuración local de la aplicación. El smoke usa un
-perfil temporal y SQL simulado; los detalles y límites están en la
-[bitácora de Fase 1](docs/migracion/fase-1.md). Vite está instalado; la integración
-de su servidor y la salida multipágina corresponde a la siguiente entrega.
+`compile` genera Main y las diez vistas con Vite en `build/app`; `compile:main`
+solo prepara Main con recursos sin procesar. `npm.cmd start` abre las fuentes.
+`npm.cmd run dev` inicia Vite en 127.0.0.1:5173 y Electron; termina ambos al salir.
+Usar la ventana de Electron que abre el comando: aparecerá login o configuración
+según el perfil. La dirección HTTP es interna; abrir `/` devuelve 404 por diseño.
+Un navegador normal tampoco tiene la API del preload para operar el sistema.
+La consola confirma `VITE_DETENIDO` al terminar el servidor.
+Reiniciar dev tras cambiar Main; los recursos de interfaz tienen recarga de Vite.
+Estas entradas usan la configuración local de la aplicación.
+
+`npm.cmd run test:smoke` prueba fuentes y `npm.cmd run test:smoke:dev` prueba Vite,
+con perfil temporal y SQL simulado. Evidencia, comparación del compilado y
+limitaciones en la [bitácora de Fase 1](docs/migracion/fase-1.md).
+La distribución aún usa la entrada anterior; su adaptación es F1-05/06.
+
+Para comparar automáticamente login/menú contra capturas de fuentes, indicar el
+perfil de un smoke de fuentes (ruta `CAPTURAS_VISUALES`) que contenga `login-presentacion.json` y
+`menu-presentacion.json`. Por ejemplo, en PowerShell:
+
+```powershell
+$env:HUAPANGO_SMOKE_REFERENCIA = 'RUTA_ABSOLUTA_AL_PERFIL_DE_REFERENCIA'
+try { npm.cmd run test:smoke:dev }
+finally { Remove-Item Env:HUAPANGO_SMOKE_REFERENCIA }
+```
+
+Debe imprimir `PARIDAD_OK: login` y `PARIDAD_OK: menu`. Sin referencia, el smoke
+comprueba fuentes/video y genera capturas, pero no acredita esa comparación.
 
 ## Trabajo con Codex
 

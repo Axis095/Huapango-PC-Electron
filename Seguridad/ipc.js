@@ -1,5 +1,5 @@
-const path = require("node:path");
-const { fileURLToPath } = require("node:url");
+const { vistas } = require('./vistas');
+const { crearRutasVistas } = require('../Servicios/rutasVistas');
 const { validarSolicitud } = require("./datos");
 
 const todos = ["admin", "user", "juez"];
@@ -43,21 +43,10 @@ const politicas = Object.freeze({
         [`${accion}-borrador-modificacion`, { roles: operadores, vistas: ["ModificarParejas.html"] }]
     ]))
 });
-const vistas = Object.freeze({
-    "login.html": null, "configuracionBD.html": null,
-    "MenuPrincipal.html": todos, "Registros.html": operadores,
-    "ModificarParejas.html": operadores, "BusquedaParejas.html": operadores,
-    "RegistroCategoriasEstilos.html": operadores, "Parejas.html": operadores,
-    "Resultados.html": evaluadores, "Administrador.html": ["admin"]
-});
-
 function crearSeguridadIPC({ raiz, obtenerSesion, ventanaDe, revalidarSesion, registrarActividad = () => {},
-    recuperarSesion = async () => false, sesionPendiente = () => false }) {
-    const rutas = new Map(Object.keys(vistas).map(nombre => [path.resolve(raiz, "Vistas", nombre), nombre]));
-    function vistaDeURL(url) {
-        try { return rutas.get(path.resolve(fileURLToPath(url))) || null; }
-        catch { return null; }
-    }
+    recuperarSesion = async () => false, sesionPendiente = () => false,
+    rutas = crearRutasVistas({ raiz }) }) {
+    const { vistaDeURL } = rutas;
     function vistaDelEmisor(event) {
         try {
             if (!event?.senderFrame || event.senderFrame !== event.sender.mainFrame) return null;

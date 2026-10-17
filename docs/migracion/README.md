@@ -2,6 +2,11 @@
 
 ## Método de trabajo
 
+Para separar la versión funcional del fork y promover entregas mediante PR,
+consultar la [guía de organización del fork y fases](flujo-fork-y-fases.md).
+Incluye comandos PowerShell, aislamiento de trabajo/datos, aceptación y recuperación.
+Es un procedimiento propuesto; su publicación no ejecuta cambios en Git ni cierra fases.
+
 Cada modificación se agrupa en un bloque auditable con identificador estable.
 Antes de editar: registrar defecto, evidencia, alcance y criterio de aceptación.
 Después: ejecutar regresiones pertinentes, revisar el diff y registrar resultado,
@@ -17,12 +22,27 @@ Tras cada merge, volver a medir la línea base y revisar módulos reales.
 | Fase | Evidencia necesaria | Estado |
 | --- | --- | --- |
 | 0 | Cierre técnico acotado según F0-17/18; deuda con destino explícito | Cerrada en ese alcance; validación manual/operativa pendiente en [acta](cierre-fase-0.md) |
-| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | En curso; primera entrega en [bitácora](fase-1.md) |
+| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | Dos entregas verificadas; distribución/instalación pendientes en [bitácora](fase-1.md) |
 | 2 | Contratos y API específica, validación en ejecución y consumidores adaptados | Pendiente |
 | 3 | Paridad por vista, pruebas de permisos/errores y rollback | Pendiente |
 | 4 | Retirada selectiva del legado y ensayo de instalación/actualización | Pendiente |
 
 ## Estado vigente · 17 de octubre de 2026
+
+**F1-03/04 verificado.** Vite multipágina y resolver común para navegación, IPC y
+borradores; servidor limitado a frontend/loopback. Regresión 252/252 y smoke en
+fuentes, Vite y compilado correctos. Comparación de estilos/geometría de login y
+menú correcta tras preservar el orden CSS. Próximo trabajo: F1-05/06, distribución
+desde la salida compilada e instalación/actualización. Detalle en la bitácora.
+
+Contraste posterior de revisión externa: `/` restringida es comportamiento
+esperado, aclarado en consola/README. Regresión 252/252 y smoke Vite con referencia
+explícita correctos, incluido PARIDAD_OK y cierre del servidor. El reporte posterior
+de ventana ausente permitió reproducir y corregir windowsHide del lanzador: dev
+interactivo ya muestra la ventana, confirmado por el usuario. Regresión 252/252
+y smoke Vite con paridad y cierre correctos tras la corrección. La apertura manual
+del compilado, el recorrido de negocio y la instalación mantienen sus pendientes;
+evidencia en [la bitácora](fase-1.md).
 
 **Hito de cierre técnico de Fase 0 y apertura de Fase 1.** El usuario solicita
 guardar esta transición en un commit. El [acta](cierre-fase-0.md) registra el
@@ -33,9 +53,9 @@ La primera entrega de Fase 1 está verificada; la fase completa sigue en curso.
 smoke de fuentes y laboratorio MySQL en Node/Electron. El modo Electron comprueba
 dos fotos reales; ambos generan PDF y prueban ingreso de cuentas nuevas. Se
 habilita tooling con deuda explícita y validación manual/operativa pendiente.
-Primera entrega F1-01/02: TypeScript/Vite fijados, compilación en build/app,
-typecheck y smoke del árbol compilado correctos. La segunda entrega conectará
-Vite con las rutas/seguridad; instalación queda para el paquete compilado final.
+La primera entrega F1-01/02 dejó TypeScript/Vite fijados, compilación en build/app,
+typecheck y smoke correctos. F1-03/04 añadió posteriormente Vite y rutas seguras;
+instalación queda para el paquete compilado final.
 
 **F0-17: ruta mínima.** Por solicitud del usuario, la transición se concentra en
 tres pasos: acotar pendientes, un pase de aceptación crítica y registro de
@@ -55,8 +75,8 @@ ensayar instalación/actualización del candidato.
 
 **La preparación técnica permite avanzar; la deuda permanece abierta.**
 Historial/reporte, recuperación durable, controles de despliegue y capacidad
-conservan sus hallazgos con destino en F0-17. La siguiente acción es F1-03/04:
-integrar Vite multipágina y la identificación de rutas/origen en conjunto.
+conservan sus hallazgos con destino en F0-17. F1-03/04 está verificado; la siguiente
+acción es adaptar distribución y completar la aceptación de Fase 1.
 
 Correcciones recientes: [F0-14, presentación](bloque-paridad-visual-2026-10-16.md)
 y [F0-15, cuentas y salida](bloque-cuentas-salida-2026-10-17.md). La conformidad

@@ -105,6 +105,9 @@ test("main conecta el canal con el controlador de la búsqueda", async () => {
     // Este test solo comprueba el cableado; ipcSeguridad prueba la política real.
     dependencies["./Seguridad/ipc"] = { crearSeguridadIPC: () => ({ proteger: (_canal, fn) => fn }) };
     dependencies["./Servicios/operaciones"] = { ejecutarOperacion: fn => fn() };
+    dependencies['./Servicios/rutasVistas'] = {
+        obtenerRutasAplicacion: () => require('../Servicios/rutasVistas').crearRutasVistas({ raiz: root })
+    };
     loadCommonJS("main.js", dependencies);
     assert.equal((await handlers.get("buscar-pareja-para-evaluacion")(null, 42)).code, "NOT_FOUND");
 });

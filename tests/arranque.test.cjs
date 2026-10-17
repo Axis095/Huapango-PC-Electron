@@ -208,6 +208,9 @@ function mainHarness(inicializarBaseDatos) {
     }
     deps["./Controladores/authController"] = { handleLogin: () => {}, autenticacionEnCurso: () => false };
     deps["./Seguridad/ipc"] = require("../Seguridad/ipc");
+    deps['./Servicios/rutasVistas'] = {
+        obtenerRutasAplicacion: () => require('../Servicios/rutasVistas').crearRutasVistas({ raiz: root })
+    };
     deps["./db"] = { inicializarBaseDatos };
     deps["./Modelos/sesionModel"] = load("Modelos/sesionModel.js", { "../Seguridad/identidad": require("../Seguridad/identidad") });
     deps["./Servicios/operaciones"] = require("../Servicios/operaciones");

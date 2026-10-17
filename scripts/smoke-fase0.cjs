@@ -4,7 +4,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const Module = require('node:module');
-const { fileURLToPath } = require('node:url');
 const electron = require('electron');
 const { app, BrowserWindow } = electron;
 const { verificarPresentacion } = require('./verificar-presentacion.cjs');
@@ -13,11 +12,14 @@ const root = process.env.HUAPANGO_SMOKE_APP_ROOT ? path.resolve(process.env.HUAP
 const base = path.join(proyecto, '.tmp');
 fs.mkdirSync(base, { recursive: true });
 const profile = fs.mkdtempSync(path.join(base, 'fase0-smoke-'));
+const origenDev = process.env.HUAPANGO_DEV_ORIGIN || '';
+const nombreVista = valor => path.basename(decodeURIComponent(new URL(valor).pathname));
 app.setPath('userData', profile);
 app.disableHardwareAcceleration();
 // El ensayo debe pasar incluso sin red; ningún recurso visual depende de ella.
 app.whenReady().then(() => electron.session.defaultSession.webRequest.onBeforeRequest(
-    { urls: ['http://*/*', 'https://*/*'] }, (_details, callback) => callback({ cancel: true })));
+    { urls: ['http://*/*', 'https://*/*'] }, (details, callback) =>
+        callback({ cancel: !origenDev || new URL(details.url).origin !== origenDev })));
 
 const loaded = new Map(), waiters = new Map(), failures = [];
 const ventanasEnsayo = [];
@@ -30,7 +32,7 @@ app.on('browser-window-created', (_event, window) => {
     window.webContents.on('preload-error', () => failures.push('preload-error'));
     window.webContents.on('render-process-gone', (_e, details) => failures.push(`renderer: ${details.reason}`));
     window.webContents.on('did-finish-load', () => {
-        const nombre = path.basename(fileURLToPath(window.webContents.getURL()));
+        const nombre = nombreVista(window.webContents.getURL());
         loaded.set(nombre, window); waiters.get(nombre)?.(window);
     });
 });
@@ -69,10 +71,11 @@ require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: {
     },
     withTransaction: async () => { throw Error('La prueba no autoriza transacciones SQL'); }
 } };
-const timeout = setTimeout(() => { console.error('SMOKE_FAIL: tiempo agotado'); app.exit(1); }, 25000);
+const timeout = setTimeout(() => { console.error('SMOKE_FAIL: tiempo agotado'); app.exit(1); }, 40000);
 async function ejecutar() {
     const manifiesto = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     require(path.join(root, manifiesto.main));
+    const rutas = require(path.join(root, 'Servicios/rutasVistas.js')).obtenerRutasAplicacion();
     const login = await esperar('login.html');
     await verificarPresentacion(login, 'login', profile);
     const estado = await login.webContents.executeJavaScript(`(async () => ({
@@ -92,18 +95,31 @@ async function ejecutar() {
     await verificarPresentacion(principal, 'menu', profile);
     const rechazo = await principal.webContents.executeJavaScript('window.api.registrarEvaluacion({})');
     assert.equal(rechazo.code, 'FORBIDDEN');
-    for (const vista of ['Registros.html', 'ModificarParejas.html', 'BusquedaParejas.html']) {
+    for (const vista of ['Registros.html', 'ModificarParejas.html', 'BusquedaParejas.html', 'RegistroCategoriasEstilos.html', 'Parejas.html']) {
         const fin = new Promise(resolve => principal.webContents.once('did-finish-load', resolve));
         await principal.webContents.executeJavaScript(`window.location.href = ${JSON.stringify(vista)}`);
         await fin;
-        assert.equal(path.basename(fileURLToPath(principal.webContents.getURL())), vista);
+        assert.equal(nombreVista(principal.webContents.getURL()), vista);
         const estado = await principal.webContents.executeJavaScript(`(async () => ({
             role: await window.api.getUserRole(),
             borrador: ${vista === 'Registros.html' ? 'await window.api.obtenerBorradorRegistro()' : vista === 'ModificarParejas.html' ? 'await window.api.obtenerBorradorModificacion()' : 'null'}
         }))()`);
         assert.equal(estado.role, 'user');
-        if (estado.borrador) assert.equal(estado.borrador.success, true);
+        if (estado.borrador) {
+            assert.equal(estado.borrador.success, true);
+            const metodo = vista === 'Registros.html' ? 'guardarBorradorRegistro' : 'guardarBorradorModificacion';
+            assert.equal((await principal.webContents.executeJavaScript(`window.api.${metodo}({ version: 1, campos: { nombreMasculino: 'Borrador ficticio' }, fotos: {} })`)).success, true);
+        }
     }
+    await rutas.cargarVista(principal, 'Registros.html');
+    assert.equal((await principal.webContents.executeJavaScript('window.api.obtenerBorradorRegistro()')).data.campos.nombreMasculino, 'Borrador ficticio');
+    assert.equal((await principal.webContents.executeJavaScript('window.api.obtenerBorradorModificacion()')).code, 'FORBIDDEN');
+    const auxiliarCargada = new Promise(resolve => app.once('browser-window-created', (_event, w) => w.webContents.once('did-finish-load', () => resolve(w))));
+    await principal.webContents.executeJavaScript(`window.api.send('open-section', 'BusquedaParejas.html')`);
+    const auxiliar = await auxiliarCargada;
+    assert.equal(nombreVista(auxiliar.webContents.getURL()), 'BusquedaParejas.html');
+    assert.equal(await auxiliar.webContents.executeJavaScript('window.api.getUserRole()'), 'user');
+    auxiliar.close();
     loaded.delete('login.html'); waiters.delete('login.html');
     require(path.join(root, 'Modelos/sesionModel.js')).cerrarSesion();
     const expirada = await principal.webContents.executeJavaScript('window.api.getUserRole()');
@@ -120,7 +136,15 @@ async function ejecutar() {
     const sesiones = require(path.join(root, 'Modelos/sesionModel.js'));
     cuentaSmoke.rol = 'admin';
     sesiones.guardarSesion('7', 'admin', { credencial: cuentaSmoke.cContrasena });
-    await principal.loadFile(path.join(root, 'Vistas/Administrador.html'));
+    const configuracionCargada = new Promise(resolve => app.once('browser-window-created', (_event, w) => w.webContents.once('did-finish-load', () => resolve(w))));
+    await principal.webContents.executeJavaScript('window.api.abrirVentanaEmergente()');
+    const configuracion = await configuracionCargada;
+    assert.equal(nombreVista(configuracion.webContents.getURL()), 'configuracionBD.html');
+    const configPublica = await configuracion.webContents.executeJavaScript('window.api.obtenerConfiguracion()');
+    assert.equal(configPublica.success, true);
+    assert.equal(Object.hasOwn(configPublica.data, 'password'), false);
+    configuracion.close();
+    await rutas.cargarVista(principal, 'Administrador.html');
     async function alta(id, nombre, rol) {
         return principal.webContents.executeJavaScript(`(async () => {
             document.getElementById('nuevoID').value = ${JSON.stringify(id)};
@@ -146,7 +170,7 @@ async function ejecutar() {
     assert.match((await alta('SMOKE-nuevo', 'otro_nombre', 'juez')).mensaje, /Usuario creado con éxito/);
     console.log('CUENTAS_OK: tres roles, duplicado y reintento');
     cuentaSmoke.rol = 'juez'; sesiones.guardarSesion('7', 'juez', { credencial: cuentaSmoke.cContrasena });
-    await principal.loadFile(path.join(root, 'Vistas/Resultados.html'));
+    await rutas.cargarVista(principal, 'Resultados.html');
     console.log('SALIDA_ENSAYO: Resultados cargado');
     await principal.webContents.executeJavaScript(`document.getElementById('observaciones').value = 'Sin guardar'; document.getElementById('btnCerrarSesion').click();`);
     assert.equal(await principal.webContents.executeJavaScript(`document.querySelector('dialog').open`), true);
@@ -168,6 +192,7 @@ async function ejecutar() {
     assert.equal(sesiones.obtenerSesion(), null);
     assert.equal(await nuevoLogin.webContents.executeJavaScript('window.api.getUserRole()'), 'guest');
     console.log('CUENTAS_SALIDA_OK: formulario tres roles, duplicado, corrección, cancelar y cerrar sesión de juez.');
+    console.log('RUTAS_OK: diez vistas, borradores por vista, sección auxiliar y configuración protegida.');
     assert.deepEqual(failures, []);
     console.log('CAPTURAS_VISUALES:', profile);
     console.log('SMOKE_OK: Electron real, preload, login, permisos, navegación/borradores y reingreso conservando ventana; SQL simulado; sin escrituras reales.');

@@ -3,11 +3,12 @@ const { app, BrowserWindow, ipcMain, Menu, dialog } = require("electron");
 const path = require("path");
 const { inicializarBaseDatos } = require("./db");
 const { obtenerSesion, cerrarSesion, revalidarSesion, registrarActividad } = require("./Modelos/sesionModel");
-const { fileURLToPath } = require("url");
+const { obtenerRutasAplicacion } = require('./Servicios/rutasVistas');
 const { crearSeguridadIPC } = require("./Seguridad/ipc");
 const { ejecutarOperacion, ejecutarCambioConfiguracion, ejecutarCierreSesion } = require("./Servicios/operaciones");
 let propietarioVentanas = null;
-const seguridad = crearSeguridadIPC({ raiz: __dirname, obtenerSesion, revalidarSesion, registrarActividad,
+const rutas = obtenerRutasAplicacion();
+const seguridad = crearSeguridadIPC({ raiz: __dirname, rutas, obtenerSesion, revalidarSesion, registrarActividad,
     recuperarSesion, sesionPendiente: () => !!propietarioVentanas,
     ventanaDe: sender => BrowserWindow.fromWebContents(sender) });
 function registrarEvento(canal, handler) {
@@ -169,7 +170,7 @@ function createLoginWindow(recuperacion = false) {
     global.loginWindow.on("closed", () => {
         if (!obtenerSesion() && propietarioVentanas) app.quit();
     });
-    return global.loginWindow.loadFile(path.join(__dirname, "Vistas", "login.html"),
+    return rutas.cargarVista(global.loginWindow, "login.html",
         recuperacion ? { query: { sesion: "expirada" } } : undefined);
 
 }
@@ -198,7 +199,7 @@ async function createMainWindow() {
     // Cerrar antes del primer await: las ventanas de otra identidad no pueden
     // emitir IPC mientras se carga el menú de la nueva sesión.
     for (const ventana of anteriores) ventana.close();
-    await global.mainWindow.loadFile(path.join(__dirname, "Vistas", "MenuPrincipal.html"));
+    await rutas.cargarVista(global.mainWindow, "MenuPrincipal.html");
     global.mainWindow.webContents.send("set-role", obtenerSesion()?.userRole || "guest");
     propietarioVentanas = actual;
 }
@@ -217,9 +218,7 @@ function openWindow(file) {
         },
     });
 
-    const filePath = path.join(__dirname, "Vistas", file);
-    console.log("Cargando archivo:", filePath);
-    win.loadFile(filePath).catch(err => console.error("Error cargando archivo:", err));
+    rutas.cargarVista(win, file).catch(err => console.error("Error cargando vista:", err.code || 'LOAD_FAILED'));
 }
 
 // Función para abrir nuevas ventanas genéricas
@@ -251,10 +250,9 @@ function openNewWindow(tipo, file) {
     });
 
 
-    const filePath = path.join(__dirname, "Vistas", file);
     // Agregar parámetro de query SOLO para `BusquedaParejas.html`
     if (file === "BusquedaParejas.html" || file === "ModificarParejas.html") {
-        ventanaEmergente.loadFile(filePath, { query: { emergente: "1" } })
+        rutas.cargarVista(ventanaEmergente, file, { query: { emergente: "1" } })
             .catch(err => {
                 console.error("Error al cargar el archivo:", err);
                 if (ventanaEmergente) {
@@ -263,7 +261,7 @@ function openNewWindow(tipo, file) {
                 }
             });
     } else {
-        ventanaEmergente.loadFile(filePath)
+        rutas.cargarVista(ventanaEmergente, file)
             .catch(err => {
                 console.error("Error al cargar el archivo:", err);
                 if (ventanaEmergente) {
@@ -411,17 +409,16 @@ const templateMenu = [
     },
 ];
 
-// Solo la ventana local de configuración puede consultar o modificar la conexión.
+// Solo la vista reconocida de configuración puede consultar o modificar la conexión.
 let configWindow = null;
 let continuandoConfiguracion = false;
 function desdeConfiguracion(handler) {
     return (event, ...args) => {
         try {
-            const ruta = fileURLToPath(event.sender.getURL());
-            if (path.resolve(ruta) === path.join(__dirname, "Vistas", "configuracionBD.html")) {
+            if (rutas.vistaDeURL(event.sender.getURL()) === 'configuracionBD.html') {
                 return handler(event, ...args);
             }
-        } catch { /* No es un archivo local de la aplicación. */ }
+        } catch { /* Emisor no reconocido. */ }
         return { success: false, error: "Abre la pantalla de configuración para realizar esta operación." };
     };
 }
@@ -440,7 +437,7 @@ function abrirConfiguracion(motivo = "") {
         }
     });
     configWindow.on("closed", () => { configWindow = null; });
-    configWindow.loadFile(path.join(__dirname, "Vistas", "configuracionBD.html"), { query: { motivo } })
+    rutas.cargarVista(configWindow, "configuracionBD.html", { query: { motivo } })
         .catch(() => {
             dialog.showErrorBox("Error de inicio", "No se pudo abrir la pantalla de configuración.");
             app.quit();

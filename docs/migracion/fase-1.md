@@ -2,7 +2,7 @@
 
 Fecha de inicio: 17 de octubre de 2026. Referencia recuperable: `98331dc`.
 Entrada técnica: pase F0-18 del [control de cierre](cierre-fase-0.md).
-Estado: **primera entrega verificada; segunda pendiente**, sin retirada de vistas
+Estado: **primera y segunda entregas verificadas; distribución pendiente**, sin retirada de vistas
 ni contratos heredados.
 
 Hito solicitado por el usuario: commit de cierre técnico acotado de Fase 0 y
@@ -94,6 +94,170 @@ ruta; no fue necesario ampliar orígenes ni permisos para obtener éxito. El smo
 comprueba la entrada compilada con SQL simulado; MySQL/fotos se prueban en el
 laboratorio separado. No es un ensayo instalado ni un E2E visual completo.
 
-Siguiente entrega **F1-03/04**: centralizar identificación de vistas para Main,
+Siguiente entrega al concluir F1-01/02: **F1-03/04**, centralizar identificación de vistas para Main,
 IPC y borradores; incorporar Vite multipágina con origen de desarrollo exacto,
 pruebas negativas y recursos locales en producción. No introducir React todavía.
+
+## Segunda entrega — F1-03/04
+
+Base: `2e913c3`. Necesidad: los guards actuales solo reconocen file:// y los
+borradores duplican esa lógica; Vite instalado aún no sirve ni compila las vistas.
+Alcance: catálogo único, resolución de vistas en archivo/HTTP, servidor limitado
+a frontend local y compilación multipágina. El paquete debe ignorar el origen de
+desarrollo. Preservar roles, contexto aislado, navegación, borradores y apariencia.
+Aceptación: regresión, pruebas negativas de rutas/orígenes/subframes, smoke real
+en fuentes, Vite y salida compilada; recursos offline. Sin SQL ni dependencias
+nuevas. Instalación/actualización permanecen para F1-05/06.
+
+### Cambios y decisiones
+
+- `Seguridad/vistas.js` concentra las diez vistas y sus roles. Main, IPC y
+  borradores usan `Servicios/rutasVistas.js`: archivo local en fuentes/salida
+  compilada, origen HTTP exacto en desarrollo. Rechaza otro puerto, hostname,
+  protocolo, subframe, ruta ajena o vista fuera del catálogo. El modo empaquetado
+  ignora HUAPANGO_DEV_ORIGIN incluso si tiene un valor inválido.
+- `npm.cmd run dev` inicia Vite en 127.0.0.1 y Electron; cierra el servidor cuando
+  termina Electron. Se observan recursos de frontend y se ignoran temporales,
+  datos, backend y distribución. Los cambios de Main requieren reiniciar dev.
+- Middleware limita host, métodos y recursos; HTTP no sirve Main, modelos,
+  configuración, SQL, @fs ni herramientas del editor. Vite no carga .env del
+  proyecto. CSP solo admite conexión del cliente Vite en desarrollo; las diez
+  salidas conservan connect-src 'none'.
+- `npm.cmd run compile` compila Main y las diez entradas HTML con Vite. Mantiene
+  build/app separado de dist. Las hojas CSS del legado y sus fuentes se conservan
+  como recursos estáticos para respetar su orden; JS/HTML y medios referenciados
+  se procesan con Vite. No cambian dependencias, SQL ni contratos IPC.
+- El smoke usa el mismo resolver y recorre las diez vistas, ventana auxiliar,
+  configuración autorizada, guardado/relectura de borradores y rechazo de un
+  borrador desde otra vista. Compara login/menú con una referencia de fuentes a
+  1280×960: estilos, familias y geometría; conserva capturas para inspección.
+
+### Defectos detectados y corrección
+
+1. El agrupado inicial de CSS de Vite reordenó la cascada y cambió colores,
+   posición y altura del menú, aunque el smoke funcional pasó. Las capturas lo
+   detectaron. Se preserva el orden original de las hojas, sin modificar su
+   contenido; se añadió comparación de composición, además de tipografías/video.
+2. El watcher inicial alcanzaba Cookies y temporales del perfil de Electron y
+   producía EBUSY. Se excluyen esas carpetas; el ensayo final ya no mostró avisos.
+3. Dos harnesses de pruebas de Main suponían el catálogo de dependencias previo.
+   Se conectaron al resolver real; no se omitieron casos ni se relajaron guards.
+
+### Comprobaciones ejecutadas
+
+| Comprobación | Resultado y evidencia |
+| --- | --- |
+| Regresión completa | **252/252**, cero fallos, 1001.7508 ms; siete casos nuevos de rutas, origen, permisos y recursos. |
+| compile y typecheck | Correctos; diez entradas HTML producidas. |
+| Smoke de fuentes | **SMOKE_OK / RUTAS_OK**, `.tmp/fase0-smoke-9Dp4Uk`, referencia visual del bloque. |
+| Smoke Vite | **VITE_FRONTERA_OK / PARIDAD_OK login/menu / RUTAS_OK / SMOKE_OK**, `.tmp/fase0-smoke-ynVvpC`. |
+| Terminación de desarrollo | Repetición final con manejo de salida ajustado: código 0 y cierre de Vite/Electron; `.tmp/fase0-smoke-UVmm2l`. |
+| Smoke compilado offline | **PARIDAD_OK login/menu / RUTAS_OK / SMOKE_OK**, `.tmp/fase0-smoke-lJyA64`. |
+| Recursos y CSP | Las diez vistas compiladas mantienen orden de CSS y connect-src 'none'. |
+| Comparación visual | Capturas de menú fuente/compilado inspeccionadas; estilos y geometría coinciden. Los PNG no tienen hashes idénticos; no se declara igualdad píxel a píxel. |
+| Integración MySQL | No repetida: sin cambios SQL/transaccionales. Sigue la evidencia anterior de Node/Electron; estos smoke usan SQL simulado. |
+
+El rechazo ER_DUP_ENTRY del smoke es el caso esperado de cuenta duplicada. Las
+capturas cubren login/menú/video; el recorrido de diez vistas no certifica cada
+control, foto ni composición del resto de formularios. Tampoco certifica
+instalación ni actualización. El modo empaquetado se cubre con pruebas de
+resolución; el ensayo del ejecutable queda para la tercera entrega.
+
+Autoevaluación de los seis pilares: arquitectura con resolver compartido;
+seguridad conserva roles/validación y restringe desarrollo; rendimiento evita
+vigilar datos/temporales; calidad agrega casos negativos y paridad; dependencias
+sin cambios; QA en tres modos con límites explícitos. La deuda de F0-17 permanece.
+
+Siguiente entrega **F1-05/06**: empaquetar desde build/app, depurar recursos
+duplicados de la salida (incluido el video), verificar exclusión de datos privados,
+generar candidato e inspeccionar instalación/actualización en perfil limpio.
+Fase 1 sigue en curso. Cambios de este bloque pendientes de commit.
+
+Referencias de configuración: [API JavaScript de Vite](https://vite.dev/guide/api-javascript.html)
+y [opciones de compilación](https://vite.dev/config/build-options).
+
+### Contraste de revisión externa antes de F1-05/06
+
+El usuario aporta una revisión de sus salidas: raíz HTTP con 404, comprobaciones
+automáticas correctas y ausencia de PARIDAD_OK en esa ejecución. Alcance de esta
+revisión: aclarar consola/documentación y comprobar evidencia faltante, sin
+ampliar rutas ni repetir inicialmente la batería ya correcta.
+
+Defecto confirmado de comunicación: la consola mostraba solo el origen interno
+de Vite, lo que invitaba a abrir `/` en el navegador. Esa ruta está excluida por
+el middleware; la aplicación se abre en Electron, donde existe el preload.
+En ese momento no había evidencia aportada de un defecto de apertura de ventana.
+Se solicitó confirmar lo observado en dev/start:compiled, separadamente del smoke.
+El diagnóstico posterior de ventana ausente, al final de este documento, amplía
+esa evidencia y registra la corrección necesaria en el lanzador.
+
+Evidencia contrastada de solo lectura: los JSON guardados de login/menú coinciden
+con `.tmp/fase0-smoke-9Dp4Uk` tanto en `.tmp/fase0-smoke-ynVvpC` como en
+`.tmp/fase0-smoke-lJyA64`. Son resultados anteriores recontrastados, no nuevas
+ejecuciones. PARIDAD_OK solo se imprime al establecer HUAPANGO_SMOKE_REFERENCIA.
+
+Aceptación del ajuste: instrucciones claras en consola/README, `/` permanece
+restringida, cierre de Vite informado y verificaciones pertinentes tras cambiar
+el lanzador. El recorrido manual de negocio y el paquete instalado conservan
+sus pendientes. El build sigue tomando fuentes hasta F1-05/06.
+
+Resultado de esta revisión: consola y README aclaran el uso de Electron y el
+404 de `/`; el smoke comprueba ahora también esa raíz restringida y el lanzador
+informa VITE_DETENIDO tras cerrar el servidor. Regresión exigida por el cambio:
+**252/252**, cero fallos, 1047.6779 ms. Smoke Vite con referencia explícita:
+**PARIDAD_OK login/menu / VITE_FRONTERA_OK / RUTAS_OK / SMOKE_OK** y
+**VITE_DETENIDO, código 0**, perfil `.tmp/fase0-smoke-bw5MEG`.
+
+No se repitieron instalación de dependencias, typecheck, compilación, MySQL ni
+smoke compilado: no cambió su código desde las comprobaciones anteriores.
+Se recontrastaron los JSON de paridad guardados del compilado. Diff y enlaces
+revisados. La confirmación manual solicitada de apertura en ambos modos sigue
+pendiente de respuesta; no se atribuye al usuario la aceptación de los seis
+recorridos de negocio propuestos por la revisión externa. Estos casos se
+mantienen pendientes y pueden registrarse por separado al ensayar el candidato.
+
+### F1-03/04 — Diagnóstico de ventana ausente en desarrollo
+
+17 de octubre de 2026. El usuario informa que dev mantiene Vite activo, pero no
+observa Electron. La inspección encuentra proceso principal, GPU, red y renderer
+del proyecto activos; el inventario nativo no encuentra ventana de Huapango.
+Esto amplía la evidencia anterior: el 404 sigue siendo esperado, pero no explica
+la ausencia de ventana. El smoke existente oculta ventanas deliberadamente y no
+certifica esta propiedad del arranque interactivo.
+
+Alcance: reproducir con perfil temporal y comprobar si windowsHide del lanzador
+oculta la primera ventana; no cambiar rutas, permisos, UI ni datos del evento.
+Aceptación: ventana nativa observable en arranque interactivo, regresión y smoke
+correctos, conservando el cierre del entorno.
+
+Reproducción: una sonda temporal carga Main real con perfil nuevo, sin credenciales
+ni conexión SQL. Con windowsHide=true, Configurar conexión termina de cargar pero
+isVisible() devuelve false; con false devuelve true. El proceso principal original
+identificado se detuvo para liberar el puerto y reiniciar dev; no se finalizaron
+otros procesos. La sonda y sus perfiles quedan ignorados bajo `.tmp/sonda-ventana*`.
+
+Cambio: `scripts/desarrollo.mjs` utiliza windowsHide solo en modo smoke. No se
+modifican BrowserWindow, rutas, permisos, compilación ni interfaz. El ocultamiento
+de ventanas del smoke queda intacto.
+
+| Evidencia de esta corrección | Resultado |
+| --- | --- |
+| Reproducción con Main real | Ventana oculta/visible según windowsHide, perfil temporal y sin SQL. |
+| Regresión completa | **252/252**, cero fallos, 1023.2779 ms. |
+| Smoke Vite con referencia | **PARIDAD_OK login/menu / VITE_FRONTERA_OK / RUTAS_OK / SMOKE_OK**, perfil `.tmp/fase0-smoke-kxz4ab`. |
+| Cierre del smoke | **VITE_DETENIDO, código 0**. |
+| Arranque interactivo normal | El usuario confirma: «Sí, apareció y la cerré»; el cierre devuelve código 0 y detiene Vite. |
+
+El primer intento del smoke no pudo hacer fetch local dentro del sandbox; se
+repitió fuera y terminó correctamente. El ER_DUP_ENTRY corresponde al rechazo
+intencional de cuenta duplicada. Diff revisado sin errores de espacios.
+
+Autoevaluación: el defecto era del arranque interactivo y no aparecía en pruebas
+que ocultan ventanas por diseño. La comparación controlada y la confirmación del
+usuario cubren ese hueco. No se presenta el smoke como prueba de visibilidad,
+MySQL real ni instalación. No hubo cambios SQL ni de dependencias. El arranque
+manual del compilado y el recorrido completo conservan sus pendientes.
+
+Estado: corrección implementada, verificada y apertura dev confirmada por el
+usuario. F1-05/06 sigue siendo el siguiente bloque: distribución desde build/app,
+inspección del paquete y ensayo de instalación/actualización. Fase 1 abierta.

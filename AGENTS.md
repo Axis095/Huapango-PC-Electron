@@ -34,6 +34,10 @@ contradictorios, revisa la evidencia y señala la discrepancia.
 - `sql/`: scripts SQL; `tests/` y `scripts/`: pruebas y laboratorios.
 - `electron/main.cts`, `tsconfig.main.json`: entrada TypeScript y compilación
   gradual; `build/app` es salida generada, separada de instaladores en `dist`.
+- `Seguridad/vistas.js`, `Servicios/rutasVistas.js`: catálogo y resolución común
+  de vistas; HTTP solo para desarrollo explícito, archivo local en el paquete.
+- `vite.config.mjs`: multipágina y recursos de frontend. Conservar el orden CSS
+  del legado al compilar; un smoke funcional no garantiza paridad visual.
 
 El código usa principalmente JavaScript con CommonJS y una entrada TypeScript de
 Fase 1. Conserva las convenciones y capitalización de rutas. Consulta la bitácora
@@ -64,11 +68,14 @@ en `package.json` (`engines`).
 | Comando | Uso |
 | --- | --- |
 | `npm.cmd start` | Abrir la aplicación; puede usar la configuración local |
+| `npm.cmd run dev` | Vite y Electron; reiniciar para cambios de Main |
 | `npm.cmd run compile:main` | Generar el árbol de ensayo en build/app |
+| `npm.cmd run compile` | Compilar Main y vistas multipágina con Vite |
 | `npm.cmd run typecheck` | Comprobar la configuración y entradas TypeScript actuales |
 | `npm.cmd run start:compiled` | Abrir build/app; usa configuración local |
 | `npm.cmd test` | Regresión con el ejecutor de pruebas de Node |
 | `npm.cmd run test:smoke` | Smoke con Electron real y SQL simulado |
+| `npm.cmd run test:smoke:dev` | Smoke con Vite, perfil temporal y SQL simulado |
 | `npm.cmd run test:integration` | Laboratorio MySQL desechable; revisar sus requisitos antes de ejecutarlo |
 | `npm.cmd run build` | Generar la distribución con electron-builder |
 

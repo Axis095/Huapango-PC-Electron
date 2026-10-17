@@ -1,14 +1,12 @@
-const path = require("node:path");
-const { fileURLToPath } = require("node:url");
+const { obtenerRutasAplicacion } = require('../Servicios/rutasVistas');
 const { prepararBorrador } = require('./borradorDatos');
 
 // Separado de Registro, aislado por ventana y conservado solo en memoria.
 const borradores = new WeakMap();
-const vista = path.resolve(__dirname, "../Vistas/ModificarParejas.html");
 function permitido(event) {
     try {
         return event.senderFrame === event.sender.mainFrame &&
-            path.resolve(fileURLToPath(event.senderFrame.url)) === vista;
+            obtenerRutasAplicacion().vistaDeURL(event.senderFrame.url) === 'ModificarParejas.html';
     } catch { return false; }
 }
 function obtenerBorradorModificacion(event) {

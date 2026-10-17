@@ -1,6 +1,6 @@
 # Preparación de Fase 1 — Compilación conservando la aplicación
 
-Fecha: 17 de octubre de 2026. Estado: **en curso, primera entrega verificada**;
+Fecha: 17 de octubre de 2026. Estado: **en curso, primera y segunda entregas verificadas**;
 evidencia actual en la [bitácora](fase-1.md). Consultar la [evaluación vigente](evaluacion-transicion-2026-10-17.md)
 y el [control de cierre](cierre-fase-0.md).
 
@@ -61,6 +61,10 @@ Avance F1-01/02: compilación de ensayo y typecheck correctos, entrada Main
 TypeScript y preload JavaScript emitido; smoke del árbol compilado correcto.
 Vite instalado, aún sin conectar servidor ni multipágina. No confundir esta
 entrega con el pipeline completo o con contratos ya tipados.
+
+Actualización F1-03/04: Vite conectado y multipágina compilada; resolver común,
+guards y smoke en fuentes/desarrollo/compilado verificados. Evidencia y corrección
+de la cascada CSS en la bitácora. F1-05/06, distribución e instalación, pendientes.
 
 ### Decisiones técnicas que deben quedar verificadas
 
