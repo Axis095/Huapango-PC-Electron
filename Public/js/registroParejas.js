@@ -1,4 +1,5 @@
 import { leerFoto } from "./fotos.js";
+import { crearColaBorrador } from "./borradores.js";
 import { validarDatosPareja, validarDatosCategoria, validarDatosEstilo } from "./validaciones.js";
 
 const camposPareja = {
@@ -22,7 +23,8 @@ export async function inicializarRegistros(documento = document, api = window.ap
     const get = id => documento.getElementById(id);
     const cacheFotos = new WeakMap();
     let registrada = null, categoriaGuardada = false, estiloGuardado = false;
-    let cargando = true, ocupado = false, recuperacionFallida = false, pendiente = Promise.resolve();
+    let cargando = true, ocupado = false, recuperacionFallida = false;
+    const fotosEnviadas = new Map();
     const controles = [...campos, ...fotos].map(get);
     const iniciales = Object.fromEntries(campos.map(id => [id, get(id).value]));
     const mensaje = (id, texto, error = false) => {
@@ -47,17 +49,20 @@ export async function inicializarRegistros(documento = document, api = window.ap
         if (!cacheFotos.has(file)) cacheFotos.set(file, leerFoto(file));
         return cacheFotos.get(file);
     }
+    const cola = crearColaBorrador(async ({ datos, archivos }) => {
+        datos.fotos = {};
+        for (const [i, id] of fotos.entries()) {
+            if (!fotosEnviadas.has(id) || fotosEnviadas.get(id) !== archivos[i]) datos.fotos[id] = await foto(archivos[i]);
+        }
+        const respuesta = await api.guardarBorradorRegistro(datos);
+        if (!respuesta?.success) throw new Error("No se pudo conservar el borrador.");
+        fotos.forEach((id, i) => fotosEnviadas.set(id, archivos[i]));
+    });
     function guardarBorrador() {
         const datos = { version: 1, campos: Object.fromEntries(campos.map(id => [id, get(id).value])),
             registrada, categoriaGuardada, estiloGuardado };
         const archivos = fotos.map(id => get(id).files[0]);
-        // Serializar las escrituras evita que una foto lenta sobrescriba cambios recientes.
-        pendiente = pendiente.catch(() => {}).then(async () => {
-            datos.fotos = Object.fromEntries(await Promise.all(fotos.map(async (id, i) => [id, await foto(archivos[i])])));
-            const respuesta = await api.guardarBorradorRegistro(datos);
-            if (!respuesta?.success) throw new Error("No se pudo conservar el borrador.");
-        });
-        return pendiente;
+        return cola.solicitar({ datos, archivos });
     }
     async function conservar() {
         try {
@@ -148,8 +153,9 @@ export async function inicializarRegistros(documento = document, api = window.ap
     get("btnNuevaPareja").addEventListener("click", () => { get("confirmarNuevaPareja").hidden = false; });
     get("btnCancelarNuevaPareja").addEventListener("click", () => { get("confirmarNuevaPareja").hidden = true; });
     get("btnConfirmarNuevaPareja").addEventListener("click", () => ejecutar("estadoRegistroPareja", async () => {
-        await pendiente.catch(() => {});
+        await cola.esperar().catch(() => {});
         if (!(await api.limpiarBorradorRegistro())?.success) throw new Error("No se pudo iniciar otra pareja. Conservamos el formulario.");
+        fotosEnviadas.clear();
         registrada = null; categoriaGuardada = false; estiloGuardado = false;
         for (const id of campos) get(id).value = iniciales[id];
         for (const id of fotos) get(id).value = "";

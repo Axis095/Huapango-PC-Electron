@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Evaluación de Parejas</title>
     <link rel="stylesheet" href="../Public/css/stylessResultados.css">
@@ -35,8 +36,8 @@
                 <div class="info-usuario">
                     <div class="rol-usuario">Juez Evaluador</div>
                     <div class="acciones-usuario">
-                        <button class="boton-accion pequeno">
-                            <i class="fas fa-sign-out-alt"></i> Salir
+                        <button id="btnCerrarSesion" type="button" class="boton-accion pequeno">
+                            <i class="fas fa-sign-out-alt"></i> Cerrar sesión
                         </button>
                     </div>
                 </div>
@@ -46,6 +47,7 @@
         <div class="titulo-tablero">
             <i class="fas fa-clipboard-list"></i>
             <h2>Evaluación de Parejas</h2>
+            <p>Una evaluación definitiva por juez y pareja. Revisa los puntajes antes de guardar: no se permiten cambios posteriores.</p>
         </div>
         
         <div class="cuadricula-contenido">

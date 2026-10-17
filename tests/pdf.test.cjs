@@ -23,7 +23,8 @@ function preparar({ datos = [{}], fallo = '', createWriteStream } = {}) {
     }
     const deps = {
         pdfkit: PDF,
-        fs: { createWriteStream() {
+        'node:path': path, 'node:crypto': require('node:crypto'),
+        fs: { promises: { async rename() {}, async unlink() {} }, createWriteStream() {
             if (fallo === 'crear') throw Error('Ruta inválida');
             const stream = createWriteStream ? createWriteStream() : new Writable({ write(chunk, encoding, callback) {
                 callback(fallo === 'archivo' ? Error('Disco no disponible') : null);
@@ -35,6 +36,7 @@ function preparar({ datos = [{}], fallo = '', createWriteStream } = {}) {
     };
     const module = { exports: {} };
     vm.runInNewContext(source, { module, console: { log() {}, warn() {}, error() {} }, require(name) {
+        if (name === "../Seguridad/errores") return require("../Seguridad/errores");
         assert.ok(name in deps, `Dependencia inesperada ${name}`); return deps[name];
     } });
     return { model: module.exports, docs, destinos };

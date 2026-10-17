@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "rootDir": ".",
+    "outDir": "build/app",
+    "allowJs": true,
+    "checkJs": false,
+    "strict": true,
+    "noEmitOnError": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": [
+    "electron/*.cts",
+    "main.js",
+    "preload.js",
+    "db.js",
+    "Controladores/**/*.js",
+    "Modelos/**/*.js",
+    "Seguridad/**/*.js",
+    "Servicios/**/*.js"
+  ],
+  "exclude": ["node_modules", "build", "dist", ".tmp", "tests", "scripts"]
+}

@@ -1,21 +1,14 @@
+const { mensajePublico } = require("../Seguridad/errores");
 const { registrarEstilo, buscarEstiloPorID, actualizarEstilo, eliminarEstilo, verificarEstiloExistente, verificarParejaEnEstilo   } = require("../Modelos/estiloModel");
 
 // Controlador para registrar un estilo
 async function handleRegistrarEstilo(event, datos) {
     try {
-        if (await verificarParejaEnEstilo(datos.nParejaID)) {
-            throw new Error("Esta pareja ya está registrada en un estilo.");
-        }
-
-        if (await verificarEstiloExistente(datos.nParejaID, datos.nEstiloID)) {
-            throw new Error("Esta pareja ya está registrada en este estilo.");
-        }
-
         const nEstiloID = await registrarEstilo(datos);
         return { success: true, id: nEstiloID };
     } catch (err) {
-        console.error("Error al registrar estilo:", err);
-        return { success: false, error: err.message };
+        console.error("Error al registrar estilo:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 
@@ -28,8 +21,8 @@ async function handleBuscarEstiloPorID(event, id) {
         }
         return { success: true, data: result };
     } catch (err) {
-        console.error("Error en el controlador al buscar estilo:", err);
-        return { success: false, error: err.message };
+        console.error("Error en el controlador al buscar estilo:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 
@@ -43,8 +36,8 @@ async function handleActualizarEstilo(event, { id, datos }) {
             return { success: false, message: "No se encontró ningún estilo con ese ID." };
         }
     } catch (err) {
-        console.error("Error en el controlador al actualizar estilo:", err);
-        return { success: false, error: err.message };
+        console.error("Error en el controlador al actualizar estilo:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 
@@ -58,8 +51,8 @@ async function handleEliminarEstilo(event, id) {
             return { success: false, message: "No se encontró ningún estilo con ese ID." };
         }
     } catch (err) {
-        console.error("Error en el controlador al eliminar estilo:", err);
-        return { success: false, error: err.message };
+        console.error("Error en el controlador al eliminar estilo:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 

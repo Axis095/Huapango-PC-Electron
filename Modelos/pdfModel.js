@@ -1,5 +1,7 @@
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
+const path = require('node:path');
+const { randomUUID } = require('node:crypto');
 const { pipeline } = require("node:stream/promises");
 const { queryDatabase } = require("../db");
 
@@ -9,8 +11,9 @@ async function escribirPDF(filePath, dibujar) {
         throw new Error("La ruta del archivo es inválida.");
     }
     const doc = new PDFDocument();
+    const temporal = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${randomUUID()}.tmp`);
     let destino;
-    try { destino = fs.createWriteStream(filePath); }
+    try { destino = fs.createWriteStream(temporal, { flags: 'wx' }); }
     catch (error) { doc.destroy(); throw error; }
     const terminado = pipeline(doc, destino);
     try {
@@ -19,7 +22,14 @@ async function escribirPDF(filePath, dibujar) {
     } catch (error) {
         doc.destroy(error);
     }
-    await terminado;
+    try {
+        await terminado;
+        // El archivo anterior sigue intacto hasta terminar completamente el nuevo.
+        await fs.promises.rename(temporal, filePath);
+    } catch (error) {
+        await fs.promises.unlink(temporal).catch(() => {});
+        throw error;
+    }
 }
 
 async function generarPDFParejas(filePath) {
@@ -28,7 +38,7 @@ async function generarPDFParejas(filePath) {
 
     if (!Array.isArray(resultados) || resultados.length === 0) {
         console.warn("No se encontraron parejas registradas.");
-        throw new Error("No se encontraron parejas registradas.");
+        throw Object.assign(new Error("No se encontraron parejas registradas."), { code: "NO_DATA" });
     }
 
     if (!filePath || typeof filePath !== "string") {
@@ -66,7 +76,7 @@ async function generarPDFResultados(filePath) {
     `);
 
     if (!Array.isArray(resultados) || resultados.length === 0) {
-        throw new Error("No se encontraron evaluaciones registradas.");
+        throw Object.assign(new Error("No se encontraron evaluaciones registradas."), { code: "NO_DATA" });
     }
 
     if (!filePath || typeof filePath !== "string") {
@@ -94,7 +104,7 @@ async function generarPDFCategorias(filePath) {
     const resultados = await queryDatabase("SELECT * FROM T_Categorias");
 
     if (!Array.isArray(resultados) || resultados.length === 0) {
-        throw new Error(" No se encontraron categorías registradas.");
+        throw Object.assign(new Error(" No se encontraron categorías registradas."), { code: "NO_DATA" });
     }
 
     if (!filePath || typeof filePath !== "string") {
@@ -120,7 +130,7 @@ async function generarPDFEstilos(filePath) {
     const resultados = await queryDatabase("SELECT * FROM T_Estilos");
 
     if (!Array.isArray(resultados) || resultados.length === 0) {
-        throw new Error(" No se encontraron estilos registrados.");
+        throw Object.assign(new Error(" No se encontraron estilos registrados."), { code: "NO_DATA" });
     }
 
     if (!filePath || typeof filePath !== "string") {
@@ -150,7 +160,7 @@ async function generarPDFRegistrosGenerales(filePath) {
     `);
 
     if (!Array.isArray(registros) || registros.length === 0) {
-        throw new Error("No se encontraron registros generales.");
+        throw Object.assign(new Error("No se encontraron registros generales."), { code: "NO_DATA" });
     }
     await escribirPDF(filePath, doc => {
         doc.fontSize(18).text("Registro General de Eventos", { align: "center" });

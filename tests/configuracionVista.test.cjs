@@ -8,7 +8,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 
 async function vista(overrides = {}, search = "") {
     const elements = new Map();
-    for (const id of ["formConfiguracion", "camposConfiguracion", "estadoConfiguracion", "btnContinuarConfiguracion", "HostBaseDatos", "PuertoBaseDatos", "UsuarioBaseDatos", "ContrasenaBaseDatos", "database"]) {
+    for (const id of ["formConfiguracion", "camposConfiguracion", "estadoConfiguracion", "btnContinuarConfiguracion", "HostBaseDatos", "PuertoBaseDatos", "UsuarioBaseDatos", "ContrasenaBaseDatos", "database", "TLSBaseDatos", "CABaseDatos"]) {
         elements.set(id, { value: "", textContent: "", disabled: false, hidden: true, events: {},
             addEventListener(event, fn) { this.events[event] = fn; }
         });
@@ -76,4 +76,16 @@ test("continuar espera la respuesta y conserva el formulario si falla", async ()
     falla = false;
     await v.continue();
     assert.equal(v.closed, 1);
+});
+
+test('TLS y CA se recuperan y se envían sin incluir contraseña previa', async () => {
+    let payload;
+    const v = await vista({
+        obtenerConfiguracion: async () => ({ success: true, data: { host: 'bd.example.test', port: 3306, user: 'app', database: 'evento', tls: true, sslCa: 'CA pública' } }),
+        guardarConfiguracion: async datos => { payload = datos; return { success: true }; }
+    });
+    assert.equal(v.get('TLSBaseDatos').checked, true);
+    assert.equal(v.get('CABaseDatos').value, 'CA pública');
+    assert.equal(v.get('ContrasenaBaseDatos').value, '');
+    await v.submit(); assert.equal(payload.tls, true); assert.equal(payload.sslCa, 'CA pública');
 });

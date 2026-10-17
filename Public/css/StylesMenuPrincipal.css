@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+@import url('./fonts.css');
 
 :root {
   --primary: #6C63FF;
@@ -152,6 +152,8 @@ body {
 
 .main-video {
   width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
   display: block;
   border-radius: var(--radius);
 }
