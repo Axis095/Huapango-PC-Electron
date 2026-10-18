@@ -36,7 +36,7 @@ export async function inicializarRegistros(documento = document, api = window.ap
         get("btnNuevaPareja").disabled = cargando || ocupado;
         get("btnRegistrarCategoria").disabled = cargando || ocupado || registrada === null || categoriaGuardada;
         get("btnRegistrarEstilo").disabled = cargando || ocupado || registrada === null || estiloGuardado;
-        for (const id of ["btnGenerarPDF", "btnGenerarPDFCategorias", "btnGenerarPDFEstilos"]) get(id).disabled = cargando || ocupado;
+        for (const id of ["btnGenerarPDF", "btnGenerarPDFCategorias", "btnGenerarPDFEstilos"]) get(id).disabled = get(id).hidden || cargando || ocupado;
         get("contentCategoria").style.display = registrada === null ? "none" : "block";
         get("contentEstilo").style.display = registrada === null ? "none" : "block";
         get("nParejaIDCategoria").value = registrada ?? "";
@@ -62,7 +62,7 @@ export async function inicializarRegistros(documento = document, api = window.ap
     async function conservar() {
         try {
             await guardarBorrador();
-            mensaje("estadoBorradorRegistro", "Datos conservados al cambiar de módulo en esta ventana. El borrador se pierde al cerrar la aplicación.");
+            mensaje("estadoBorradorRegistro", "Datos conservados al cambiar de módulo en esta ventana y sesión. El borrador se pierde al cambiar de cuenta, volver a iniciar sesión o cerrar la ventana.");
             return true;
         } catch {
             mensaje("estadoBorradorRegistro", "No se pudo conservar el borrador. Permanece en esta pantalla para no perder los datos.", true);

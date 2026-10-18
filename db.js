@@ -33,8 +33,13 @@ async function probarConexion(config) {
     return datos;
 }
 
-async function inicializarBaseDatos() {
+async function inicializarBaseDatos(antesDeActivar = () => true) {
     const config = await probarConexion(cargarConfiguracion());
+    if (!antesDeActivar()) {
+        const error = new Error("La autorización para cambiar la conexión terminó. La conexión anterior se conserva.");
+        error.code = "FORBIDDEN";
+        throw error;
+    }
     const nuevoPool = mysql.createPool({ ...config, connectTimeout: 5000,
         waitForConnections: true, connectionLimit: 10, queueLimit: 0 });
     const anterior = pool;

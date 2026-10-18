@@ -77,3 +77,21 @@ test("continuar espera la respuesta y conserva el formulario si falla", async ()
     await v.continue();
     assert.equal(v.closed, 1);
 });
+
+for (const etapa of ["obtenerConfiguracion", "guardarConfiguracion", "continuarConfiguracion"]) {
+    test(`FORBIDDEN en ${etapa} bloquea el formulario y nuevas solicitudes`, async () => {
+        let llamadas = 0;
+        const v = await vista({ [etapa]: async () => {
+            llamadas++;
+            return { success: false, code: "FORBIDDEN", error: "Sesión sin permiso." };
+        } });
+        if (etapa === "guardarConfiguracion") await v.submit();
+        if (etapa === "continuarConfiguracion") await v.continue();
+        assert.equal(v.get("camposConfiguracion").disabled, true);
+        assert.equal(v.get("btnContinuarConfiguracion").hidden, true);
+        assert.match(v.get("estadoConfiguracion").textContent, /sin permiso/);
+        await v.submit(); await v.continue();
+        assert.equal(llamadas, 1);
+        assert.equal(v.closed, 0);
+    });
+}

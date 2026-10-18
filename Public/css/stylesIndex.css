@@ -32,10 +32,11 @@ body.dark-mode {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Montserrat', sans-serif;
+  font-family: inherit;
 }
 
 body {
+  font-family: 'Montserrat', sans-serif;
   background: var(--background);
   color: var(--text);
   min-height: 100vh;
@@ -59,6 +60,11 @@ body {
   z-index: 100;
 }
 
+/* El estado inicial no debe ser anulado por estilos de botones de cada vista. */
+.menu button[hidden] {
+  display: none !important;
+}
+
 .menu button {
   padding: 12px 20px;
   background: var(--primary-light);
@@ -76,7 +82,7 @@ body {
   max-width: 200px;
 }
 
-.menu button:hover {
+.menu button:not(:disabled):hover {
   background: var(--primary);
   color: white;
   transform: translateY(-3px);
@@ -94,7 +100,7 @@ body {
   color: var(--secondary-dark);
 }
 
-.menu button#btnRegreso:hover {
+.menu button#btnRegreso:not(:disabled):hover {
   background: var(--secondary);
   color: white;
 }

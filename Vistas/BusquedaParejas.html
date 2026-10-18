@@ -1,122 +1,54 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta Parejas</title>
-    <script type="module" src="../Public/js/render.js"></script>
-    <link rel="stylesheet" href="../Public/css/stylesBusquedaParejas.css">
-    <link rel="stylesheet" href="../Public/css/stylesIndex.css">
-
-    <link rel="stylesheet" href="../Public/css/modern-ui.css">
-</head>
-<body>
-
-    <div class="menu">
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parejas · Buscar y editar</title><script type="module" src="../Public/js/render.js"></script>
+<link rel="stylesheet" href="../Public/css/stylesIndex.css"><link rel="stylesheet" href="../Public/css/modern-ui.css">
+<link rel="stylesheet" href="../Public/css/avisos.css"><link rel="stylesheet" href="../Public/css/fichaPareja.css"></head>
+<body>    <div class="menu">
         <button id="btnIndex">Menú Principal</button>
-        <button id="btnRegistros">Registro de Parejas</button>
-        <button id="btnResultados">Resultados</button>        
-        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
-        <button id="btnModificarParejas">Modificación de Parejas</button>
-            <button id="btnAdministrador">Administrador</button>
+        <button id="btnRegistros" hidden disabled>Registro de Parejas</button>
+        <button id="btnResultados" hidden disabled>Resultados</button>
+        <button id="btnBusquedaParejas" hidden disabled>Parejas: buscar y editar</button>
+            <button id="btnAdministrador" hidden disabled>Administrador</button>
             <button id="btnRegreso">Regresar al Menú</button>
     </div>
 
-    <div class="main-container">
-        <header>
-            <h1>Bienvenido a la sección de Registros para consultar Parejas</h1>
-            <h2>Datos para la consulta</h2>
-        </header>
-        
-        <main>
-            <section>
-                <table class="data-table">
-                    <tr>
-                        <th>Campo</th>
-                        <th>Valor</th>
-                    </tr>
-                    <tr>
-                        <td>Nombre</td>
-                        <td>Ejemplo</td>
-                    </tr>
-                </table>
-            </section>
-            
-            <section id="content-parejas">
-                <h2 class="section-title">Consulta de Parejas</h2>
-                
-                <div class="form-container">
-                    <!-- <div class="form-group">
-                        <label class="form-label">Nombres de la pareja:</label>
-                        <input id="nombreMasculinoPareja" type="text" class="form-control" placeholder="Nombre Masculino">
-                        <input id="nombreFemeninoPareja" type="text" class="form-control" placeholder="Nombre Femenino">
-                    </div> -->
-                    
-                    <div class="form-group">
-                        <label class="form-label">Número de pareja:</label>
-                        <input id="nParejaID" type="text" inputmode="numeric" aria-describedby="estadoBusquedaParejas" class="form-control" placeholder="1(ID)">
-                    </div>
-                </div>
-                
-                <div class="btn-container">
-                    <button id="btnBuscarPareja" class="btn btnBuscarPareja">Buscar</button>
-                    <!-- <button class="btn btn-modify">Modificar</button>
-                    <button class="btn btn-save">Guardar</button> -->
-                </div>
-                <p id="estadoBusquedaParejas" class="estado-busqueda" role="status" aria-live="polite" aria-atomic="true"></p>
-                <div class="resultadosBusquedaParejas">
-                    <p><strong>cNombre:</strong> </p>
-                    <p><strong>cApellido:</strong> </p>
-                    <p><strong>ISexo:</strong> </p>
-                    <p><strong>nTelefono:</strong> </p>
-                    <p><strong>cEmail:</strong> </p>                    
-                </div>
-
-            </section>
-
-
-                    <section id="content-categorias">
-                        <h2 class="section-title">Consulta de Categorías</h2>
-
-                        <div class="form-container">
-                            <div class="form-group">
-                                <label class="form-label">Número de la pareja para consultar su Categoria:</label>
-                                <input id="nIDCategoria" type="text" inputmode="numeric" aria-describedby="estadoBusquedaCategorias" class="form-control" placeholder="1(ID)">
-                            </div>
-                        </div>
-
-                        <div class="btn-container">
-                            <button id="btnBuscarCategoria" class="btn btnBuscarPareja">Buscar</button>
-                        </div>
-
-                        <p id="estadoBusquedaCategorias" class="estado-busqueda" role="status" aria-live="polite" aria-atomic="true"></p>
-                <div class="resultadosBusquedaCategorias">
-                            <p><strong>Categoría:</strong> <span id="categoriaNombre">--</span></p>
-                        </div>
-                    </section>
-
-
-                    <section id="content-estilos">
-                        <h2 class="section-title">Consulta de Estilos</h2>
-
-                        <div class="form-container">
-                            <div class="form-group">
-                                <label class="form-label">Número de la pareja para consultar su Estilo:</label>
-                                <input id="nEstiloID" type="text" inputmode="numeric" aria-describedby="estadoBusquedaEstilos" class="form-control" placeholder="1(ID)">
-                            </div>
-                        </div>
-
-                        <div class="btn-container">
-                            <button id="btnBuscarEstilo" class="btn btnBuscarPareja">Buscar</button>
-                        </div>
-
-                        <p id="estadoBusquedaEstilos" class="estado-busqueda" role="status" aria-live="polite" aria-atomic="true"></p>
-                <div class="resultadosBusquedaEstilos">
-                            <p><strong>Estilo:</strong> <span id="estiloNombre">--</span></p>
-                        </div>
-                    </section>
-
-        </main>
-    </div>
-</body>
-</html>
+<main class="main-container pagina-ficha">
+<header><h1>Parejas</h1><p>Busca una pareja y edita sus datos en esta misma pantalla.</p></header>
+<section class="buscador-ficha" aria-label="Buscar pareja"><label for="nParejaID">Número de pareja</label>
+<div class="acciones-ficha"><input id="nParejaID" class="form-control" inputmode="numeric" placeholder="Ej. 12" aria-describedby="estadoBusquedaParejas"><button id="btnBuscarPareja" class="btn">Buscar</button></div></section>
+<p id="estadoBusquedaParejas" role="status" aria-live="polite">Busca una pareja para comenzar.</p>
+<p id="estadoBorradorModificacion" role="status" aria-live="polite">El borrador se conserva al cambiar de módulo en esta ventana y se pierde al cerrar la aplicación.</p>
+<section id="confirmarLimpiarModificacion" class="confirmacion-ficha" hidden aria-label="Cambios pendientes"><p id="textoConfirmarCambio"></p>
+<div class="acciones-ficha"><button id="btnCancelarLimpiarModificacion" class="btn btn-neutro" type="button">Conservar cambios</button><button id="btnConfirmarLimpiarModificacion" class="btn btn-descarte" type="button">Continuar y descartar</button></div></section>
+<section id="fichaPareja" class="form-section resultadosBusquedaParejas" hidden>
+<div class="encabezado-ficha"><h2 id="parejaSeleccionada"></h2><button id="btnEditarPareja" class="btn">Editar</button></div>
+<div class="participantes-ficha"><section class="participante-ficha" aria-labelledby="tituloMasculino">
+ <h3 id="tituloMasculino">Participante 1</h3>
+ <label for="nombreMasculinoUpdate">Nombre</label><input id="nombreMasculinoUpdate" type="text" class="form-control" readonly>
+<label for="apellidoMasculinoUpdate">Apellidos</label><input id="apellidoMasculinoUpdate" type="text" class="form-control" readonly>
+<label for="emailMasculinoUpdate">Correo electrónico</label><input id="emailMasculinoUpdate" type="email" class="form-control" readonly>
+<label for="telefonoMasculinoUpdate">Teléfono</label><input id="telefonoMasculinoUpdate" type="tel" class="form-control" readonly>
+<label for="fechaNacimientoMasculinoUpdate">Fecha de nacimiento</label><input id="fechaNacimientoMasculinoUpdate" type="date" class="form-control" readonly>
+ <p id="estadoFotoMasculino">Sin foto guardada.</p>
+ <div id="edicionFotoMasculino" hidden><label for="fotoMasculinoUpdate">Reemplazar foto (opcional)</label><input id="fotoMasculinoUpdate" type="file" accept="image/png,image/jpeg" class="form-control" aria-describedby="ayudaFotosFicha" disabled></div>
+ </section>
+<section class="participante-ficha" aria-labelledby="tituloFemenino">
+ <h3 id="tituloFemenino">Participante 2</h3>
+ <label for="nombreFemeninoUpdate">Nombre</label><input id="nombreFemeninoUpdate" type="text" class="form-control" readonly>
+<label for="apellidoFemeninoUpdate">Apellidos</label><input id="apellidoFemeninoUpdate" type="text" class="form-control" readonly>
+<label for="emailFemeninoUpdate">Correo electrónico</label><input id="emailFemeninoUpdate" type="email" class="form-control" readonly>
+<label for="telefonoFemeninoUpdate">Teléfono</label><input id="telefonoFemeninoUpdate" type="tel" class="form-control" readonly>
+<label for="fechaNacimientoFemeninoUpdate">Fecha de nacimiento</label><input id="fechaNacimientoFemeninoUpdate" type="date" class="form-control" readonly>
+ <p id="estadoFotoFemenino">Sin foto guardada.</p>
+ <div id="edicionFotoFemenino" hidden><label for="fotoFemeninoUpdate">Reemplazar foto (opcional)</label><input id="fotoFemeninoUpdate" type="file" accept="image/png,image/jpeg" class="form-control" aria-describedby="ayudaFotosFicha" disabled></div>
+ </section></div>
+<p id="ayudaFotosFicha" hidden>Fotos PNG o JPEG: máximo 5 MiB y 16 megapíxeles. Si no seleccionas otra, se conserva la foto guardada.</p>
+<div class="acciones-ficha acciones-edicion"><button id="BTNUpdate" class="btn" hidden>Guardar cambios</button><button id="btnCancelarEdicion" class="btn btn-neutro" hidden>Cancelar edición</button>
+<button id="btnLimpiarModificacion" class="btn btn-neutro">Cerrar ficha</button></div></section>
+<details class="consultas-relacionadas"><summary>Consultar categorías y estilos</summary><div class="participantes-ficha"><section><h3>Categoría de una pareja</h3><label for="nIDCategoria">ID de pareja</label>
+ <input id="nIDCategoria" class="form-control" inputmode="numeric" aria-describedby="estadoBusquedaCategorias">
+ <button id="btnBuscarCategoria" class="btn">Consultar</button><p id="estadoBusquedaCategorias" role="status" aria-live="polite"></p><div class="resultadosBusquedaCategorias"></div></section>
+<section><h3>Estilo de una pareja</h3><label for="nEstiloID">ID de pareja</label>
+ <input id="nEstiloID" class="form-control" inputmode="numeric" aria-describedby="estadoBusquedaEstilos">
+ <button id="btnBuscarEstilo" class="btn">Consultar</button><p id="estadoBusquedaEstilos" role="status" aria-live="polite"></p><div class="resultadosBusquedaEstilos"></div></section></div></details>
+</main></body></html>

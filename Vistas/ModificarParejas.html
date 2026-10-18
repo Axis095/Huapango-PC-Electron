@@ -1,198 +1,54 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Busca y modificacion de parejas</title>
-    <script type="module" src="../Public/js/render.js"></script>
-    <link rel="stylesheet" href="../Public/css/stylesModicarParejas.css">
-    <link rel="stylesheet" href="../Public/css/stylesIndex.css">
-    
-    <link rel="stylesheet" href="../Public/css/modern-ui.css">
-    <link rel="stylesheet" href="../Public/css/avisos.css">
-</head>
-<body>
-
-        <div class="menu">
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parejas · Buscar y editar</title><script type="module" src="../Public/js/render.js"></script>
+<link rel="stylesheet" href="../Public/css/stylesIndex.css"><link rel="stylesheet" href="../Public/css/modern-ui.css">
+<link rel="stylesheet" href="../Public/css/avisos.css"><link rel="stylesheet" href="../Public/css/fichaPareja.css"></head>
+<body>    <div class="menu">
         <button id="btnIndex">Menú Principal</button>
-        <button id="btnRegistros">Registro de Parejas</button>
-        <button id="btnResultados">Resultados</button>        
-        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
-        <button id="btnModificarParejas">Modificación de Parejas</button>
-            <button id="btnAdministrador">Administrador</button>
+        <button id="btnRegistros" hidden disabled>Registro de Parejas</button>
+        <button id="btnResultados" hidden disabled>Resultados</button>
+        <button id="btnBusquedaParejas" hidden disabled>Parejas: buscar y editar</button>
+            <button id="btnAdministrador" hidden disabled>Administrador</button>
             <button id="btnRegreso">Regresar al Menú</button>
     </div>
 
-    <div class="main-container">
-        <h1 class="main-title">Busca y modificacion de parejas</h1>
-        
-        <div class="header">
-            <div class="logo">
-                <img src="../Public/images/logo-huapango.png" alt="XLIX HUAPANGO" style="max-width: 100px;">
-            </div>
-        </div>
-        
-        <div class="form-section">
-            <h2 class="section-title">Modificación de parejas:</h2>
-            <p id="estadoBorradorModificacion" role="status" aria-live="polite"></p>
-            
-            <div class="form-group">
-                        <label class="form-label">Numero de pareja:</label>
-                        <div class="bullet-point">
-                            <div class="bullet"></div>
-                            <input type="text" id="nParejaID" class="form-control" placeholder="Ingrese el ID de la pareja" value="">
-                        </div>
-                    </div>
-
-            <div class="form-row">
-                <div class="form-column">
-                    <div class="form-group">
-                        <label class="form-label">¡¡ADVERTENCIA!! Por razones operativas, es necesario ingresar los datos del participante que no será actualizado, así como los nuevos datos correspondientes al participante que sí será modificado.</label>
-                        <label class="form-label">Datos del primer participante.</label>
-                        <input type="text" id="nombreMasculino" class="form-control" placeholder="Nombre participante 1">
-                        <div style="height: 10px;"></div>
-                        <input type="text" id="apellidoMasculino" class="form-control" placeholder="Apellidos participante 1">
-                        <div style="height: 10px;"></div>
-                        <input type="text" id="emailMasculino" class="form-control" placeholder="Email participante 1">
-                        <div style="height: 10px;"></div>
-                        <input type="text" id="telefonoMasculino" class="form-control" placeholder="Telefono participante 1">
-                        <div style="height: 10px;"></div>
-                        <!-- Campo de fecha corregido -->
-                        <input type="date" id="fechaNacimientoMasculino" class="form-control">
-                        <div style="height: 10px;"></div>
-
-
-                    <div style="display: flex; gap: 10px; align-items: center;">
-    <input type="file" id="fotoMasculino" name="fotoMasculino" class="form-control" accept="image/png,image/jpeg" aria-label="Foto PNG o JPEG, máximo 5 MiB y 16 megapíxeles">
-                    </div>
-
-
-
-                    
-                    <!-- <div class="form-group">
-                        <label class="form-label">Nombres de la pareja:</label>
-                        <div class="bullet-point">
-                            <div class="bullet"></div>
-                            <div class="input-group" style="flex: 1;">
-                                <input type="text" id="nombreMasculino" class="form-control" placeholder="Nombre Masculino" value="Nombre Masculino">
-                                <input type="text" id="nombreFemenino" class="form-control" placeholder="Nombre Femenino"  value="Nombre Femenino">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Apellidos de la pareja</label>
-                        <div class="bullet-point">
-                            <div class="bullet"></div>
-                            <div class="input-group" style="flex: 1;">
-                                <input type="text" id="apellidoMasculino" class="form-control" placeholder="Apellido Masculino" value="Apellido Masculino">
-                                <input type="text" id="apellidoFemenino" class="form-control" placeholder="Apellido Femenino" value="Apellido Femenino">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Estilo</label>
-                        <select id="estilo" class="form-control">
-                            <option>Select option</option>
-                            <option value="">Queretano</option>
-                            <option value="">Poblano</option>
-                            <option value="">Potosino</option>
-                            <option value="">Tamaulipeco</option>
-                            <option value="">Veracruzano</option>
-                            <option value="">Hidalguense</option>
-                        </select>
-                    </div> -->
-                    
-                    <!-- <div class="form-group">
-                        <label class="form-label">Edad</label>
-                        <input type="date" id="fechaNacimientoMasculino" class="form-control">
-                        <div style="height: 10px;"></div>
-                        <input type="date" id="fechaNacimientoFemenino" class="form-control">
-                    </div> -->
-                </div>
-                
-                
-                    
-
-
-                    <div class="form-group">
-                        <label class="form-label">Nuevos datos del primer participante:</label>
-                        <input type="text" id="nombreMasculinoUpdate" class="form-control" placeholder="Nombre participante 1">
-                        <div style="height: 10px;"></div>
-                        <input type="text" id="apellidoMasculinoUpdate" class="form-control" placeholder="Apellidos participante 1">
-                        <div style="height: 10px;"></div>
-                        <input type="text" id="emailMasculinoUpdate" class="form-control" placeholder="Email participante 1">
-                        <div style="height: 10px;"></div>
-                        <input type="text" id="telefonoMasculinoUpdate" class="form-control" placeholder="Telefono participante 1">
-                        <div style="height: 10px;"></div>
-                        <input type="date" id="fechaNacimientoMasculinoUpdate" class="form-control">
-                        <div style="height: 10px;"></div>
-                        
-                        
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="file" id="fotoMasculinoUpdate" name="fotoMasculinoUpdate" class="form-control" accept="image/png,image/jpeg">
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-            
-
-
-
-            <!-- 🟣 Segundo bloque para la participante femenina (Formulario alternativo) -->
-            <div class="form-group">
-                <label class="form-label">Datos del segundo participante:</label>
-                <input type="text" id="nombreFemenino" class="form-control" placeholder="Nombre participante 2">
-                <div style="height: 10px;"></div>
-                <input type="text" id="apellidoFemenino" class="form-control" placeholder="Apellidos participante 2">
-                <div style="height: 10px;"></div>
-                <input type="text" id="emailFemenino" class="form-control" placeholder="Email participante 2">
-                <div style="height: 10px;"></div>
-                <input type="text" id="telefonoFemenino" class="form-control" placeholder="Telefono participante 2">
-                <div style="height: 10px;"></div>
-                <input type="date" id="fechaNacimientoFemenino" class="form-control">
-                <div style="height: 10px;"></div>
-
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="file" id="fotoFemeninoAlt" name="fotoFemeninoAlt" class="form-control" accept="image/png,image/jpeg">
-                </div>
-            </div>
-
-            <!-- 🟣 Tercer bloque para la participante femenina (Formulario auxiliar) -->
-            <div class="form-group">
-                <label class="form-label">Nuevos datos del segundo participante:</label>
-                <input type="text" id="nombreFemeninoUpdate" class="form-control" placeholder="Nombre participante 2">
-                <div style="height: 10px;"></div>
-                <input type="text" id="apellidoFemeninoUpdate" class="form-control" placeholder="Apellidos participante 2">
-                <div style="height: 10px;"></div>
-                <input type="text" id="emailFemeninoUpdate" class="form-control" placeholder="Email participante 2">
-                <div style="height: 10px;"></div>
-                <input type="text" id="telefonoFemeninoUpdate" class="form-control" placeholder="Telefono participante 2">
-                <div style="height: 10px;"></div>
-                <input type="date" id="fechaNacimientoFemeninoUpdate" class="form-control">
-                <div style="height: 10px;"></div>
-
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="file" id="fotoFemeninoUpdate" name="fotoFemeninoAux" class="form-control" accept="image/png,image/jpeg">
-                </div>
-            </div>
-
-            <p>Fotos nuevas: PNG o JPEG, máximo 5 MiB y 16 megapíxeles. Si no seleccionas una, se conserva la anterior.</p>
-            <button id="BTNUpdate" class="btn btn-save">
-                <span style="margin-right: 5px;">▶</span> Guardar
-            </button>
-            <button id="btnLimpiarModificacion" type="button" class="btn">Limpiar formulario</button>
-            <section id="confirmarLimpiarModificacion" hidden aria-label="Confirmar limpieza del formulario">
-                <p>¿Descartar los datos y las fotos de este formulario? Los registros guardados en MySQL se conservarán.</p>
-                <button id="btnCancelarLimpiarModificacion" type="button" class="btn">Cancelar</button>
-                <button id="btnConfirmarLimpiarModificacion" type="button" class="btn">Descartar borrador</button>
-            </section>
-
-
-        </div>
-    </div>
-</body>
-</html>
-</html>
+<main class="main-container pagina-ficha">
+<header><h1>Parejas</h1><p>Busca una pareja y edita sus datos en esta misma pantalla.</p></header>
+<section class="buscador-ficha" aria-label="Buscar pareja"><label for="nParejaID">Número de pareja</label>
+<div class="acciones-ficha"><input id="nParejaID" class="form-control" inputmode="numeric" placeholder="Ej. 12" aria-describedby="estadoBusquedaParejas"><button id="btnBuscarPareja" class="btn">Buscar</button></div></section>
+<p id="estadoBusquedaParejas" role="status" aria-live="polite">Busca una pareja para comenzar.</p>
+<p id="estadoBorradorModificacion" role="status" aria-live="polite">El borrador se conserva al cambiar de módulo en esta ventana y se pierde al cerrar la aplicación.</p>
+<section id="confirmarLimpiarModificacion" class="confirmacion-ficha" hidden aria-label="Cambios pendientes"><p id="textoConfirmarCambio"></p>
+<div class="acciones-ficha"><button id="btnCancelarLimpiarModificacion" class="btn btn-neutro" type="button">Conservar cambios</button><button id="btnConfirmarLimpiarModificacion" class="btn btn-descarte" type="button">Continuar y descartar</button></div></section>
+<section id="fichaPareja" class="form-section resultadosBusquedaParejas" hidden>
+<div class="encabezado-ficha"><h2 id="parejaSeleccionada"></h2><button id="btnEditarPareja" class="btn">Editar</button></div>
+<div class="participantes-ficha"><section class="participante-ficha" aria-labelledby="tituloMasculino">
+ <h3 id="tituloMasculino">Participante 1</h3>
+ <label for="nombreMasculinoUpdate">Nombre</label><input id="nombreMasculinoUpdate" type="text" class="form-control" readonly>
+<label for="apellidoMasculinoUpdate">Apellidos</label><input id="apellidoMasculinoUpdate" type="text" class="form-control" readonly>
+<label for="emailMasculinoUpdate">Correo electrónico</label><input id="emailMasculinoUpdate" type="email" class="form-control" readonly>
+<label for="telefonoMasculinoUpdate">Teléfono</label><input id="telefonoMasculinoUpdate" type="tel" class="form-control" readonly>
+<label for="fechaNacimientoMasculinoUpdate">Fecha de nacimiento</label><input id="fechaNacimientoMasculinoUpdate" type="date" class="form-control" readonly>
+ <p id="estadoFotoMasculino">Sin foto guardada.</p>
+ <div id="edicionFotoMasculino" hidden><label for="fotoMasculinoUpdate">Reemplazar foto (opcional)</label><input id="fotoMasculinoUpdate" type="file" accept="image/png,image/jpeg" class="form-control" aria-describedby="ayudaFotosFicha" disabled></div>
+ </section>
+<section class="participante-ficha" aria-labelledby="tituloFemenino">
+ <h3 id="tituloFemenino">Participante 2</h3>
+ <label for="nombreFemeninoUpdate">Nombre</label><input id="nombreFemeninoUpdate" type="text" class="form-control" readonly>
+<label for="apellidoFemeninoUpdate">Apellidos</label><input id="apellidoFemeninoUpdate" type="text" class="form-control" readonly>
+<label for="emailFemeninoUpdate">Correo electrónico</label><input id="emailFemeninoUpdate" type="email" class="form-control" readonly>
+<label for="telefonoFemeninoUpdate">Teléfono</label><input id="telefonoFemeninoUpdate" type="tel" class="form-control" readonly>
+<label for="fechaNacimientoFemeninoUpdate">Fecha de nacimiento</label><input id="fechaNacimientoFemeninoUpdate" type="date" class="form-control" readonly>
+ <p id="estadoFotoFemenino">Sin foto guardada.</p>
+ <div id="edicionFotoFemenino" hidden><label for="fotoFemeninoUpdate">Reemplazar foto (opcional)</label><input id="fotoFemeninoUpdate" type="file" accept="image/png,image/jpeg" class="form-control" aria-describedby="ayudaFotosFicha" disabled></div>
+ </section></div>
+<p id="ayudaFotosFicha" hidden>Fotos PNG o JPEG: máximo 5 MiB y 16 megapíxeles. Si no seleccionas otra, se conserva la foto guardada.</p>
+<div class="acciones-ficha acciones-edicion"><button id="BTNUpdate" class="btn" hidden>Guardar cambios</button><button id="btnCancelarEdicion" class="btn btn-neutro" hidden>Cancelar edición</button>
+<button id="btnLimpiarModificacion" class="btn btn-neutro">Cerrar ficha</button></div></section>
+<details class="consultas-relacionadas"><summary>Consultar categorías y estilos</summary><div class="participantes-ficha"><section><h3>Categoría de una pareja</h3><label for="nIDCategoria">ID de pareja</label>
+ <input id="nIDCategoria" class="form-control" inputmode="numeric" aria-describedby="estadoBusquedaCategorias">
+ <button id="btnBuscarCategoria" class="btn">Consultar</button><p id="estadoBusquedaCategorias" role="status" aria-live="polite"></p><div class="resultadosBusquedaCategorias"></div></section>
+<section><h3>Estilo de una pareja</h3><label for="nEstiloID">ID de pareja</label>
+ <input id="nEstiloID" class="form-control" inputmode="numeric" aria-describedby="estadoBusquedaEstilos">
+ <button id="btnBuscarEstilo" class="btn">Consultar</button><p id="estadoBusquedaEstilos" role="status" aria-live="polite"></p><div class="resultadosBusquedaEstilos"></div></section></div></details>
+</main></body></html>

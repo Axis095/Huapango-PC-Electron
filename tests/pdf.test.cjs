@@ -43,7 +43,7 @@ function preparar({ datos = [{}], fallo = '', createWriteStream } = {}) {
 for (const metodo of metodos) {
     test(`${metodo}: sin registros devuelve un Error legible sin abrir archivo`, async () => {
         const v = preparar({ datos: [] });
-        await assert.rejects(v.model[metodo]('prueba.pdf'), err => {
+        await assert.rejects(v.model[metodo]('prueba.pdf', ...(metodo === 'generarPDFResultados' ? [null] : [])), err => {
             assert.equal(err.name, 'Error'); assert.match(err.message, /No se encontraron/); return true;
         });
         assert.equal(v.destinos.length, 0);
@@ -54,7 +54,7 @@ for (const metodo of metodos) {
             write(chunk, encoding, callback) { callback(); }, final(callback) { finish = callback; }
         }) });
         let completed = false;
-        const pending = v.model[metodo]('prueba.pdf').then(result => { completed = true; return result; });
+        const pending = v.model[metodo]('prueba.pdf', ...(metodo === 'generarPDFResultados' ? [null] : [])).then(result => { completed = true; return result; });
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(completed, false); assert.equal(typeof finish, 'function');
         finish(); const result = await pending;

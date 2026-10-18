@@ -110,18 +110,15 @@ export function validarDatosParejaResultados(parejaData) {
 
 
 export function validarEvaluacion(datos) {
-    const { nJuezID, nParejaID, nPuntaje, cComentario } = datos;
+    const { nParejaID, nPuntaje, cComentario } = datos;
 
-    // Validar ID del juez y pareja (deben ser números positivos)
-    if (!nJuezID || isNaN(nJuezID) || nJuezID <= 0) {
-        return { success: false, error: "ID del juez inválido." };
-    }
+    // La identidad del evaluador se obtiene exclusivamente en el proceso principal.
     if (!nParejaID || isNaN(nParejaID) || nParejaID <= 0) {
         return { success: false, error: "ID de la pareja inválido." };
     }
 
-    // Validar puntaje (debe estar entre 0 y 50)
-    if (isNaN(nPuntaje) || nPuntaje < 0 || nPuntaje > 60) {
+    // Se suman seis aspectos enteros de 0 a 10.
+    if (!Number.isInteger(nPuntaje) || nPuntaje < 0 || nPuntaje > 60) {
         return { success: false, error: "Puntaje fuera del rango permitido (0 - 60)." };
     }
 

@@ -3,10 +3,19 @@ const campos = document.getElementById("camposConfiguracion");
 const estado = document.getElementById("estadoConfiguracion");
 const continuar = document.getElementById("btnContinuarConfiguracion");
 let ocupado = false;
+let permisoDenegado = false;
+
+function comprobarPermiso(respuesta) {
+    if (respuesta?.code === "FORBIDDEN") {
+        permisoDenegado = true;
+        continuar.hidden = true;
+    }
+}
 
 async function cargar() {
     try {
         const respuesta = await window.api.obtenerConfiguracion();
+        comprobarPermiso(respuesta);
         const config = respuesta.data;
         if (config) {
             document.getElementById("HostBaseDatos").value = config.host;
@@ -19,14 +28,14 @@ async function cargar() {
     } catch {
         estado.textContent = "No se pudo cargar la configuración. Puedes introducir los datos nuevamente.";
     } finally {
-        campos.disabled = false;
+        campos.disabled = permisoDenegado;
     }
 }
 
 formulario.addEventListener("input", () => { continuar.hidden = true; });
 formulario.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (ocupado) return;
+    if (ocupado || permisoDenegado) return;
     ocupado = true;
     campos.disabled = true;
     continuar.hidden = true;
@@ -39,32 +48,34 @@ formulario.addEventListener("submit", async (event) => {
             password: document.getElementById("ContrasenaBaseDatos").value,
             database: document.getElementById("database").value
         });
+        comprobarPermiso(respuesta);
         estado.textContent = respuesta.success ? "Conexión comprobada y configuración guardada." : respuesta.error;
         continuar.hidden = !respuesta.success;
     } catch {
         estado.textContent = "No se pudo completar la operación. Intenta nuevamente.";
     } finally {
         ocupado = false;
-        campos.disabled = false;
+        campos.disabled = permisoDenegado;
     }
 });
 
 continuar.addEventListener("click", async () => {
-    if (ocupado) return;
+    if (ocupado || permisoDenegado) return;
     ocupado = true;
     campos.disabled = true;
     continuar.disabled = true;
     estado.textContent = "Abriendo el inicio de sesión…";
     try {
         const respuesta = await window.api.continuarConfiguracion();
+        comprobarPermiso(respuesta);
         if (respuesta.success) window.close();
         else estado.textContent = respuesta.error;
     } catch {
         estado.textContent = "No se pudo abrir el inicio de sesión. Intenta nuevamente.";
     } finally {
         ocupado = false;
-        campos.disabled = false;
-        continuar.disabled = false;
+        campos.disabled = permisoDenegado;
+        continuar.disabled = permisoDenegado;
     }
 });
 

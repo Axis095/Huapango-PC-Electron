@@ -165,7 +165,8 @@ test('un error inesperado conserva datos y estados disabled anteriores', async (
 
 test('evaluación inválida conserva comentario y puntajes; corregir permite guardar', async () => {
     const datos = [];
-    const v = preparar({ getUsuarioID: async () => 1, registrarEvaluacion: async d => { datos.push(d); return { success: true }; } });
+    const v = preparar({ getUsuarioID: () => assert.fail('La vista no debe solicitar la identidad para evaluar'),
+        registrarEvaluacion: async d => { datos.push(d); return { success: true }; } });
     v.add('guardar-evaluacion', '', 'button'); v.add('pareja-id-info', '', 'div').innerText = '1';
     for (let i = 1; i <= 6; i++) v.add(`aspecto${i}`, '5');
     const comentario = v.add('observaciones', 'x'.repeat(256), 'textarea');
@@ -174,6 +175,22 @@ test('evaluación inválida conserva comentario y puntajes; corregir permite gua
     assert.match(v.message(), /demasiado largo/);
     comentario.value = 'Corregido'; await v.context.guardarEvaluacion();
     assert.equal(datos.length, 1); assert.equal(datos[0].nPuntaje, 30); assert.equal(datos[0].cComentario, 'Corregido');
+    assert.equal(Object.hasOwn(datos[0], 'nJuezID'), false);
+});
+
+test('evaluación denegada conserva puntajes, comentario y foco para poder corregir', async () => {
+    const v = preparar({ registrarEvaluacion: async () => ({ success: false, code: 'FORBIDDEN', error: 'Sesión sin permisos.' }) });
+    const boton = v.add('guardar-evaluacion', '', 'button');
+    v.add('pareja-id-info', '', 'div').innerText = '7';
+    const aspectos = Array.from({ length: 6 }, (_, i) => v.add(`aspecto${i + 1}`, '5'));
+    const comentario = v.add('observaciones', 'Conservar', 'textarea');
+    boton.focus();
+    await v.context.guardarEvaluacion();
+    assert.equal(comentario.value, 'Conservar');
+    for (const campo of aspectos) { assert.equal(campo.value, '5'); assert.equal(campo.disabled, false); }
+    assert.equal(boton.disabled, false);
+    assert.equal(v.documento.activeElement, boton);
+    assert.match(v.message(), /Sesión sin permisos/);
 });
 
 test('crear usuario conserva campos tras error y restablece el rol al tener éxito', async () => {
@@ -186,56 +203,6 @@ test('crear usuario conserva campos tras error y restablece el rol al tener éxi
     assert.equal(nombre.value, 'Prueba'); assert.equal(password.value, 'ClaveDePrueba'); assert.equal(nombre.disabled, false);
     success = true; await v.context.crearUsuario();
     assert.equal(id.value, ''); assert.equal(password.value, ''); assert.equal(tipo.checked, true);
-});
-
-test('modificación sin ID conserva los datos y permite corregir sin cambiar de vista', async () => {
-    const v = preparar({ actualizarParejaCompleta() { assert.fail('No enviar datos inválidos'); } });
-    const id = v.add('nParejaID'); const nombre = v.add('nombreMasculinoUpdate', 'Prueba'); v.add('BTNUpdate', '', 'button');
-    await v.context.modificarPareja();
-    assert.match(v.message(), /ID.*obligatorio/); assert.equal(nombre.value, 'Prueba'); assert.equal(id.disabled, false);
-});
-
-for (const response of [
-    { success: false, code: 'NOT_FOUND', error: 'No se encontró la pareja.' },
-    { success: false, code: 'TRANSACTION_OUTCOME_UNKNOWN', error: 'Consulta la pareja antes de reintentar.' },
-    { success: true, code: 'UNCHANGED', message: 'La pareja ya tenía esos datos. No hubo cambios.' }
-]) {
-    test(`modificación muestra ${response.code} y conserva los campos editables`, async () => {
-        let llamadas = 0;
-        const v = preparar({ actualizarParejaCompleta: async () => { llamadas++; return response; } });
-        v.add('nParejaID', '7'); v.add('BTNUpdate', '', 'button');
-        for (const sexo of ['Masculino', 'Femenino']) {
-            for (const campo of ['nombre', 'apellido', 'email', 'telefono', 'fechaNacimiento']) v.add(`${campo}${sexo}Update`, 'Prueba');
-            v.add(`foto${sexo}Update`).files = [];
-        }
-        await v.context.modificarPareja();
-        assert.equal(llamadas, 1);
-        assert.match(v.message(), new RegExp(response.error || response.message));
-        const nombre = v.documento.getElementById('nombreMasculinoUpdate');
-        assert.equal(nombre.value, 'Prueba'); assert.equal(nombre.disabled, false);
-        if (!response.success) assert.doesNotMatch(v.message(), /exitosamente/);
-    });
-}
-
-test('modificación envía bytes junto a los datos y conserva la selección si SQL falla', async () => {
-    let success = false;
-    const llamadas = [];
-    const v = preparar({ actualizarParejaCompleta: async datos => { llamadas.push(datos); return { success, error: 'SQL rechazado' }; } });
-    v.add('nParejaID', '7'); v.add('BTNUpdate', '', 'button');
-    for (const sexo of ['Masculino', 'Femenino']) {
-        for (const campo of ['nombre', 'apellido', 'email', 'telefono', 'fechaNacimiento']) v.add(`${campo}${sexo}Update`, 'Prueba');
-        v.add(`foto${sexo}Update`).files = [];
-    }
-    const input = v.documento.getElementById('fotoMasculinoUpdate');
-    input.files = [new File(['contenido'], 'foto.png', { type: 'image/png' })]; input.value = 'foto.png';
-    await v.context.modificarPareja();
-    assert.equal(llamadas.length, 1); assert.equal(input.value, 'foto.png');
-    assert.equal(Buffer.from(llamadas[0].fotos.Masculino.bytes).toString(), 'contenido');
-    assert.equal(llamadas[0].oFotoMasculino, undefined);
-    success = true;
-    await v.context.modificarPareja();
-    assert.equal(input.value, '');
-    assert.equal(v.documento.getElementById('nombreMasculinoUpdate').value, 'Prueba');
 });
 
 test('PDF: el rechazo IPC permite reintentar y no deja botones deshabilitados', async () => {

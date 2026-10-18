@@ -195,7 +195,10 @@ test("un fallo al conservar el borrador después de guardar no anuncia un fallo 
     assert.equal(v.get("BTNSave").disabled, true);
 });
 
-test("los borradores están aislados por ventana y se rechazan otras vistas y subframes", () => {
+test("los borradores están aislados por ventana y se rechazan otras vistas y subframes", t => {
+    const sesion = require("../Modelos/sesionModel");
+    sesion.guardarSesion(1, "user");
+    t.after(() => sesion.cerrarSesion());
     const c = require("../Controladores/borradorRegistroController");
     const crear = () => { const frame = { url: pathToFileURL(path.join(root, "Vistas/Registros.html")).href };
         return { senderFrame: frame, sender: { mainFrame: frame } }; };

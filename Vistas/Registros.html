@@ -16,11 +16,10 @@
 
         <div class="menu">
         <button id="btnIndex">Menú Principal</button>
-        <button id="btnRegistros">Registro de Parejas</button>
-        <button id="btnResultados">Resultados</button>        
-        <button id="btnBusquedaParejas">Busqueda de Parejas</button>
-        <button id="btnModificarParejas">Modificación de Parejas</button>
-            <button id="btnAdministrador">Administrador</button>
+        <button id="btnRegistros" hidden disabled>Registro de Parejas</button>
+        <button id="btnResultados" hidden disabled>Resultados</button>
+        <button id="btnBusquedaParejas" hidden disabled>Parejas: buscar y editar</button>
+            <button id="btnAdministrador" hidden disabled>Administrador</button>
             <button id="btnRegreso">Regresar al Menú</button>
     </div>
 
@@ -114,7 +113,7 @@
                     <p id="estadoRegistroPareja" class="estado-registro" role="status" aria-live="polite" aria-atomic="true"></p>
                     <button id="BTNSave" class="btn btn-save">Guardar</button>
                     <button id="btnNuevaPareja" class="btn" type="button">Nueva pareja</button>
-                    <button id="btnGenerarPDF" class="btn btn-pdf">Generar PDF de parejas</button>
+                    <button id="btnGenerarPDF" hidden disabled class="btn btn-pdf">Generar PDF de parejas</button>
                 </div>
             </section>
 
@@ -200,8 +199,8 @@
                 </div>
 
                 <div>
-                    <button id="btnGenerarPDFCategorias" class="btn btn-pdf">Generar PDF de Categorías</button>
-                    <button id="btnGenerarPDFEstilos" class="btn btn-pdf">Generar PDF de Estilos</button>
+                    <button id="btnGenerarPDFCategorias" hidden disabled class="btn btn-pdf">Generar PDF de Categorías</button>
+                    <button id="btnGenerarPDFEstilos" hidden disabled class="btn btn-pdf">Generar PDF de Estilos</button>
                 </div>
             </section>
 

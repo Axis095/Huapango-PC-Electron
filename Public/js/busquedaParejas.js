@@ -7,6 +7,7 @@ export function inicializarBusquedaParejas(documento = document, api = window.ap
     ];
 
     for (const [inputID, botonID, estadoID, clase, metodo, sinResultados] of consultas) {
+        if (metodo === "buscarParejaPorID" && documento.getElementById("fichaPareja")) continue;
         const input = documento.getElementById(inputID);
         const boton = documento.getElementById(botonID);
         const estado = documento.getElementById(estadoID);
@@ -28,7 +29,8 @@ export function inicializarBusquedaParejas(documento = document, api = window.ap
                 for (const [campo, valor] of Object.entries(fila)) {
                     const linea = documento.createElement("p");
                     const etiqueta = documento.createElement("strong");
-                    etiqueta.textContent = `${campo}: `;
+                    const etiquetas = { nIDCategoria: "Número de categoría", cCategoriaNombre: "Categoría", nEstiloID: "Número de estilo", cEstiloNombre: "Estilo" };
+                    etiqueta.textContent = `${etiquetas[campo] || campo}: `;
                     linea.append(etiqueta, documento.createTextNode(String(valor ?? "")));
                     tarjeta.append(linea);
                 }

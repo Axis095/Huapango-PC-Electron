@@ -48,6 +48,36 @@ function database(config, overrides = {}) {
     return { calls, db: load("db.js", { "mysql2/promise": driver, "./Modelos/configModel": config }) };
 }
 
+test("solo ausencia o plantilla exacta habilitan configuración inicial", (t) => {
+    const model = configuracion(t);
+    assert.equal(model.requiereConfiguracionInicial(), true);
+    model.inicializarConfiguracion();
+    assert.equal(model.requiereConfiguracionInicial(), true);
+    for (const contenido of ["{roto", "{}", "null", JSON.stringify(configValida),
+        JSON.stringify({ ...model.configuracionInicial, host: "otro-servidor" }),
+        JSON.stringify({ ...model.configuracionInicial, inicial: true })]) {
+        fs.writeFileSync(model.configPath, contenido);
+        assert.equal(model.requiereConfiguracionInicial(), false);
+        assert.equal(fs.readFileSync(model.configPath, "utf8"), contenido);
+    }
+});
+
+test("un error de lectura no se considera instalación nueva", (t) => {
+    const model = configuracion(t, { ...fs, readFileSync() {
+        throw Object.assign(new Error("Sin permiso"), { code: "EACCES" });
+    } });
+    assert.equal(model.requiereConfiguracionInicial(), false);
+});
+
+test("revocar autorización antes de activar MySQL conserva el pool anterior", async () => {
+    const { db, calls } = database({ cargarConfiguracion: () => configValida, normalizarConfiguracion: x => x });
+    await db.inicializarBaseDatos();
+    await assert.rejects(db.inicializarBaseDatos(() => false), { code: "FORBIDDEN" });
+    assert.equal(calls.pools.length, 1);
+    assert.equal(calls.ended, 0);
+    assert.equal(calls.destroyed, 2);
+});
+
 test("primer arranque crea directorio y configuración sin credenciales", (t) => {
     const model = configuracion(t);
     const config = model.cargarConfiguracion();
@@ -169,7 +199,7 @@ test("el login mantiene la sesión en memoria y no modifica MySQL config", async
     assert.equal((await auth.handleLogin(null, { username: "juez", password: "clave" }, () => {
         events.push("abrir-principal");
         globals.mainWindow = { webContents: { once() {} } };
-    })).success, true);
+    }, () => true)).success, true);
     assert.deepEqual(events, ["abrir-principal", "cerrar-login"]);
     assert.equal(sesion.obtenerSesion().userID, 9);
     assert.equal(fs.readFileSync(model.configPath, "utf8"), original);
@@ -177,17 +207,28 @@ test("el login mantiene la sesión en memoria y no modifica MySQL config", async
     assert.equal(sesion.obtenerSesion(), null);
 });
 
-function mainHarness(inicializarBaseDatos) {
+function mainHarness(inicializarBaseDatos, { inicial = false, probarConexion = async () => {} } = {}) {
     const handlers = new Map(), appEvents = new Map(), windows = [];
+    const ipcEvents = new Map(), errores = [];
+    let menu, guardados = 0;
     let ready;
     let quit = 0;
     class Window {
-        constructor(options) { this.options = options; this.webContents = {}; this.events = new Map(); windows.push(this); }
-        loadFile(file, options) { this.file = file; this.loadOptions = options; return Promise.resolve(); }
+        constructor(options) {
+            this.options = options;
+            this.webContents = { mainFrame: { url: "" }, once() {}, on() {} };
+            this.events = new Map(); windows.push(this);
+        }
+        loadFile(file, options) {
+            this.file = file; this.loadOptions = options;
+            this.webContents.mainFrame.url = pathToFileURL(path.resolve(root, file)).href;
+            return Promise.resolve();
+        }
         on(event, callback) { this.events.set(event, callback); }
         isDestroyed() { return !!this.closed; }
         close() { this.closed = true; this.events.get("closed")?.(); }
         focus() {}
+        maximize() {}
         static fromWebContents(contents) { return windows.find(w => w.webContents === contents); }
         static getAllWindows() { return windows.filter(w => !w.closed); }
     }
@@ -196,22 +237,45 @@ function mainHarness(inicializarBaseDatos) {
     deps.url = { fileURLToPath };
     deps["./db"] = { inicializarBaseDatos };
     deps["./Modelos/sesionModel"] = load("Modelos/sesionModel.js", {});
+    const sesion = deps["./Modelos/sesionModel"];
+    deps["./Modelos/configModel"] = { requiereConfiguracionInicial: () => inicial };
+    deps["./Controladores/configController"] = load("Controladores/configController.js", {
+        "../Modelos/configModel": {
+            cargarConfiguracion: () => configValida,
+            normalizarConfiguracion: x => x,
+            configuracionInicial: {},
+            guardarConfiguracion() { guardados++; return { success: true }; }
+        },
+        "../db": { probarConexion }
+    });
+    // Autenticación simulada; las pruebas de login cubren las credenciales reales.
+    deps["./Controladores/authController"] = { async handleLogin(event, { rol }, crear) {
+        sesion.guardarSesion(1, rol); await crear(); return { success: true };
+    } };
     deps.electron = {
         BrowserWindow: Window,
         app: { whenReady() { return { then(fn) { ready = fn; return { catch() {} }; } }; }, on(name, fn) { appEvents.set(name, fn); }, quit() { quit++; } },
-        ipcMain: { handle(name, fn) { handlers.set(name, fn); }, on() {} },
-        Menu: { buildFromTemplate() {}, setApplicationMenu() {} },
-        dialog: { showErrorBox() { assert.fail("Diálogo inesperado"); } }
+        ipcMain: { handle(name, fn) { handlers.set(name, fn); }, on(name, fn) { ipcEvents.set(name, fn); } },
+        Menu: { buildFromTemplate(x) { return x; }, setApplicationMenu(x) { menu = x; } },
+        dialog: { showErrorBox(...args) { errores.push(args); } }
     };
     load("main.js", deps, { global: {} });
-    return { ready: () => ready(), windows, handlers, appEvents, get quit() { return quit; } };
+    return { ready: () => ready(), windows, handlers, appEvents, ipcEvents, errores, sesion,
+        evento: win => ({ sender: win.webContents, senderFrame: win.webContents.mainFrame }),
+        login: rol => {
+            const login = windows.find(w => !w.closed && path.basename(w.file) === "login.html");
+            return handlers.get("login")(login ? { sender: login.webContents, senderFrame: login.webContents.mainFrame } : null, { rol });
+        },
+        get opcion() { return menu.find(x => x.label === "Ayuda").submenu[0].submenu[0]; },
+        get configWindow() { return windows.find(w => !w.closed && path.basename(w.file) === "configuracionBD.html"); },
+        get guardados() { return guardados; }, get quit() { return quit; } };
 }
 
 test("sin configuración main abre el formulario y cerrar no reinicia", async () => {
-    const h = mainHarness(async () => { throw new Error("Completa los datos"); });
+    const h = mainHarness(async () => { assert.fail("No probar MySQL antes de completar la instalación"); }, { inicial: true });
     await h.ready();
     assert.equal(path.basename(h.windows[0].file), "configuracionBD.html");
-    assert.equal(h.windows[0].loadOptions.query.motivo, "Completa los datos");
+    assert.match(h.windows[0].loadOptions.query.motivo, /primera vez/);
     h.windows[0].close();
     h.appEvents.get("window-all-closed")();
     assert.equal(h.quit, 1);
@@ -226,16 +290,166 @@ test("una conexión válida abre login y get-usuario-id ignora archivos", async 
 
 test("continuar abre login tras recuperar conexión y rechaza otras vistas", async () => {
     let falla = true;
-    const h = mainHarness(async () => { if (falla) throw new Error("Sin conexión"); });
+    const h = mainHarness(async () => { if (falla) throw new Error("Sin conexión"); }, { inicial: true });
     await h.ready();
     const configWindow = h.windows[0];
     configWindow.webContents.getURL = () => pathToFileURL(configWindow.file).href;
     const continuar = h.handlers.get("continuar-configuracion");
-    const event = { sender: configWindow.webContents };
+    const event = h.evento(configWindow);
     assert.equal((await continuar(event)).success, false);
     falla = false;
     assert.equal((await continuar(event)).success, true);
     assert.equal(path.basename(h.windows[1].file), "login.html");
     assert.equal(configWindow.closed, undefined); // La vista se cierra tras recibir su respuesta IPC.
     assert.equal((await continuar({ sender: { getURL: () => "https://example.com" } })).success, false);
+});
+
+test("PC nueva permite guardar y continuar; después revoca la excepción inicial", async () => {
+    const h = mainHarness(async permiso => { assert.equal(permiso(), true); }, { inicial: true });
+    await h.ready();
+    const e = h.evento(h.configWindow);
+    const leer = await h.handlers.get("obtener-configuracion")(e);
+    assert.equal(leer.success, true);
+    assert.equal(leer.data.password, undefined);
+    assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).success, true);
+    assert.equal(h.guardados, 1);
+    assert.equal((await h.handlers.get("continuar-configuracion")(e)).success, true);
+    assert.equal(h.opcion.enabled, false);
+    for (const canal of ["obtener-configuracion", "guardar-configuracion", "continuar-configuracion"]) {
+        assert.equal((await h.handlers.get(canal)(e, configValida)).code, "FORBIDDEN");
+    }
+});
+
+test("una conexión existente fallida no habilita configuración sin autenticar", async () => {
+    const h = mainHarness(async () => { throw new Error("MySQL detenido"); });
+    await h.ready();
+    assert.equal(h.windows.length, 0);
+    assert.equal(h.errores.length, 1);
+    assert.match(h.errores[0][1], /MySQL detenido/);
+    assert.equal(h.quit, 1);
+    assert.equal(h.opcion.enabled, false);
+    h.opcion.click();
+    assert.equal(h.windows.length, 0);
+});
+
+for (const rol of [null, "user", "juez", "desconocido"]) {
+    test(`configuración existente: ${rol ?? "sin sesión"} no abre ni utiliza el formulario`, async () => {
+        let pruebas = 0;
+        const h = mainHarness(async () => {}, { probarConexion: async () => { pruebas++; } });
+        await h.ready();
+        if (rol) await h.login(rol);
+        assert.equal(h.opcion.enabled, false);
+        const emisor = h.windows.at(-1);
+        h.ipcEvents.get("abrir-ventana-emergente")(h.evento(emisor));
+        h.opcion.click(); // Incluso invocando el callback del menú deshabilitado.
+        assert.equal(h.configWindow, undefined);
+        emisor.webContents.mainFrame.url = pathToFileURL(path.join(root, "Vistas/configuracionBD.html")).href;
+        for (const canal of ["obtener-configuracion", "guardar-configuracion", "continuar-configuracion"]) {
+            assert.equal((await h.handlers.get(canal)(h.evento(emisor), configValida)).code, "FORBIDDEN");
+        }
+        assert.equal(pruebas, 0);
+        assert.equal(h.guardados, 0);
+    });
+}
+
+test("admin abre por IPC, guarda y continúa cerrando la sesión anterior", async () => {
+    let conexiones = 0;
+    const h = mainHarness(async permiso => { conexiones++; if (permiso) assert.equal(permiso(), true); });
+    await h.ready();
+    await h.login("admin");
+    assert.equal(h.opcion.enabled, true);
+    const principal = h.windows.at(-1);
+    h.ipcEvents.get("abrir-ventana-emergente")(h.evento(principal));
+    assert.ok(h.configWindow);
+    const e = h.evento(h.configWindow);
+    assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).success, true);
+    assert.equal((await h.handlers.get("continuar-configuracion")(e)).success, true);
+    assert.equal(conexiones, 2);
+    assert.equal(h.guardados, 1);
+    assert.equal(h.sesion.obtenerSesion(), null);
+    assert.equal(principal.closed, true);
+    assert.equal(h.opcion.enabled, false);
+    assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).code, "FORBIDDEN");
+});
+
+test("solo la instancia autorizada y su frame principal pueden configurar", async () => {
+    const h = mainHarness(async () => {});
+    await h.ready(); await h.login("admin");
+    const principal = h.windows.at(-1);
+    // Una página remota en la ventana principal no puede abrir configuración.
+    const original = principal.webContents.mainFrame.url;
+    principal.webContents.mainFrame.url = "https://example.test/MenuPrincipal.html";
+    h.ipcEvents.get("abrir-ventana-emergente")(h.evento(principal));
+    assert.equal(h.configWindow, undefined);
+    principal.webContents.mainFrame.url = original;
+    h.opcion.click();
+    const ventana = h.configWindow;
+    const e = h.evento(ventana);
+    const otro = { sender: { mainFrame: e.senderFrame }, senderFrame: e.senderFrame };
+    for (const emisor of [null, {}, otro, { ...e, senderFrame: { ...e.senderFrame } }, h.evento(principal)]) {
+        for (const canal of ["obtener-configuracion", "guardar-configuracion", "continuar-configuracion"]) {
+            assert.equal((await h.handlers.get(canal)(emisor, configValida)).code, "FORBIDDEN");
+        }
+    }
+    const url = e.senderFrame.url;
+    for (const invalida of ["https://example.test/configuracionBD.html", "file:///otra/configuracionBD.html"]) {
+        e.senderFrame.url = invalida;
+        assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).code, "FORBIDDEN");
+    }
+    e.senderFrame.url = url;
+    ventana.close(); h.opcion.click();
+    assert.notEqual(h.configWindow, ventana);
+    assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).code, "FORBIDDEN");
+    assert.equal(h.guardados, 0);
+});
+
+for (const revocar of ["cerrar", "user", "otra cuenta", "sin sesión"]) {
+    test(`guardar no persiste si se revoca autorización mientras MySQL responde: ${revocar}`, async () => {
+        let resolver;
+        const h = mainHarness(async () => {}, {
+            probarConexion: () => new Promise(resolve => { resolver = resolve; })
+        });
+        await h.ready(); await h.login("admin"); h.opcion.click();
+        const ventana = h.configWindow;
+        const pendiente = h.handlers.get("guardar-configuracion")(h.evento(ventana), configValida);
+        if (revocar === "cerrar") ventana.close();
+        else if (revocar === "sin sesión") h.sesion.cerrarSesion();
+        else h.sesion.guardarSesion(2, revocar === "user" ? "user" : "admin");
+        resolver();
+        assert.equal((await pendiente).code, "FORBIDDEN");
+        assert.equal(h.guardados, 0);
+    });
+}
+
+test("guardar y continuar no se solapan, ni permiten iniciar otra sesión durante el cambio", async () => {
+    let resolver;
+    const h = mainHarness(async () => {}, {
+        probarConexion: () => new Promise(resolve => { resolver = resolve; })
+    });
+    await h.ready(); await h.login("admin"); h.opcion.click();
+    const e = h.evento(h.configWindow);
+    const pendiente = h.handlers.get("guardar-configuracion")(e, configValida);
+    assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).code, "BUSY");
+    assert.equal((await h.handlers.get("continuar-configuracion")(e)).code, "BUSY");
+    assert.equal((await h.login("user")).success, false);
+    resolver();
+    assert.equal((await pendiente).success, true);
+    assert.equal(h.guardados, 1);
+});
+
+test("continuar revalida autorización antes de activar y no cierra una sesión nueva", async () => {
+    let resolver, activaciones = 0;
+    const h = mainHarness(async permiso => {
+        if (!permiso) return;
+        await new Promise(resolve => { resolver = resolve; });
+        if (!permiso()) throw Object.assign(new Error("Autorización revocada"), { code: "FORBIDDEN" });
+        activaciones++;
+    });
+    await h.ready(); await h.login("admin"); h.opcion.click();
+    const pendiente = h.handlers.get("continuar-configuracion")(h.evento(h.configWindow));
+    h.sesion.guardarSesion(2, "user");
+    resolver();
+    assert.equal((await pendiente).code, "FORBIDDEN");
+    assert.equal(activaciones, 0);
+    assert.equal(h.sesion.obtenerSesion().userID, 2);
 });

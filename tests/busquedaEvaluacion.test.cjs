@@ -99,7 +99,9 @@ test("main conecta el canal con el controlador de la búsqueda", () => {
     };
     dependencies["./Controladores/parejaController"] = controller;
     loadCommonJS("main.js", dependencies);
-    assert.equal(handlers.get("buscar-pareja-para-evaluacion"), controller.handleBuscarParejaParaEvaluacion);
+    // El canal ahora interpone autorización antes de llamar al controlador.
+    assert.equal(typeof handlers.get("buscar-pareja-para-evaluacion"), "function");
+    assert.equal(handlers.get("buscar-pareja-para-evaluacion")(null, 42).code, "FORBIDDEN");
 });
 
 const toModuleURL = (source) => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;

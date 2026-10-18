@@ -7,6 +7,18 @@ const { app } = require("electron");
 const configPath = path.join(app.getPath("userData"), "config.json");
 const configuracionInicial = Object.freeze({ host: "127.0.0.1", port: 3306, user: "", password: "", database: "" });
 
+// Un fallo de conexión o un archivo dañado no equivalen a una instalación nueva.
+function requiereConfiguracionInicial() {
+    try {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+        return !!config && !Array.isArray(config) &&
+            Object.keys(config).length === Object.keys(configuracionInicial).length &&
+            Object.entries(configuracionInicial).every(([campo, valor]) => config[campo] === valor);
+    } catch (error) {
+        return error.code === "ENOENT";
+    }
+}
+
 function normalizarConfiguracion(config) {
     if (!config || typeof config !== "object" || Array.isArray(config)) {
         throw new Error("La configuración no es válida. Completa los datos de conexión.");
@@ -73,4 +85,4 @@ function guardarConfiguracion(nuevaConfig) {
     }
 }
 
-module.exports = { guardarConfiguracion, cargarConfiguracion, inicializarConfiguracion, normalizarConfiguracion, configuracionInicial, configPath };
+module.exports = { guardarConfiguracion, cargarConfiguracion, inicializarConfiguracion, normalizarConfiguracion, configuracionInicial, configPath, requiereConfiguracionInicial };

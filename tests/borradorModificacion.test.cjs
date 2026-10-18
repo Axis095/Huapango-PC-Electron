@@ -5,209 +5,201 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const root = path.resolve(__dirname, '..');
 const read = f => fs.readFileSync(path.join(root, f), 'utf8');
-const url = texto => `data:text/javascript;base64,${Buffer.from(texto).toString('base64')}`;
-const modulo = import(url(read('Public/js/borradorModificacion.js').replace('"./fotos.js"', JSON.stringify(url(read('Public/js/fotos.js'))))));
-// Node no implementa DataTransfer. La prueba reconstruye los mismos File/bytes.
-global.DataTransfer = class {
-    files = [];
-    items = { add: archivo => this.files.push(archivo) };
-};
-const tick = () => new Promise(resolve => setImmediate(resolve));
-async function vista({ almacen = { data: null }, apiExtra = {}, guardar } = {}) {
-    const mapa = new Map();
-    const html = read('Vistas/ModificarParejas.html').replace(/<!--[\s\S]*?-->/g, '');
+const url = s => `data:text/javascript;base64,${Buffer.from(s).toString('base64')}`;
+const modulo = import(url(read('Public/js/fichaPareja.js')
+    .replace('"./fotos.js"', JSON.stringify(url(read('Public/js/fotos.js'))))
+    .replace('"./validaciones.js"', JSON.stringify(url(read('Public/js/validaciones.js'))))));
+global.DataTransfer = class { files = []; items = { add: f => this.files.push(f) }; };
+const tick = () => new Promise(r => setImmediate(r));
+const fila = { nParejaID: 7, cNombre: 'Juan', cApellido: 'Prueba', cEmail: 'juan@example.test', nTelefono: '5512345678', dNacimiento: new Date(2000, 0, 2), oFoto: 'uploads/foto.jpg',
+    cNombreM: 'Ana', cApellidoM: 'Prueba', cEmailM: 'ana@example.test', nTelefonoM: '5598765432', dNacimientoM: '2001-03-04', IFotoM: null };
+async function vista(extra = {}, almacen = { data: null }) {
+    const elementos = new Map();
+    const documento = { activeElement: null, handlers: {}, addEventListener(n, f) { this.handlers[n] = f; } };
     const get = id => {
-        if (!mapa.has(id)) {
-            const e = { id, type: 'text', disabled: false, hidden: true, dataset: {}, textContent: '', handlers: {}, files: [], isConnected: true,
-                focus() { documento.activeElement = this; },
-                addEventListener(nombre, fn, capture) { this.handlers[nombre] = fn; if (capture) this.capture = true; } };
-            let value = '';
-            Object.defineProperty(e, 'value', { get: () => value, set: v => { value = v; if (e.type === 'file' && v === '') e.files = []; } });
-            mapa.set(id, e);
+        if (!elementos.has(id)) {
+            let value = '', disabled = false;
+            const e = { id, handlers: {}, readOnly: false, hidden: true, textContent: '', dataset: {}, files: [], isConnected: true,
+                focus() { if (!this.disabled) documento.activeElement = this; }, addEventListener(n, f) { this.handlers[n] = f; } };
+            Object.defineProperty(e, 'value', { get: () => value, set: v => { value = v; if (id.startsWith('foto') && v === '') e.files = []; } });
+            Object.defineProperty(e, 'disabled', { get: () => disabled, set: v => { disabled = v; if (v && documento.activeElement === e) documento.activeElement = null; } });
+            elementos.set(id, e);
         }
-        return mapa.get(id);
+        return elementos.get(id);
     };
-    const campos = [...html.matchAll(/<input\b[^>]*>/g)].map(([tag]) => {
-        const id = /\bid="([^"]+)"/.exec(tag)[1];
-        const e = get(id); e.type = /\btype="([^"]+)"/.exec(tag)[1]; return e;
-    });
-    const documento = { getElementById: get, querySelector: get, querySelectorAll: () => campos };
-    const navegaciones = [], escrituras = [];
-    let guardados = 0;
+    documento.getElementById = get; documento.querySelector = get;
+    const consultas = [], actualizaciones = [], navegaciones = [];
     const api = {
         async obtenerBorradorModificacion() { return { success: true, data: structuredClone(almacen.data) }; },
-        async guardarBorradorModificacion(datos) { escrituras.push(structuredClone(datos)); almacen.data = structuredClone(datos); return { success: true }; },
+        async guardarBorradorModificacion(datos) { almacen.data = structuredClone(datos); return { success: true }; },
         async limpiarBorradorModificacion() { almacen.data = null; return { success: true }; },
-        ...apiExtra
+        async buscarParejaPorID(id) { consultas.push(id); return { success: true, data: [{ ...fila, nParejaID: Number(id) }] }; },
+        async actualizarParejaCompleta(datos) { actualizaciones.push(datos); return { success: true }; }, ...extra
     };
-    const { inicializarBorradorModificacion } = await modulo;
-    const listo = inicializarBorradorModificacion(async () => {
-        guardados++;
-        return guardar ? guardar(get) : { success: false, error: 'SQL rechazado' };
-    }, documento, api, destino => navegaciones.push(destino));
-    return { get, documento, campos, listo, almacen, escrituras, navegaciones, get guardados() { return guardados; },
-        click: id => get(id).handlers.click(),
-        editar(id, valor) { get(id).value = valor; get(id).handlers.input(); },
-        async navegar(boton = 'btnBusquedaParejas') {
-            let detenido = false;
-            await get('.menu').handlers.click({ target: { closest: () => ({ id: boton }) }, preventDefault() {}, stopImmediatePropagation() { detenido = true; } });
-            assert.equal(detenido, true); assert.equal(get('.menu').capture, true);
-        }
-    };
+    const { inicializarFichaPareja } = await modulo;
+    const listo = inicializarFichaPareja(documento, api, destino => navegaciones.push(destino));
+    return { get, documento, consultas, actualizaciones, almacen, navegaciones, listo,
+        click: id => get(id).handlers.click({ preventDefault() {} }),
+        async buscar(id = '7') { get('nParejaID').value = id; await get('btnBuscarPareja').handlers.click({ preventDefault() {} }); },
+        editar(id, value) { get(id).value = value; get(id).handlers.input(); },
+        navegar: () => get('.menu').handlers.click({ target: { closest: () => ({ id: 'btnRegistros' }) }, preventDefault() {}, stopImmediatePropagation() {} }) };
 }
 
-test('navegar a Búsqueda y volver conserva ID, todos los campos y las cuatro fotos', async () => {
-    const v = await vista(); await v.listo;
-    for (const campo of v.campos) {
-        if (campo.type === 'file') campo.files = [new File([campo.id], `${campo.id}.png`, { type: 'image/png', lastModified: 123 })];
-        else campo.value = campo.type === 'date' ? '2000-01-01' : `texto ${campo.id}`;
+test('buscar precarga ambos participantes, convierte fechas y abre en lectura sin escribir SQL', async () => {
+    const v = await vista(); await v.listo; await v.buscar();
+    assert.equal(v.get('nombreMasculinoUpdate').value, 'Juan'); assert.equal(v.get('nombreFemeninoUpdate').value, 'Ana');
+    assert.equal(v.get('fechaNacimientoMasculinoUpdate').value, '2000-01-02');
+    assert.equal(v.get('fechaNacimientoFemeninoUpdate').value, '2001-03-04');
+    assert.equal(v.get('nombreMasculinoUpdate').readOnly, true); assert.equal(v.get('BTNUpdate').hidden, true);
+    for (const lado of ['Masculino', 'Femenino']) assert.equal(v.get(`edicionFoto${lado}`).hidden, true);
+    assert.equal(v.get('ayudaFotosFicha').hidden, true);
+    assert.match(v.get('parejaSeleccionada').textContent, /#7/); assert.equal(v.actualizaciones.length, 0);
+});
+test('editar y guardar usa el ID de la ficha aunque el buscador tenga otro número', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    for (const lado of ['Masculino', 'Femenino']) {
+        assert.equal(v.get(`edicionFoto${lado}`).hidden, false);
+        assert.equal(v.get(`foto${lado}Update`).disabled, false);
     }
-    await v.navegar();
-    const otra = await vista({ almacen: v.almacen }); await otra.listo;
-    for (const campo of v.campos) {
-        const recuperado = otra.get(campo.id);
-        if (campo.type === 'file') {
-            assert.equal(recuperado.files[0].name, campo.files[0].name);
-            assert.equal(await recuperado.files[0].text(), campo.id);
-            assert.equal(recuperado.files[0].lastModified, 123);
-        } else assert.equal(recuperado.value, campo.value);
-        assert.equal(recuperado.disabled, false);
-    }
-    assert.equal(v.guardados, 0); assert.match(otra.get('estadoBorradorModificacion').textContent, /recuperado/);
+    assert.equal(v.get('ayudaFotosFicha').hidden, false);
+    v.editar('nombreMasculinoUpdate', 'Juan corregido'); v.get('nParejaID').value = '99';
+    v.get('BTNUpdate').focus(); await v.click('BTNUpdate');
+    assert.equal(v.actualizaciones[0].nParejaID, '7'); assert.equal(v.actualizaciones[0].cNombreMasculino, 'Juan corregido');
+    assert.equal(v.actualizaciones[0].cNombreFemenino, 'Ana'); assert.equal(v.get('nombreMasculinoUpdate').readOnly, true);
+    assert.equal(v.documento.activeElement,v.get('btnEditarPareja'));
+    for (const lado of ['Masculino', 'Femenino']) assert.equal(v.get(`edicionFoto${lado}`).hidden, true);
+    assert.equal(v.get('ayudaFotosFicha').hidden, true);
 });
-
-test('una foto lenta y ediciones sucesivas se conservan en orden antes de navegar', async () => {
-    let resolver;
-    const v = await vista(); await v.listo;
-    v.get('fotoMasculinoUpdate').files = [{ name: 'foto.png', size: 3, type: 'image/png', lastModified: 1,
-        arrayBuffer: () => new Promise(r => { resolver = r; }) }];
-    v.editar('nombreMasculinoUpdate', 'Primero'); await tick();
-    v.editar('nombreMasculinoUpdate', 'Final');
-    const navegacion = v.navegar(); await tick();
-    assert.equal(v.navegaciones.length, 0);
-    resolver(new Uint8Array([1,2,3]).buffer); await navegacion;
-    assert.equal(v.almacen.data.campos.nombreMasculinoUpdate, 'Final');
-    assert.equal(v.navegaciones.length, 1);
-    assert.equal(v.get('nombreMasculinoUpdate').disabled, false);
+test('buscar otra pareja con cambios requiere confirmar y Cancelar conserva el borrador', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    v.editar('nombreMasculinoUpdate', 'Cambio'); await v.buscar('8');
+    assert.equal(v.consultas.length, 1); assert.equal(v.get('confirmarLimpiarModificacion').hidden, false);
+    await v.click('btnCancelarLimpiarModificacion'); assert.equal(v.get('nombreMasculinoUpdate').value, 'Cambio');
+    await v.buscar('8'); await v.click('btnConfirmarLimpiarModificacion');
+    assert.equal(v.consultas.length, 2); assert.match(v.get('parejaSeleccionada').textContent, /#8/);
+    assert.equal(v.get('nombreMasculinoUpdate').value, 'Juan');
 });
-
-test('fallo de conservación impide navegar y permite corregir o reintentar', async () => {
-    let falla = true;
-    const v = await vista({ apiExtra: { async guardarBorradorModificacion() { return { success: !falla }; } } }); await v.listo;
-    v.get('nombreMasculinoUpdate').value = 'Ana'; v.get('nombreMasculinoUpdate').focus(); await v.navegar();
-    assert.equal(v.navegaciones.length, 0); assert.equal(v.get('nombreMasculinoUpdate').value, 'Ana');
-    assert.equal(v.get('BTNUpdate').disabled, false);
-    assert.equal(v.documento.activeElement, v.get('nombreMasculinoUpdate'));
-    assert.match(v.get('estadoBorradorModificacion').textContent, /no perder/);
-    falla = false; await v.navegar(); assert.equal(v.navegaciones.length, 1);
+test('búsqueda inexistente o rechazada conserva la edición anterior identificada por su ID', async () => {
+    let fallar = false;
+    const v = await vista({ buscarParejaPorID: async () => fallar ? { success: false, message: 'No existe esa pareja.' } : { success: true, data: [fila] } });
+    await v.listo; await v.buscar(); await v.click('btnEditarPareja'); v.editar('nombreMasculinoUpdate', 'Cambio'); fallar = true;
+    await v.buscar('9'); await v.click('btnConfirmarLimpiarModificacion');
+    assert.equal(v.get('nombreMasculinoUpdate').value, 'Cambio'); assert.match(v.get('parejaSeleccionada').textContent, /#7/);
+    assert.match(v.get('estadoBusquedaParejas').textContent, /No existe/);
 });
-
-test('foto demasiado grande impide salir sin perder textos; retirarla permite navegar', async () => {
-    const v = await vista(); await v.listo;
-    v.get('nombreMasculinoUpdate').value = 'Ana';
-    v.get('fotoMasculinoUpdate').files = [{ name: 'grande.png', size: 6 * 1024 * 1024, arrayBuffer() { assert.fail('No leer'); } }];
-    await v.navegar(); assert.equal(v.navegaciones.length, 0);
-    assert.match(v.get('estadoBorradorModificacion').textContent, /5 MiB/);
-    v.get('fotoMasculinoUpdate').value = ''; await v.navegar();
-    assert.equal(v.almacen.data.campos.nombreMasculinoUpdate, 'Ana');
+test('ID inválido no consulta; respuesta con otro ID no cambia la ficha', async () => {
+    const v = await vista({ buscarParejaPorID: async () => ({ success: true, data: [fila] }) }); await v.listo;
+    await v.buscar('7x'); assert.equal(v.get('fichaPareja').hidden, true);
+    await v.buscar('8'); assert.equal(v.get('fichaPareja').hidden, true); assert.match(v.get('estadoBusquedaParejas').textContent, /no corresponde/);
 });
-
-test('guardado pendiente impide navegar o enviar una segunda modificación', async () => {
-    let resolver;
-    const v = await vista({ guardar: () => new Promise(r => { resolver = r; }) }); await v.listo;
-    const guardado = v.click('BTNUpdate');
-    await v.click('BTNUpdate'); await v.navegar();
-    assert.equal(v.guardados, 1); assert.equal(v.navegaciones.length, 0);
-    resolver({ success: false }); await guardado;
-    await v.navegar(); assert.equal(v.navegaciones.length, 1);
+test('validación antes de guardar conserva campos y habilita corregir sin perder el foco', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    v.editar('emailFemeninoUpdate', ''); v.get('BTNUpdate').focus(); await v.click('BTNUpdate');
+    assert.equal(v.actualizaciones.length, 0); assert.equal(v.get('nombreFemeninoUpdate').value, 'Ana');
+    assert.equal(v.get('emailFemeninoUpdate').disabled, false); assert.equal(v.documento.activeElement, v.get('BTNUpdate'));
+    v.editar('emailFemeninoUpdate', 'ana@example.test'); await v.click('BTNUpdate'); assert.equal(v.actualizaciones.length, 1);
 });
-
-test('rechazo SQL conserva los datos y la foto en el borrador al regresar', async () => {
-    const v = await vista(); await v.listo;
-    v.get('nombreFemeninoUpdate').value = 'Ana';
-    v.get('fotoFemeninoUpdate').files = [new File(['foto'], 'foto.jpg')];
-    await v.click('BTNUpdate'); await v.navegar();
-    const otra = await vista({ almacen: v.almacen }); await otra.listo;
-    assert.equal(otra.get('nombreFemeninoUpdate').value, 'Ana');
-    assert.equal(await otra.get('fotoFemeninoUpdate').files[0].text(), 'foto');
-});
-
-test('SQL confirmado actualiza el borrador sin reponer fotos ya guardadas', async () => {
-    const v = await vista({ guardar: async get => {
-        get('fotoMasculinoUpdate').value = ''; get('fotoFemeninoUpdate').value = '';
-        return { success: true };
-    } }); await v.listo;
-    v.get('nParejaID').value = '7'; v.get('nombreMasculinoUpdate').value = 'Juan';
-    v.get('fotoMasculinoUpdate').files = [new File(['foto'], 'foto.jpg')];
-    v.get('fotoMasculinoUpdate').handlers.change();
-    await v.click('BTNUpdate'); await v.navegar();
-    const otra = await vista({ almacen: v.almacen }); await otra.listo;
-    assert.equal(otra.get('nParejaID').value, '7'); assert.equal(otra.get('nombreMasculinoUpdate').value, 'Juan');
-    assert.equal(otra.get('fotoMasculinoUpdate').files.length, 0);
-});
-
-test('fallo del borrador después de SQL confirmado no pide repetir Guardar', async () => {
-    const v = await vista({ guardar: async () => ({ success: true }), apiExtra: { guardarBorradorModificacion: async () => ({ success: false }) } }); await v.listo;
+for (const code of ['NOT_FOUND', 'TRANSACTION_OUTCOME_UNKNOWN']) test(`${code}: mantiene edición y fotos después del error SQL`, async () => {
+    const v = await vista({ actualizarParejaCompleta: async () => ({ success: false, code, error: `Revisar: ${code}` }) }); await v.listo;
+    await v.buscar(); await v.click('btnEditarPareja'); v.get('fotoMasculinoUpdate').files = [new File(['foto'], 'foto.png')];
     await v.click('BTNUpdate');
-    assert.match(v.get('estadoBorradorModificacion').textContent, /confirmó en MySQL/);
-    assert.match(v.get('estadoBorradorModificacion').textContent, /no necesitas repetir Guardar/);
-    assert.equal(v.get('BTNUpdate').disabled, false);
+    assert.equal(v.get('fotoMasculinoUpdate').files.length, 1); assert.equal(v.get('nombreMasculinoUpdate').readOnly, false);
+    assert.match(v.get('estadoBusquedaParejas').textContent, new RegExp(code));
 });
-
-test('limpiar requiere confirmación: cancelar conserva y aceptar descarta el borrador sin SQL', async () => {
-    const v = await vista(); await v.listo;
-    v.editar('nParejaID', '7'); await tick();
-    await v.click('btnLimpiarModificacion'); await v.click('btnCancelarLimpiarModificacion');
-    assert.equal(v.get('nParejaID').value, '7'); assert.equal(v.almacen.data.campos.nParejaID, '7');
+test('navegar y regresar recupera ID de la ficha, texto editado y ambas fotos', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    v.editar('nombreFemeninoUpdate', 'Cambio');
+    for (const l of ['Masculino','Femenino']) v.get(`foto${l}Update`).files = [new File([l], `${l}.png`)];
+    await v.navegar(); const otra = await vista({}, v.almacen); await otra.listo;
+    assert.match(otra.get('parejaSeleccionada').textContent, /#7/); assert.equal(otra.get('nombreFemeninoUpdate').value, 'Cambio');
+    for (const l of ['Masculino','Femenino']) assert.equal(await otra.get(`foto${l}Update`).files[0].text(), l);
+    for (const l of ['Masculino','Femenino']) assert.equal(otra.get(`edicionFoto${l}`).hidden, false);
+    assert.equal(otra.get('nombreFemeninoUpdate').readOnly, false);
+});
+test('SQL confirmado limpia selección de fotos y actualiza el borrador antes de volver', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    v.get('fotoMasculinoUpdate').files = [new File(['foto'], 'foto.jpg')]; await v.click('BTNUpdate'); await v.navegar();
+    assert.equal(Buffer.from(v.actualizaciones[0].fotos.Masculino.bytes).toString(), 'foto');
+    const otra = await vista({}, v.almacen); await otra.listo;
+    assert.equal(otra.get('fotoMasculinoUpdate').files.length, 0); assert.equal(otra.get('nombreMasculinoUpdate').readOnly, true);
+});
+test('cancelar edición requiere confirmar y restaura los datos originales sin SQL', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja'); v.editar('nombreMasculinoUpdate','Cambio');
+    await v.click('btnCancelarEdicion'); await v.click('btnCancelarLimpiarModificacion'); assert.equal(v.get('nombreMasculinoUpdate').value, 'Cambio');
+    await v.click('btnCancelarEdicion'); await v.click('btnConfirmarLimpiarModificacion');
+    assert.equal(v.get('nombreMasculinoUpdate').value, 'Juan'); assert.equal(v.actualizaciones.length, 0);
+});
+test('cerrar ficha descarta únicamente el borrador después de confirmar', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnLimpiarModificacion');
+    await v.click('btnConfirmarLimpiarModificacion'); assert.equal(v.almacen.data, null); assert.equal(v.get('fichaPareja').hidden, true);
+    assert.equal(v.actualizaciones.length, 0);
+});
+test('fallo al conservar impide navegar sin borrar datos', async () => {
+    const v = await vista({ guardarBorradorModificacion: async () => ({ success: false }) }); await v.listo; await v.buscar();
+    await v.navegar(); assert.equal(v.navegaciones.length, 0); assert.equal(v.get('nombreMasculinoUpdate').value, 'Juan');
+    assert.equal(v.get('nParejaID').disabled, false);
+});
+test('foto excesiva no se lee ni se envía; quitarla permite guardar y navegar', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    v.get('fotoMasculinoUpdate').files = [{ name: 'grande.jpg', size: 6*1024*1024, arrayBuffer() { assert.fail('No leer'); } }];
+    await v.click('BTNUpdate'); await v.navegar(); assert.equal(v.actualizaciones.length,0); assert.equal(v.navegaciones.length,0);
+    assert.equal(v.get('nombreMasculinoUpdate').value,'Juan'); v.get('fotoMasculinoUpdate').value='';
+    await v.click('BTNUpdate'); await v.navegar(); assert.equal(v.actualizaciones.length,1); assert.equal(v.navegaciones.length,1);
+});
+test('fallo del borrador después de confirmar SQL informa éxito y no repite la escritura', async () => {
+    let falla=false;
+    const v=await vista({ guardarBorradorModificacion:async()=>({success:!falla}) }); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    await tick(); falla=true; await v.click('BTNUpdate'); await v.click('BTNUpdate');
+    assert.equal(v.actualizaciones.length,1); assert.match(v.get('estadoBorradorModificacion').textContent,/MySQL confirmó/);
+});
+test('no descarta la ficha si falla limpiar el borrador', async()=>{
+    const v=await vista({limpiarBorradorModificacion:async()=>({success:false})}); await v.listo; await v.buscar();
     await v.click('btnLimpiarModificacion'); await v.click('btnConfirmarLimpiarModificacion');
-    assert.equal(v.get('nParejaID').value, ''); assert.equal(v.almacen.data, null); assert.equal(v.guardados, 0);
-    await v.navegar();
-    const otra = await vista({ almacen: v.almacen }); await otra.listo;
-    assert.equal(otra.get('nParejaID').value, '');
+    assert.equal(v.get('fichaPareja').hidden,false); assert.equal(v.get('nombreMasculinoUpdate').value,'Juan');
 });
-
-test('fallo al limpiar conserva formulario y borrador', async () => {
-    const v = await vista({ apiExtra: { limpiarBorradorModificacion: async () => ({ success: false }) } }); await v.listo;
-    v.editar('nParejaID', '7'); await tick();
-    await v.click('btnLimpiarModificacion'); await v.click('btnConfirmarLimpiarModificacion');
-    assert.equal(v.get('nParejaID').value, '7'); assert.equal(v.almacen.data.campos.nParejaID, '7');
-    assert.equal(v.get('BTNUpdate').disabled, false);
+test('Escape cancela el cambio de ficha sin consultar ni descartar cambios', async()=>{
+    const v=await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja'); v.editar('nombreMasculinoUpdate','Cambio');
+    await v.buscar('8'); v.documento.handlers.keydown({key:'Escape',preventDefault(){}});
+    assert.equal(v.consultas.length,1); assert.equal(v.get('nombreMasculinoUpdate').value,'Cambio');
+    assert.equal(v.get('confirmarLimpiarModificacion').hidden,true);
 });
-
-test('recuperación pendiente bloquea la edición; fallo no sobrescribe el borrador y permite salir', async () => {
+test('operación pendiente evita doble guardado y navegación', async () => {
+    let resolver, cantidad = 0;
+    const v = await vista({ actualizarParejaCompleta: () => { cantidad++; return new Promise(r => { resolver = r; }); } }); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    const guardado = v.click('BTNUpdate'); await tick(); await v.click('BTNUpdate'); await v.navegar();
+    assert.equal(cantidad, 1); assert.equal(v.navegaciones.length, 0); resolver({ success: true }); await guardado;
+    assert.equal(v.get('nParejaID').disabled, false);
+});
+test('foto lenta y ediciones sucesivas conservan el último texto antes de navegar', async () => {
     let resolver;
-    const v = await vista({ apiExtra: { obtenerBorradorModificacion: () => new Promise(r => { resolver = r; }) } });
-    assert.equal(v.get('nParejaID').disabled, true); await v.navegar(); assert.equal(v.navegaciones.length, 0);
-    resolver({ success: false }); await v.listo;
-    await v.click('BTNUpdate'); await v.navegar();
-    assert.equal(v.escrituras.length, 0); assert.equal(v.guardados, 0); assert.equal(v.navegaciones.length, 1);
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    v.get('fotoMasculinoUpdate').files = [{ name: 'foto.png', type: 'image/png', size: 3, arrayBuffer: () => new Promise(r => { resolver = r; }) }];
+    v.editar('nombreMasculinoUpdate', 'Primero'); await tick(); v.editar('nombreMasculinoUpdate', 'Último');
+    const nav = v.navegar(); await tick(); assert.equal(v.navegaciones.length, 0); resolver(new Uint8Array([1,2,3]).buffer); await nav;
+    assert.equal(v.almacen.data.campos.nombreMasculinoUpdate, 'Último');
 });
-
-test('IPC aísla ventanas, módulos y subframes sin interferir con Registro', () => {
+test('recuperación fallida no sobrescribe el borrador y permite salir para reabrir', async () => {
+    const v = await vista({ obtenerBorradorModificacion: async () => ({ success: false }) }); await v.listo;
+    await v.buscar(); await v.click('BTNUpdate'); await v.navegar();
+    assert.equal(v.consultas.length, 0); assert.equal(v.actualizaciones.length, 0); assert.equal(v.navegaciones.length, 1); assert.equal(v.almacen.data, null);
+});
+test('IPC permite ambos accesos a la ficha y aísla Registro, subframes y otras ventanas', t => {
+    const sesion = require('../Modelos/sesionModel');
+    sesion.guardarSesion(1, 'user');
+    t.after(() => sesion.cerrarSesion());
     const c = require('../Controladores/borradorModificacionController');
-    const r = require('../Controladores/borradorRegistroController');
-    const crear = () => { const frame = { url: pathToFileURL(path.join(root, 'Vistas/ModificarParejas.html')).href }; return { senderFrame: frame, sender: { mainFrame: frame } }; };
-    const uno = crear(), dos = crear(), datos = { version: 1, campos: { nParejaID: '7' }, fotos: {} };
-    assert.equal(c.guardarBorradorModificacion(uno, datos).success, true);
-    assert.equal(c.obtenerBorradorModificacion(dos).data, null);
-    assert.equal(c.obtenerBorradorModificacion({ ...uno, senderFrame: { ...uno.senderFrame } }).success, false);
-    uno.senderFrame.url = pathToFileURL(path.join(root, 'Vistas/Registros.html')).href;
-    assert.equal(c.limpiarBorradorModificacion(uno).success, false);
-    assert.equal(r.obtenerBorradorRegistro(uno).data, null);
-    assert.equal(r.guardarBorradorRegistro(uno, { ...datos, campos: { nParejaID: '9' } }).success, true);
-    uno.senderFrame.url = pathToFileURL(path.join(root, 'Vistas/ModificarParejas.html')).href;
-    assert.equal(c.obtenerBorradorModificacion(uno).data.campos.nParejaID, '7');
-    assert.equal(c.limpiarBorradorModificacion(uno).success, true);
-    assert.equal(c.obtenerBorradorModificacion(uno).data, null);
+    const frame = { url: pathToFileURL(path.join(root, 'Vistas/BusquedaParejas.html')).href };
+    const e = { senderFrame: frame, sender: { mainFrame: frame } };
+    const d = { version: 2, campos: {}, fotos: {} };
+    assert.equal(c.guardarBorradorModificacion(e,d).success,true);
+    frame.url=pathToFileURL(path.join(root,'Vistas/ModificarParejas.html')).href; assert.equal(c.obtenerBorradorModificacion(e).data,d);
+    assert.equal(c.obtenerBorradorModificacion({ ...e, senderFrame: { ...frame } }).success,false);
+    assert.equal(c.obtenerBorradorModificacion({ senderFrame:frame, sender:{mainFrame:frame} }).data,null);
+    frame.url=pathToFileURL(path.join(root,'Vistas/Registros.html')).href; assert.equal(c.limpiarBorradorModificacion(e).success,false);
 });
-
-test('vista conecta el borrador una sola vez y registra los tres canales IPC', () => {
-    const render = read('Public/js/render.js');
-    assert.match(render, /return inicializarBorradorModificacion\(modificarPareja\)/);
-    assert.doesNotMatch(render, /addEventListener\("click", modificarPareja\)/);
-    for (const verbo of ['obtener', 'guardar', 'limpiar']) {
-        assert.ok(read('main.js').includes(`ipcMain.handle("${verbo}-borrador-modificacion"`));
-        assert.ok(read('preload.js').includes(`ipcRenderer.invoke("${verbo}-borrador-modificacion"`));
-    }
-    assert.doesNotMatch(read('Public/js/borradorModificacion.js'), /\b(alert|confirm)\s*\(/);
+test('ambos accesos usan la misma ficha y los campos antiguos duplicados desaparecen', () => {
+    assert.equal(read('Vistas/BusquedaParejas.html'),read('Vistas/ModificarParejas.html'));
+    const html=read('Vistas/BusquedaParejas.html'), ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
+    assert.equal(ids.length,new Set(ids).size); assert.ok(!ids.includes('nombreMasculino'));
+    assert.match(read('Public/js/render.js'), /return inicializarFichaPareja\(\)/);
 });

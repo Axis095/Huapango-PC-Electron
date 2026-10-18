@@ -75,9 +75,9 @@ function controlador(query) {
         mainWindow: { webContents: { once() {} } } };
     vm.runInNewContext(read('Controladores/authController.js'), { module, global,
         console: { log() {}, error() {}, warn() {} },
-        require(name) { return name === '../db' ? { queryDatabase: query } : { guardarSesion() { calls.sessions++; } }; }
+        require(name) { return name === '../db' ? { queryDatabase: query } : { guardarSesion() { calls.sessions++; }, obtenerClaveSesion() { return {}; } }; }
     });
-    return { calls, login(credentials) { return module.exports.handleLogin(null, credentials, () => { calls.windows++; }); } };
+    return { calls, login(credentials) { return module.exports.handleLogin(null, credentials, () => { calls.windows++; }, () => true); } };
 }
 
 test('controlador: dos IPC simultáneos crean una sola ventana y sesión', async () => {

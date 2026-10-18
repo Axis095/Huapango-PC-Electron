@@ -1,0 +1,84 @@
+[hidden] { display: none !important; }
+
+.pagina-ficha { padding: clamp(16px, 3vw, 32px); }
+.pagina-ficha p { line-height: 1.5; }
+.pagina-ficha header p { margin-top: 8px; color: var(--ui-muted); }
+
+/* La ficha ya tiene un contenedor: evitar tarjetas y sombras anidadas. */
+.pagina-ficha .buscador-ficha,
+.pagina-ficha .form-section,
+.pagina-ficha .participantes-ficha > section {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.buscador-ficha { max-width: 560px; margin: 24px 0 12px; }
+.acciones-ficha, .encabezado-ficha {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.encabezado-ficha { justify-content: space-between; margin-bottom: 20px; }
+.acciones-ficha input { flex: 1; min-width: 120px; }
+.pagina-ficha .form-section { margin: 24px 0 0; }
+.participantes-ficha {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+.pagina-ficha .participantes-ficha > section { min-width: 0; margin: 0; }
+.participante-ficha h3 { padding-bottom: 10px; border-bottom: 1px solid var(--ui-line); }
+.participante-ficha label { display: block; margin: 14px 0 6px; font-weight: 600; }
+.participante-ficha input { width: 100%; min-width: 0; }
+.participante-ficha input[readonly] { background: #f3f2f8; border-color: transparent; }
+.pagina-ficha input:disabled { background: #eeecf4; color: var(--ui-muted); cursor: not-allowed; }
+.participante-ficha input[type="file"] { padding: 8px; font-size: .85rem; }
+.participante-ficha input::file-selector-button {
+    padding: 8px 10px;
+    margin-right: 8px;
+    border: 1px solid var(--ui-line);
+    border-radius: 6px;
+    background: #f3f2f8;
+    color: var(--ui-ink);
+    font: inherit;
+    cursor: pointer;
+}
+.participante-ficha input:disabled::file-selector-button { cursor: not-allowed; }
+.participante-ficha p, #ayudaFotosFicha { margin-top: 12px; color: var(--ui-muted); font-size: .9rem; }
+#estadoBusquedaParejas { margin: 12px 0 6px; }
+#estadoBusquedaParejas[data-tipo="error"] { color: #a52635; }
+#estadoBorradorModificacion { color: var(--ui-muted); font-size: .9rem; }
+.acciones-edicion { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ui-line); }
+.pagina-ficha .btn-neutro {
+    color: var(--ui-ink);
+    background: #f3f2f8;
+    border: 1px solid #bcb6dc;
+}
+.pagina-ficha .btn-descarte { background: #a52635; color: #fff; }
+.pagina-ficha .btn { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.confirmacion-ficha {
+    padding: 18px;
+    margin: 16px 0;
+    border: 1px solid #946000;
+    border-radius: 12px;
+    background: #fff8e8;
+    box-shadow: none;
+}
+.confirmacion-ficha .acciones-ficha { margin-top: 12px; }
+.consultas-relacionadas { margin-top: 32px; border-top: 1px solid var(--ui-line); padding-top: 18px; }
+.consultas-relacionadas summary { cursor: pointer; font-weight: 600; margin-bottom: 16px; }
+.consultas-relacionadas h3 { margin-bottom: 12px; }
+.consultas-relacionadas .btn { margin-top: 12px; }
+.consultas-relacionadas [role="status"] { margin-top: 8px; }
+.pagina-ficha input:focus-visible,
+.pagina-ficha button:focus-visible,
+.pagina-ficha summary:focus-visible { outline: 3px solid var(--ui-purple); outline-offset: 3px; }
+
+@media (max-width: 760px) {
+    .participantes-ficha { grid-template-columns: 1fr; }
+    .pagina-ficha { width: calc(100% - 24px); padding: 16px; }
+}

@@ -2,7 +2,9 @@
 const { app, BrowserWindow, ipcMain, Menu, dialog, shell, contextBridge } = require("electron");
 const path = require("path");
 const { inicializarBaseDatos } = require("./db");
-const { obtenerSesion, cerrarSesion } = require("./Modelos/sesionModel");
+const { obtenerSesion, cerrarSesion, obtenerClaveSesion } = require("./Modelos/sesionModel");
+const sesionesDeVentana = new WeakMap();
+const { requiereConfiguracionInicial } = require("./Modelos/configModel");
 const { fileURLToPath } = require("url");
 const PDFDocument = require('pdfkit'); // Importación de libreria para creación de PDF's
 const fs = require('fs'); // Importación de una dependencia de la libreria para el sistema de archivos 
@@ -20,63 +22,82 @@ const { handleGuardarConfiguracion, handleObtenerConfiguracion } = require("./Co
 
 
 const { obtenerBorradorRegistro, guardarBorradorRegistro, limpiarBorradorRegistro } = require("./Controladores/borradorRegistroController");
-ipcMain.handle("obtener-borrador-registro", obtenerBorradorRegistro);
-ipcMain.handle("guardar-borrador-registro", guardarBorradorRegistro);
-ipcMain.handle("limpiar-borrador-registro", limpiarBorradorRegistro);
+ipcMain.handle("obtener-borrador-registro", desdeVentanaDeSesion(obtenerBorradorRegistro));
+ipcMain.handle("guardar-borrador-registro", desdeVentanaDeSesion(guardarBorradorRegistro));
+ipcMain.handle("limpiar-borrador-registro", desdeVentanaDeSesion(limpiarBorradorRegistro));
 const { obtenerBorradorModificacion, guardarBorradorModificacion, limpiarBorradorModificacion } = require("./Controladores/borradorModificacionController");
-ipcMain.handle("obtener-borrador-modificacion", obtenerBorradorModificacion);
-ipcMain.handle("guardar-borrador-modificacion", guardarBorradorModificacion);
-ipcMain.handle("limpiar-borrador-modificacion", limpiarBorradorModificacion);
+ipcMain.handle("obtener-borrador-modificacion", desdeVentanaDeSesion(obtenerBorradorModificacion));
+ipcMain.handle("guardar-borrador-modificacion", desdeVentanaDeSesion(guardarBorradorModificacion));
+ipcMain.handle("limpiar-borrador-modificacion", desdeVentanaDeSesion(limpiarBorradorModificacion));
 
 // MENSAJE GENERAL ELIMINAR POR FAVOR TODO EL CÓDIGO BASURA QUE NO SE UTILIZA, IGUAL LOS COMENTARIOS SOLO DEJAR LO QUE SEA DE UTILIDAD, IGUAL CON LAS LIBRERIAS QUE NO SE USAN
 
 
 // Escuchar el evento de login y pasar createMainWindow como argumento
-ipcMain.handle("login", (event, credentials) => handleLogin(event, credentials, createMainWindow));
+let autenticacionEnCurso = false;
+ipcMain.handle("login", async (event, credentials) => {
+    if (autenticacionEnCurso || operacionConfiguracion) return { success: false, code: "BUSY", message: "Espera a que termine la operación actual." };
+    if (!loginPermitido(event)) return accesoDenegado();
+    autenticacionEnCurso = true;
+    try {
+        return await handleLogin(event, credentials, createMainWindow, () => loginPermitido(event));
+    } finally {
+        autenticacionEnCurso = false;
+        actualizarMenuConfiguracion();
+    }
+});
 // Conectar el evento IPC con el controlador
-ipcMain.handle("registrar-pareja", handleRegistrarPareja);
-ipcMain.handle("buscar-pareja-por-id", handleBuscarParejaPorID);
-ipcMain.handle("buscar-pareja-para-evaluacion", handleBuscarParejaParaEvaluacion);
+ipcMain.handle("registrar-pareja", desdeVentanaDeSesion(conPermisosRegistro(handleRegistrarPareja, ["Registros.html"])));
+ipcMain.handle("buscar-pareja-por-id", desdeVentanaDeSesion(conPermisosRegistro(handleBuscarParejaPorID, ["BusquedaParejas.html", "ModificarParejas.html"])));
+ipcMain.handle("buscar-pareja-para-evaluacion", desdeVentanaDeSesion(conPermisosRegistro(handleBuscarParejaParaEvaluacion, ["Resultados.html"], ["admin", "juez"])));
 // ipcMain.handle("actualizar-pareja", handleActualizarPareja);
 // ipcMain.handle("actualizar-pareja", (event, datos) => {
 //     console.log("Enviando solicitud de actualización con datos DESDE MAIN.JS:", datos);
 //     return handleActualizarPareja(event, datos);
 // });
-ipcMain.handle("actualizar-pareja-completa", handleActualizarPareja);
-ipcMain.handle("buscar-todas-las-parejas", handleBuscarTodasLasParejas);
-ipcMain.handle("registrar-categoria", handleRegistrarCategoria);
-ipcMain.handle("buscar-categoria-por-id", handleBuscarCategoriaPorID);
-ipcMain.handle("actualizar-categoria", handleActualizarCategoria);
-ipcMain.handle("eliminar-categoria", handleEliminarCategoria);
+ipcMain.handle("actualizar-pareja-completa", desdeVentanaDeSesion(conPermisosRegistro(handleActualizarPareja, ["BusquedaParejas.html", "ModificarParejas.html"])));
+ipcMain.handle("buscar-todas-las-parejas", desdeVentanaDeSesion(conPermisosRegistro(handleBuscarTodasLasParejas, ["BusquedaParejas.html", "ModificarParejas.html"])));
+ipcMain.handle("registrar-categoria", desdeVentanaDeSesion(conPermisosRegistro(handleRegistrarCategoria)));
+ipcMain.handle("buscar-categoria-por-id", desdeVentanaDeSesion(conPermisosRegistro(handleBuscarCategoriaPorID, ["BusquedaParejas.html", "ModificarParejas.html"])));
+ipcMain.handle("actualizar-categoria", desdeVentanaDeSesion(conPermisosRegistro(handleActualizarCategoria)));
+ipcMain.handle("eliminar-categoria", desdeVentanaDeSesion(conPermisosRegistro(handleEliminarCategoria, undefined, ["admin"])));
 // Conectar los eventos IPC con los controladores
-ipcMain.handle("crear-usuario", handleCrearUsuario);
-ipcMain.handle("eliminar-usuario", handleEliminarUsuario);
-ipcMain.handle("eliminar-pareja", handleEliminarPareja);
-ipcMain.handle("obtener-rol-usuario", handleObtenerRolUsuario);
+ipcMain.handle("crear-usuario", desdeVentanaDeSesion(soloAdministrador(handleCrearUsuario)));
+ipcMain.handle("eliminar-usuario", desdeVentanaDeSesion(soloAdministrador(handleEliminarUsuario)));
+ipcMain.handle("eliminar-pareja", desdeVentanaDeSesion(soloAdministrador(handleEliminarPareja)));
+ipcMain.handle("obtener-rol-usuario", desdeVentanaDeSesion(soloAdministrador(handleObtenerRolUsuario)));
 // Conectar los eventos IPC con los controladores
-ipcMain.handle("registrar-estilo", handleRegistrarEstilo);
-ipcMain.handle("buscar-estilo-por-id", handleBuscarEstiloPorID);
-ipcMain.handle("actualizar-estilo", handleActualizarEstilo);
-ipcMain.handle("eliminar-estilo", handleEliminarEstilo);
+ipcMain.handle("registrar-estilo", desdeVentanaDeSesion(conPermisosRegistro(handleRegistrarEstilo)));
+ipcMain.handle("buscar-estilo-por-id", desdeVentanaDeSesion(conPermisosRegistro(handleBuscarEstiloPorID, ["BusquedaParejas.html", "ModificarParejas.html"])));
+ipcMain.handle("actualizar-estilo", desdeVentanaDeSesion(conPermisosRegistro(handleActualizarEstilo)));
+ipcMain.handle("eliminar-estilo", desdeVentanaDeSesion(conPermisosRegistro(handleEliminarEstilo, undefined, ["admin"])));
 // Conectar el evento IPC para generar el PDF
-ipcMain.handle("generar-pdf-parejas", handleGenerarPDFParejas);
-ipcMain.handle("generar-pdf-resultados", handleGenerarPDFResultados);
-ipcMain.handle("generar-pdf-categorias", handleGenerarPDFCategorias);
-ipcMain.handle("generar-pdf-estilos", handleGenerarPDFEstilos);
-ipcMain.handle("generar-pdf-registros-generales", handleGenerarPDFRegistrosGenerales);
-// Conectar el evento IPC para registrar evaluaciones
-ipcMain.handle("registrar-evaluacion", handleRegistrarEvaluacion);
-ipcMain.handle("obtener-evaluaciones-por-pareja", handleObtenerEvaluacionesPorPareja);
+ipcMain.handle("generar-pdf-parejas", exportacionDeSesion(handleGenerarPDFParejas));
+ipcMain.handle("generar-pdf-resultados", exportacionDeSesion(handleGenerarPDFResultados));
+ipcMain.handle("generar-pdf-categorias", exportacionDeSesion(handleGenerarPDFCategorias));
+ipcMain.handle("generar-pdf-estilos", exportacionDeSesion(handleGenerarPDFEstilos));
+ipcMain.handle("generar-pdf-registros-generales", exportacionDeSesion(handleGenerarPDFRegistrosGenerales));
+// El controlador valida sesión, rol, origen e identidad antes de registrar.
+ipcMain.handle("registrar-evaluacion", desdeVentanaDeSesion(handleRegistrarEvaluacion));
+ipcMain.handle("obtener-evaluaciones-por-pareja", desdeVentanaDeSesion(handleObtenerEvaluacionesPorPareja));
 // Conectar el evento para guardar la configuración del archivo JSON dinamico.
 ipcMain.handle("obtener-configuracion", desdeConfiguracion(handleObtenerConfiguracion));
-ipcMain.handle("guardar-configuracion", desdeConfiguracion(handleGuardarConfiguracion));
+ipcMain.handle("guardar-configuracion", desdeConfiguracion((event, datos) => {
+    const identidad = obtenerClaveSesion();
+    return handleGuardarConfiguracion(event, datos, () =>
+        configuracionPermitida(event) && obtenerClaveSesion() === identidad);
+}, true));
 ipcMain.handle("continuar-configuracion", desdeConfiguracion(async (event) => {
     if (continuandoConfiguracion) return { success: false, error: "Espera a que termine la conexión." };
     continuandoConfiguracion = true;
     try {
-        await inicializarBaseDatos();
+        const identidad = obtenerClaveSesion();
+        await inicializarBaseDatos(() => configuracionPermitida(event) &&
+            obtenerClaveSesion() === identidad);
+        configuracionInicialPermitida = false;
         cerrarSesion();
         global.userRole = "guest";
+        actualizarMenuConfiguracion();
         const origen = BrowserWindow.fromWebContents(event.sender);
         if (!global.loginWindow || global.loginWindow.isDestroyed()) await createLoginWindow();
         else global.loginWindow.focus();
@@ -85,15 +106,67 @@ ipcMain.handle("continuar-configuracion", desdeConfiguracion(async (event) => {
         }
         return { success: true };
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, code: error.code, error: error.message };
     } finally {
         continuandoConfiguracion = false;
     }
-}));
+}, true));
 // Conectar el evento IPC para abrir la ventana de configuración
-ipcMain.on("abrir-ventana-emergente", () => { abrirConfiguracion(); });
+ipcMain.on("abrir-ventana-emergente", (event) => {
+    if (esVentanaPrincipalLocal(event)) abrirConfiguracion();
+});
 
 
+
+// Autorizar en el proceso principal antes de invocar cualquier consulta.
+// El rol del formulario describe la cuenta destino, nunca al solicitante.
+function soloAdministrador(controlador) {
+    return (event, ...args) => {
+        let autorizado = false;
+        try {
+            const sesion = obtenerSesion();
+            autorizado = sesion?.userRole === "admin" &&
+                Number.isSafeInteger(sesion.userID) && sesion.userID > 0 &&
+                !!event?.senderFrame && event.senderFrame === event.sender.mainFrame &&
+                path.resolve(fileURLToPath(event.senderFrame.url)) ===
+                    path.join(__dirname, "Vistas", "Administrador.html");
+        } catch {
+            // Un emisor ausente, no local o inválido nunca obtiene permisos.
+        }
+        if (!autorizado) {
+            const mensaje = "No tienes permisos para esta operación. Se requiere una sesión de administrador desde la pantalla de Administración.";
+            return { success: false, code: "FORBIDDEN", error: mensaje, message: mensaje };
+        }
+        return controlador(event, ...args);
+    };
+}
+
+// Los permisos pertenecen a la sesión del proceso principal, nunca al formulario.
+// Las vistas antiguas de categorías/estilos conservan el mismo control de acceso.
+function conPermisosRegistro(controlador,
+    vistas = ["Registros.html", "RegistroCategoriasEstilos.html", "Parejas.html"],
+    roles = ["admin", "user"]) {
+    return (event, ...args) => {
+        let autorizado = false;
+        try {
+            const sesion = obtenerSesion();
+            autorizado = !!sesion && roles.includes(sesion.userRole) &&
+                Number.isSafeInteger(sesion.userID) && sesion.userID > 0 &&
+                !!event?.senderFrame && event.senderFrame === event.sender.mainFrame &&
+                vistas.some(vista => path.resolve(fileURLToPath(event.senderFrame.url)) ===
+                    path.join(__dirname, "Vistas", vista));
+        } catch {
+            // Rechazar emisores ausentes, remotos o inválidos.
+        }
+        if (!autorizado) {
+            const requisito = roles.includes("user") ? "usuario o administrador" :
+                roles.includes("juez") ? "juez o administrador" : "administrador";
+            const mensaje = `No tienes permisos para esta operación. Se requiere una sesión de ${requisito} desde la pantalla de gestión correspondiente.`;
+            return { success: false, code: "FORBIDDEN", error: mensaje, message: mensaje };
+        }
+        return controlador(event, ...args);
+    };
+}
 
 function createLoginWindow() {
     global.loginWindow = new BrowserWindow({
@@ -112,6 +185,7 @@ function createLoginWindow() {
 }
 
 function createMainWindow() {
+    actualizarMenuConfiguracion();
     global.mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
@@ -123,15 +197,17 @@ function createMainWindow() {
         },
     });
 
+    sesionesDeVentana.set(global.mainWindow.webContents, obtenerClaveSesion());
     global.mainWindow.maximize();
     // global.mainWindow.loadFile("Vistas/index.html");
-        global.mainWindow.loadFile("Vistas/MenuPrincipal.html");
+    const nueva = global.mainWindow;
+    const carga = nueva.loadFile(path.join(__dirname, "Vistas", "MenuPrincipal.html"));
 
 
     // Asegúrate de que este evento se registre después de que la ventana haya sido creada
-    global.mainWindow.webContents.once("did-finish-load", () => {
-        console.log("Enviando evento set-role con rol:", global.userRole || "guest");
-        global.mainWindow.webContents.send("set-role", global.userRole || "guest");
+    nueva.webContents.once("did-finish-load", () => {
+        const sesion = sesionConsultable({ sender: nueva.webContents, senderFrame: nueva.webContents.mainFrame });
+        nueva.webContents.send("set-role", sesion?.userRole || "guest");
     });
 
     global.mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => { // CODIGO QUE HAY QUE BORRAR
@@ -141,26 +217,14 @@ function createMainWindow() {
 });
 
     console.log("Ventana principal creada.");
-    
+    // La nueva ventana ya existe antes de cerrar las de sesiones anteriores.
+    for (const ventana of BrowserWindow.getAllWindows()) {
+        if (ventana !== nueva && ventana !== global.loginWindow &&
+            sesionesDeVentana.get(ventana.webContents) !== obtenerClaveSesion()) ventana.close();
+    }
+    return carga;
 }
 
-// Función para abrir ventanas de secciones
-function openWindow(file) {
-    let win = new BrowserWindow({
-        width: 800,
-        height: 600,
-        webPreferences: {
-            nodeIntegration: false , // Mejor práctica  
-            contextIsolation: true,
-            enableRemoteModule: false,
-        },
-    });
-
-    const filePath = `Sections/Registros.html`;
-    console.log("Cargando archivo:", filePath);
-
-    win.loadFile(filePath).catch(err => console.error("Error cargando archivo:", err));
-}
 
 
 // Función para abrir nuevas ventanas genéricas
@@ -192,6 +256,7 @@ function openNewWindow(tipo, file) {
     });
 
     
+    sesionesDeVentana.set(ventanaEmergente.webContents, obtenerClaveSesion());
     const filePath = path.join(__dirname, "Vistas", file);
 
     // Agregar parámetro de query SOLO para `BusquedaParejas.html`
@@ -353,7 +418,7 @@ const templateMenu = [
             {
                 label: "Configuración",
                 submenu: [
-                    { label: "Base de Datos", click() { abrirConfiguracion(); } }
+                    { id: "configuracion-mysql", label: "Base de Datos", enabled: false, click() { abrirConfiguracion(); } }
                 ]
             },
         ],
@@ -363,20 +428,60 @@ const templateMenu = [
 // Solo la ventana local de configuración puede consultar o modificar la conexión.
 let configWindow = null;
 let continuandoConfiguracion = false;
+let configuracionInicialPermitida = false;
+let operacionConfiguracion = false;
 
-function desdeConfiguracion(handler) {
-    return (event, ...args) => {
-        try {
-            const ruta = fileURLToPath(event.sender.getURL());
-            if (path.resolve(ruta) === path.join(__dirname, "Vistas", "configuracionBD.html")) {
-                return handler(event, ...args);
-            }
-        } catch { /* No es un archivo local de la aplicación. */ }
-        return { success: false, error: "Abre la pantalla de configuración para realizar esta operación." };
+function puedeConfigurar() {
+    const sesion = obtenerSesion();
+    return (configuracionInicialPermitida && !sesion) ||
+        (sesion?.userRole === "admin" && Number.isSafeInteger(sesion.userID) && sesion.userID > 0);
+}
+
+function configuracionPermitida(event) {
+    try {
+        return puedeConfigurar() && configWindow && !configWindow.isDestroyed() &&
+            sesionesDeVentana.has(event?.sender) &&
+            sesionesDeVentana.get(event.sender) === obtenerClaveSesion() &&
+            event?.sender === configWindow.webContents &&
+            !!event.senderFrame && event.senderFrame === event.sender.mainFrame &&
+            path.resolve(fileURLToPath(event.senderFrame.url)) === path.join(__dirname, "Vistas", "configuracionBD.html");
+    } catch { return false; }
+}
+
+function esVentanaPrincipalLocal(event) {
+    try {
+        const archivo = path.resolve(fileURLToPath(event.senderFrame.url));
+        return !!sesionConsultable(event) && event.sender === global.mainWindow?.webContents &&
+            event.senderFrame === event.sender.mainFrame &&
+            path.dirname(archivo) === path.join(__dirname, "Vistas") &&
+            ["MenuPrincipal.html", "Administrador.html", "Registros.html", "Resultados.html",
+                "BusquedaParejas.html", "ModificarParejas.html", "RegistroCategoriasEstilos.html",
+                "Parejas.html", "index.html"].includes(path.basename(archivo));
+    } catch { return false; }
+}
+
+function actualizarMenuConfiguracion() {
+    const ayuda = templateMenu.find(item => item.label === "Ayuda");
+    ayuda.submenu[0].submenu[0].enabled = puedeConfigurar();
+    Menu.setApplicationMenu(Menu.buildFromTemplate(templateMenu));
+}
+
+function desdeConfiguracion(handler, modifica = false) {
+    return async (event, ...args) => {
+        if (!configuracionPermitida(event)) {
+            return { success: false, code: "FORBIDDEN", error: "La configuración requiere una sesión de administrador y la ventana de configuración autorizada." };
+        }
+        if (modifica && (operacionConfiguracion || autenticacionEnCurso)) {
+            return { success: false, code: "BUSY", error: "Espera a que termine la operación de configuración actual." };
+        }
+        if (modifica) operacionConfiguracion = true;
+        try { return await handler(event, ...args); }
+        finally { if (modifica) operacionConfiguracion = false; }
     };
 }
 
 function abrirConfiguracion(motivo = "") {
+    if (!puedeConfigurar()) return;
     if (configWindow && !configWindow.isDestroyed()) {
         configWindow.focus();
         return;
@@ -388,6 +493,7 @@ function abrirConfiguracion(motivo = "") {
             nodeIntegration: false, contextIsolation: true
         }
     });
+    sesionesDeVentana.set(configWindow.webContents, obtenerClaveSesion());
     configWindow.on("closed", () => { configWindow = null; });
     configWindow.loadFile(path.join(__dirname, "Vistas", "configuracionBD.html"), { query: { motivo } })
         .catch(() => {
@@ -397,12 +503,19 @@ function abrirConfiguracion(motivo = "") {
 }
 
 app.whenReady().then(async () => {
-    Menu.setApplicationMenu(Menu.buildFromTemplate(templateMenu));
+    configuracionInicialPermitida = requiereConfiguracionInicial();
+    actualizarMenuConfiguracion();
+    if (configuracionInicialPermitida) {
+        abrirConfiguracion("Completa los datos para configurar MySQL por primera vez.");
+        return;
+    }
     try {
         await inicializarBaseDatos();
         await createLoginWindow();
     } catch (error) {
-        abrirConfiguracion(error.message);
+        dialog.showErrorBox("No se pudo iniciar la conexión",
+            error.message + "\nEsta instalación ya tiene configuración. Restablece MySQL o recupera una copia válida y reinicia. Los cambios desde la aplicación requieren una sesión de administrador.");
+        app.quit();
     }
 }).catch(() => {
     dialog.showErrorBox("Error de inicio", "No se pudo iniciar la aplicación.");
@@ -411,12 +524,65 @@ app.whenReady().then(async () => {
 
 app.on("window-all-closed", () => { app.quit(); });
 
-// Escuchar eventos desde el renderizador
-ipcMain.on("open-section", (event, section) => {
-    console.log("Sección recibida:", section);
-    openWindow(section);
-});
 
-// La identidad de la sesión nunca se lee del archivo de conexión a MySQL.
-ipcMain.handle("get-role", () => obtenerSesion()?.userRole || "guest");
-ipcMain.handle("get-usuario-id", () => obtenerSesion()?.userID ?? null);
+
+// Solo la ventana principal y las emergentes de esta sesión pueden leer su identidad.
+function sesionConsultable(event) {
+    try {
+        const sesion = obtenerSesion();
+        const clave = obtenerClaveSesion();
+        const ventana = BrowserWindow.fromWebContents(event.sender);
+        const archivo = path.resolve(fileURLToPath(event.senderFrame.url));
+        if (clave && sesionesDeVentana.get(event.sender) === clave &&
+            ["admin", "user", "juez"].includes(sesion?.userRole) &&
+            Number.isSafeInteger(sesion.userID) && sesion.userID > 0 &&
+            ventana && !ventana.isDestroyed() && ventana.webContents === event.sender &&
+            event.senderFrame === event.sender.mainFrame &&
+            path.dirname(archivo) === path.join(__dirname, "Vistas") &&
+            ["MenuPrincipal.html", "Administrador.html", "AdministradorInactivado.html",
+                "Registros.html", "Resultados.html", "BusquedaParejas.html", "ModificarParejas.html",
+                "RegistroCategoriasEstilos.html", "Parejas.html", "index.html"].includes(path.basename(archivo))) return sesion;
+    } catch { /* Emisor ausente, ajeno o destruido: no revelar la sesión. */ }
+    return null;
+}
+
+function desdeVentanaDeSesion(controlador) {
+    return (event, ...args) => {
+        if (!sesionConsultable(event)) return accesoDenegado();
+        const clave = obtenerClaveSesion();
+        const resultado = controlador(event, ...args);
+        // No entregar resultados de una consulta pendiente a una sesión posterior.
+        const vigente = () => clave === obtenerClaveSesion() && !!sesionConsultable(event);
+        if (resultado && typeof resultado.then === "function") {
+            return resultado.then(valor => vigente() ? valor : accesoDenegado());
+        }
+        return vigente() ? resultado : accesoDenegado();
+    };
+}
+
+function accesoDenegado() {
+    const mensaje = "Esta ventana no está autorizada para la sesión actual. Abre el módulo desde la ventana de tu cuenta con el rol correspondiente (usuario, juez o administrador).";
+    return { success: false, code: "FORBIDDEN", error: mensaje, message: mensaje };
+}
+
+function exportacionDeSesion(controlador) {
+    return desdeVentanaDeSesion(event => {
+        const clave = obtenerClaveSesion();
+        // No reenviar argumentos IPC como comprobaciones internas de autorización.
+        return controlador(event, () => clave === obtenerClaveSesion() && !!sesionConsultable(event));
+    });
+}
+
+function loginPermitido(event) {
+    try {
+        return !obtenerSesion() && !configuracionInicialPermitida && !operacionConfiguracion &&
+            global.loginWindow && !global.loginWindow.isDestroyed() &&
+            event?.sender === global.loginWindow.webContents &&
+            !!event.senderFrame && event.senderFrame === event.sender.mainFrame &&
+            path.resolve(fileURLToPath(event.senderFrame.url)) === path.join(__dirname, "Vistas", "login.html");
+    } catch { return false; }
+}
+
+// Se conservan los tipos que espera el menú: guest/null ante falta de autorización.
+ipcMain.handle("get-role", event => sesionConsultable(event)?.userRole || "guest");
+ipcMain.handle("get-usuario-id", event => sesionConsultable(event)?.userID ?? null);

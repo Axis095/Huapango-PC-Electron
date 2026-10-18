@@ -22,7 +22,7 @@ async function escribirPDF(filePath, dibujar) {
     await terminado;
 }
 
-async function generarPDFParejas(filePath) {
+async function generarPDFParejas(filePath, antesDeEscribir = () => {}) {
     // Consultar los datos de la base de datos
     const resultados = await queryDatabase("SELECT * FROM T_Participantes");
 
@@ -35,6 +35,7 @@ async function generarPDFParejas(filePath) {
         throw new Error("La ruta del archivo es inválida.");
     }
 
+    antesDeEscribir();
     // Crear el documento PDF
     await escribirPDF(filePath, doc => {
         doc.fontSize(18).text("Parejas Registradas", { align: "center" });
@@ -56,14 +57,18 @@ async function generarPDFParejas(filePath) {
     return { success: true, ruta: filePath };
 }
 
-async function generarPDFResultados(filePath) {
+async function generarPDFResultados(filePath, nJuezID, antesDeEscribir = () => {}) {
+    if (nJuezID !== null && (!Number.isSafeInteger(nJuezID) || nJuezID <= 0)) {
+        throw new Error("Se requiere un alcance válido para exportar evaluaciones.");
+    }
     // Consulta los resultados de la tabla de evaluaciones
     const resultados = await queryDatabase(`
         SELECT e.nEvaluacionID, e.nParejaID, u.cNombreUsuario AS juez, e.nPuntaje, e.cComentario, e.dFechaEvaluacion
         FROM t_evaluaciones AS e
         JOIN t_usuarios AS u ON e.nJuezID = u.nUsuarioID
+        ${nJuezID === null ? "" : "WHERE e.nJuezID = ?"}
         ORDER BY e.dFechaEvaluacion DESC
-    `);
+    `, nJuezID === null ? [] : [nJuezID]);
 
     if (!Array.isArray(resultados) || resultados.length === 0) {
         throw new Error("No se encontraron evaluaciones registradas.");
@@ -72,8 +77,9 @@ async function generarPDFResultados(filePath) {
     if (!filePath || typeof filePath !== "string") {
         throw new Error("La ruta del archivo es inválida.");
     }
+    antesDeEscribir();
     await escribirPDF(filePath, doc => {
-        doc.fontSize(18).text("Resultados de Evaluaciones", { align: "center" });
+        doc.fontSize(18).text(nJuezID === null ? "Resultados de Evaluaciones" : "Mis Evaluaciones", { align: "center" });
         doc.moveDown();
 
         resultados.forEach((r) => {
@@ -90,7 +96,7 @@ async function generarPDFResultados(filePath) {
     return { success: true, ruta: filePath };
 }
 
-async function generarPDFCategorias(filePath) {
+async function generarPDFCategorias(filePath, antesDeEscribir = () => {}) {
     const resultados = await queryDatabase("SELECT * FROM T_Categorias");
 
     if (!Array.isArray(resultados) || resultados.length === 0) {
@@ -100,6 +106,7 @@ async function generarPDFCategorias(filePath) {
     if (!filePath || typeof filePath !== "string") {
         throw new Error("La ruta del archivo es inválida.");
     }
+    antesDeEscribir();
     await escribirPDF(filePath, doc => {
         doc.fontSize(18).text("Categorías Registradas", { align: "center" });
         doc.moveDown();
@@ -116,7 +123,7 @@ async function generarPDFCategorias(filePath) {
     return { success: true, ruta: filePath };
 }
 
-async function generarPDFEstilos(filePath) {
+async function generarPDFEstilos(filePath, antesDeEscribir = () => {}) {
     const resultados = await queryDatabase("SELECT * FROM T_Estilos");
 
     if (!Array.isArray(resultados) || resultados.length === 0) {
@@ -126,6 +133,7 @@ async function generarPDFEstilos(filePath) {
     if (!filePath || typeof filePath !== "string") {
         throw new Error("La ruta del archivo es inválida.");
     }
+    antesDeEscribir();
     await escribirPDF(filePath, doc => {
         doc.fontSize(18).text("Estilos Registrados", { align: "center" });
         doc.moveDown();
@@ -142,7 +150,7 @@ async function generarPDFEstilos(filePath) {
     return { success: true, ruta: filePath };
 }
 
-async function generarPDFRegistrosGenerales(filePath) {
+async function generarPDFRegistrosGenerales(filePath, antesDeEscribir = () => {}) {
     const registros = await queryDatabase(`
         SELECT nDatos_nuevos, cAcción, dFecha_hora
         FROM t_registros_generales
@@ -152,6 +160,7 @@ async function generarPDFRegistrosGenerales(filePath) {
     if (!Array.isArray(registros) || registros.length === 0) {
         throw new Error("No se encontraron registros generales.");
     }
+    antesDeEscribir();
     await escribirPDF(filePath, doc => {
         doc.fontSize(18).text("Registro General de Eventos", { align: "center" });
         doc.moveDown();

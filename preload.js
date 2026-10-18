@@ -59,7 +59,7 @@ contextBridge.exposeInMainWorld("api", {
     getUsuarioID: () => ipcRenderer.invoke("get-usuario-id"),
     send: (channel, data) => {
         // Lista de canales permitidos
-        const validChannels = ["open-section", "login"];
+        const validChannels = []; // No hay canales de envío genérico autorizados.
         if (validChannels.includes(channel)) {
             ipcRenderer.send(channel, data);
         }

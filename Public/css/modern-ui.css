@@ -74,13 +74,6 @@ body>.container {
     will-change: transform;
 }
 
-.menu.menu-hidden {
-    transform: translateY(calc(-100% - 28px));
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
-
 .menu button,
 button.btn,
 .btn {
@@ -100,12 +93,31 @@ button.btn,
     background: transparent;
 }
 
-.menu button:hover,
-button.btn:hover,
-.btn:hover {
+.menu button:not(:disabled):hover,
+button.btn:not(:disabled):hover,
+.btn:not(:disabled):hover {
     transform: translateY(-2px);
     box-shadow: 0 9px 20px rgba(81, 72, 216, .24);
     filter: brightness(1.05);
+}
+
+.menu button:disabled,
+button.btn:disabled,
+.btn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    filter: none;
+}
+
+button:focus-visible {
+    outline: 3px solid var(--ui-purple);
+    outline-offset: 3px;
+}
+
+.menu button:focus-visible {
+    outline-color: #efedff;
 }
 
 h1,
@@ -235,8 +247,18 @@ tr:last-child td {
     }
 
     .menu {
-        position: relative;
+        position: sticky;
         top: 0;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
+
+    .menu button {
+        flex: 0 0 auto;
+        min-width: auto;
+        max-width: none;
+        white-space: nowrap;
     }
 
     .main-container {
@@ -266,3 +288,5 @@ tr:last-child td {
         transition-duration: .01ms !important;
     }
 }
+/* Los botones privados permanecen ocultos aunque .btn defina display. */
+.btn[hidden] { display: none !important; }

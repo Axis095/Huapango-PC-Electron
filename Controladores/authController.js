@@ -1,11 +1,14 @@
 const { queryDatabase } = require("../db");
-const { guardarSesion } = require("../Modelos/sesionModel");
+const { guardarSesion, obtenerClaveSesion, cerrarSesion } = require("../Modelos/sesionModel");
 
 let autenticando = false;
 
-async function handleLogin(event, credentials, createMainWindow) {
+async function handleLogin(event, credentials, createMainWindow, sigueAutorizado = () => false) {
+    const denegado = () => ({ success: false, code: "FORBIDDEN", message: "Inicia sesión desde la ventana de acceso autorizada." });
+    if (!sigueAutorizado()) return denegado();
     if (autenticando) return { success: false, message: "Espera a que termine el inicio de sesión." };
     autenticando = true;
+    let claveCreada = null;
     try {
         const { username, password } = credentials || {};
         if (typeof username !== "string" || !username.trim() || typeof password !== "string" || !password) {
@@ -13,10 +16,15 @@ async function handleLogin(event, credentials, createMainWindow) {
         }
         const sql = "SELECT nUsuarioID, cNombreUsuario, rol FROM t_usuarios WHERE cNombreUsuario = ? AND cContrasena = ?";
         const result = await queryDatabase(sql, [username.trim(), password]);
+        if (!sigueAutorizado()) return denegado();
 
         if (result.length > 0) {
             const userRole = result[0].rol; // El rol de la sesión ser "admin", "user" o "juez"
+            if (!["admin", "user", "juez"].includes(userRole) || !Number.isSafeInteger(result[0].nUsuarioID) || result[0].nUsuarioID <= 0) {
+                return { success: false, message: "La cuenta no tiene una identidad o un rol válido." };
+            }
             guardarSesion(result[0].nUsuarioID, userRole);
+            claveCreada = obtenerClaveSesion();
 
             global.userRole = userRole; // Almacena el rol en una variable global
             // global.userID = result[0].nUsuarioID; // <-- Se guarda el ID aquí
@@ -24,15 +32,10 @@ async function handleLogin(event, credentials, createMainWindow) {
             console.log("Enviando evento set-role con rol:", userRole);
 
             // Cierra la ventana de login y abre la ventana principal
-            createMainWindow();
+            await createMainWindow();
             if (global.loginWindow && !global.loginWindow.isDestroyed()) {
                 global.loginWindow.close();
             }
-
-            // Enviar el rol al renderizador
-            global.mainWindow.webContents.once("did-finish-load", () => {
-                global.mainWindow.webContents.send("set-role", userRole);
-            });
 
             return { success: true };
         } else {
@@ -40,6 +43,11 @@ async function handleLogin(event, credentials, createMainWindow) {
             return { success: false, message: "Usuario o contraseña incorrectos" };
         }
     } catch (err) {
+        if (claveCreada && obtenerClaveSesion() === claveCreada) {
+            cerrarSesion();
+            global.userRole = "guest";
+            if (global.mainWindow && !global.mainWindow.isDestroyed()) global.mainWindow.close();
+        }
         console.error("Error al validar el login:", err);
         return { success: false, error: "Error interno al validar el login" };
     } finally {

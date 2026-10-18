@@ -22,16 +22,21 @@ async function registrarEvaluacion(datos) {
 }
 
 // Función para obtener todas las evaluaciones de una pareja específica
-async function obtenerEvaluacionesPorPareja(nParejaID) {
+async function obtenerEvaluacionesPorPareja(nParejaID, nJuezID) {
+    // null es el alcance administrativo explícito. Una identidad ausente no amplía acceso.
+    if (nJuezID !== null && (!Number.isSafeInteger(nJuezID) || nJuezID <= 0)) {
+        throw new Error("Se requiere un alcance válido para consultar evaluaciones.");
+    }
     const sql = `
         SELECT e.nEvaluacionID, u.cNombreUsuario AS juez, e.nPuntaje, e.cComentario, e.dFechaEvaluacion
         FROM t_evaluaciones AS e
         JOIN t_usuarios AS u ON e.nJuezID = u.nUsuarioID
         WHERE e.nParejaID = ?
+        ${nJuezID === null ? "" : "AND e.nJuezID = ?"}
         ORDER BY e.dFechaEvaluacion DESC
     `;
     try {
-        const result = await queryDatabase(sql, [nParejaID]);
+        const result = await queryDatabase(sql, nJuezID === null ? [nParejaID] : [nParejaID, nJuezID]);
         return result;
     } catch (err) {
         console.error("Error al obtener evaluaciones:", err);

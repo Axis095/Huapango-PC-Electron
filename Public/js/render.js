@@ -1,5 +1,5 @@
-import { leerFoto } from "./fotos.js";
-import { inicializarBorradorModificacion } from "./borradorModificacion.js";
+import { inicializarFichaPareja } from "./fichaPareja.js";
+import { configurarMenu } from "./menu.js";
 import { validarDatosPareja, validarDatosCategoria, validarDatosModificarPareja, validarEvaluacion } from "./validaciones.js";
 import { validarIDPareja, validarDatosEstilo, validarIDCategoria, validarIDEstilo, validarDatosUsuario, validarDatosEliminarUsuario } from "./validaciones.js";
 import { inicializarBusquedaEvaluacion } from "./busquedaEvaluacion.js";
@@ -23,7 +23,6 @@ if (esEmergente) {
 document.addEventListener("DOMContentLoaded", () => {
     // Configurar los botones del menú
     configurarMenu();
-    configurarMenuConScroll();
 
     // Asociar eventos a las secciones del menú
     // document.getElementById("btnIndex").addEventListener("click", () => cargarVista("MenuPrincipal"));
@@ -54,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
     //     window.location.href = "../Vistas/BusquedaParejas.html";
     // });
     // document.getElementById("btnModificarParejas")?.addEventListener("click", () => {
-    //     window.location.href = "../Vistas/ModificarParejas.html";
+    //     window.location.href = "../Vistas/BusquedaParejas.html";
     // });
     // document.getElementById("btnAdministrador")?.addEventListener("click", () => {
     //     window.location.href = "../Vistas/Administrador.html";
@@ -95,66 +94,13 @@ document.addEventListener("DOMContentLoaded", () => {
         inicializarResultados();
     } else if (ruta.endsWith("BusquedaParejas.html")) {
         inicializarBusquedaParejas();
+        inicializarFichaPareja();
     } else if (ruta.endsWith("ModificarParejas.html")) {
         inicializarModificarParejas();
     } else if (ruta.endsWith("Administrador.html")) {
         inicializaAdministrador();
     }
 });
-
-// Oculta la barra mientras se recorre el contenido y la devuelve al inicio.
-function configurarMenuConScroll() {
-    const menu = document.querySelector('.menu');
-    if (!menu || esEmergente) return;
-
-    const actualizarVisibilidad = () => {
-        menu.classList.toggle('menu-hidden', window.scrollY > 8);
-    };
-
-    window.addEventListener('scroll', actualizarVisibilidad, { passive: true });
-    actualizarVisibilidad();
-}
-
-// Función para configurar el menú según el rol del usuario
-async function configurarMenu() {
-    try {
-        const userRole = await window.api.getUserRole(); // Obtener el rol del usuario desde el proceso principal
-        console.log(`Rol recibido: ${userRole}`);
-
-        // Configurar visibilidad de botones según el rol
-        const btnAdministrador = document.getElementById("btnAdministrador");
-        const btnResultados = document.getElementById("btnResultados");
-        const btnRegistros = document.getElementById("btnRegistros");
-        const btnBusquedaParejas = document.getElementById("btnBusquedaParejas");
-        // const btnParejas = document.getElementById("btnParejas");
-        const btnModificarParejas = document.getElementById("btnModificarParejas");
-
-        if (btnAdministrador && btnResultados && btnRegistros && btnBusquedaParejas) {
-            if (userRole === "admin") {
-                btnAdministrador.style.display = "block";
-                btnResultados.style.display = "block";
-                btnRegistros.style.display = "block";
-                btnBusquedaParejas.style.display = "block";
-            } else if (userRole === "user") {
-                btnAdministrador.style.display = "none";
-                btnResultados.style.display = "none";
-                btnRegistros.style.display = "block";
-                btnBusquedaParejas.style.display = "block";
-            } else if (userRole === "juez") {
-                btnAdministrador.style.display = "none";
-                btnResultados.style.display = "block";
-                btnRegistros.style.display = "none";
-                btnBusquedaParejas.style.display = "none";
-                // btnParejas.style.display = "none";
-                btnModificarParejas.style.display = "none";
-            }
-        } else {
-            console.warn("Los botones no se encontraron en el DOM.");
-        }
-    } catch (err) {
-        console.error("Error al configurar el menú:", err);
-    }
-}
 
 
 
@@ -249,7 +195,8 @@ async function registrarEstilo() {
 
 
 function inicializarModificarParejas() {
-    return inicializarBorradorModificacion(modificarPareja);
+    inicializarBusquedaParejas();
+    return inicializarFichaPareja();
 }
 
 
@@ -326,12 +273,10 @@ function inicializaAdministrador() {
 async function guardarEvaluacion() {
     return ejecutarAccion("guardar-evaluacion", async () => {
         try {
-            document.getElementById("pareja-id-info")?.innerText // LOG QUE LUEGO SE VA A BORRAR
-            const nJuezID = await window.api.getUsuarioID(); // ID del juez desde la sesión
-            const nParejaID = document.getElementById("pareja-id-info").innerText.trim(); //REVISAR EL MALDITO id
+            const nParejaID = document.getElementById("pareja-id-info").innerText.trim();
 
-            if (!nJuezID || !nParejaID) {
-                mostrarAviso("Error: No se ha identificado al juez o la pareja.");
+            if (!nParejaID) {
+                mostrarAviso("Selecciona una pareja antes de guardar la evaluación.");
                 return;
             }
 
@@ -345,10 +290,7 @@ async function guardarEvaluacion() {
             // Calcular el puntaje total
             const nPuntaje = parseInt(aspecto1) + parseInt(aspecto2) + parseInt(aspecto3) + parseInt(aspecto4) + parseInt(aspecto5) + parseInt(aspecto6);
 
-            const datos = { nJuezID, nParejaID, nPuntaje, cComentario };
-
-            console.log("nJuezID:", nJuezID, "nParejaID:", nParejaID);
-            console.log("Datos de evaluación capturados:", datos);
+            const datos = { nParejaID, nPuntaje, cComentario };
 
             //  Validar antes de enviar
             const resultadoValidacion = validarEvaluacion(datos);
@@ -357,7 +299,6 @@ async function guardarEvaluacion() {
                 return;
             }
 
-            console.log("Enviando evaluación al backend:", datos);
             const response = await window.api.registrarEvaluacion(datos);
 
             mostrarAviso(response.success ? "Evaluación guardada exitosamente." : "Error: " + response.error);
@@ -424,55 +365,6 @@ async function guardarEvaluacion() {
 //         console.error("Error al actualizar pareja:", err);
 //     }
 // }
-
-async function modificarPareja() {
-    return ejecutarAccion("BTNUpdate", async () => {
-        try {
-            const nParejaID = document.getElementById("nParejaID").value.trim();
-            if (!nParejaID) {
-                mostrarAviso("El ID de la pareja es obligatorio");
-                return;
-            }
-
-            // --- Preparar datos para el update ---
-            const datos = {
-                nParejaID,
-                // Masculino
-                cNombreMasculino: document.getElementById("nombreMasculinoUpdate").value.trim(),
-                cApellidoMasculino: document.getElementById("apellidoMasculinoUpdate").value.trim(),
-                cEmailMasculino: document.getElementById("emailMasculinoUpdate").value.trim(),
-                nTelefonoMasculino: document.getElementById("telefonoMasculinoUpdate").value.trim(),
-                dNacimientoMasculino: document.getElementById("fechaNacimientoMasculinoUpdate").value.trim(),
-                // Femenino
-                cNombreFemenino: document.getElementById("nombreFemeninoUpdate").value.trim(),
-                cApellidoFemenino: document.getElementById("apellidoFemeninoUpdate").value.trim(),
-                cEmailFemenino: document.getElementById("emailFemeninoUpdate").value.trim(),
-                nTelefonoFemenino: document.getElementById("telefonoFemeninoUpdate").value.trim(),
-                dNacimientoFemenino: document.getElementById("fechaNacimientoFemeninoUpdate").value.trim(),
-            };
-
-            datos.fotos = {};
-            for (const lado of ["Masculino", "Femenino"]) {
-                const archivo = document.getElementById(`foto${lado}Update`)?.files[0];
-                if (archivo) datos.fotos[lado] = await leerFoto(archivo);
-            }
-            const response = await window.api.actualizarParejaCompleta(datos);
-
-            if (response.success) {
-                for (const lado of ["Masculino", "Femenino"]) document.getElementById(`foto${lado}Update`).value = "";
-                mostrarAviso(response.message || "Pareja actualizada exitosamente.");
-            } else {
-                mostrarAviso("Error al actualizar pareja: " + (response.error || response.message || "No se pudo guardar la pareja."));
-            }
-            return response;
-        } catch (err) {
-            mostrarAviso("Error: " + err.message);
-        }
-    });
-}
-
-
-
 
 // Crear un usuario
 async function crearUsuario() {
@@ -599,6 +491,10 @@ async function eliminarUsuario() {
             //  Consultar el rol antes de eliminar
             console.log(`Consultando rol del usuario: '${cNombreUsuario}'`);
             const rolUsuarioAEliminar = await window.api.obtenerRolUsuario(cNombreUsuario);
+            if (rolUsuarioAEliminar?.success === false) {
+                mostrarAviso(rolUsuarioAEliminar.error || rolUsuarioAEliminar.message);
+                return;
+            }
             console.log(`Rol obtenido: '${rolUsuarioAEliminar}'`);
 
             if (!rolUsuarioAEliminar) {
