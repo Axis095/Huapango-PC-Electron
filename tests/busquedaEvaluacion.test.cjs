@@ -15,6 +15,7 @@ function loadCommonJS(file, dependencies) {
         module, exports: module.exports, console: quietConsole,
         __dirname: path.dirname(path.join(root, file)),
         require(name) {
+        if (name === "../Seguridad/errores") return require("../Seguridad/errores");
             assert.ok(name in dependencies, `Dependencia no simulada: ${name}`);
             return dependencies[name];
         }
@@ -23,7 +24,7 @@ function loadCommonJS(file, dependencies) {
 }
 
 function backend(queryDatabase) {
-    const model = loadCommonJS("Modelos/parejaModel.js", { "../db": { queryDatabase }, "./imagenesModel": { conFotos: async (datos, fn) => fn({ ...datos, oFotoMasculino: null, oFotoFemenino: null }), limpiarFotos: async () => {} } });
+    const model = loadCommonJS("Modelos/parejaModel.js", { "./versionPareja": require("../Modelos/versionPareja"), "../db": { queryDatabase }, "./imagenesModel": { conFotos: async (datos, fn) => fn({ ...datos, oFotoMasculino: null, oFotoFemenino: null }), limpiarFotos: async () => {} } });
     const controller = loadCommonJS("Controladores/parejaController.js", { "../Modelos/parejaModel": model });
     return { model, controller };
 }
@@ -43,7 +44,7 @@ test("la ficha consulta por ID con parámetros y conserva los campos de evaluaci
     assert.match(calls[0].sql, /WHERE\s+p\.nParejaID\s*=\s*\?/i);
     assert.match(calls[0].sql, /LEFT JOIN T_Categorias/);
     assert.match(calls[0].sql, /LEFT JOIN T_Estilos/);
-    assert.deepEqual(Array.from(calls[0].params), [42]);
+    assert.deepEqual(Array.from(calls[0].params), ["42"]);
 });
 
 test("el controlador rechaza IDs inválidos sin ejecutar SQL", async () => {
@@ -89,7 +90,7 @@ test("preload invoca el canal nuevo con el ID", async () => {
     assert.deepEqual(calls, [["buscar-pareja-para-evaluacion", 42]]);
 });
 
-test("main conecta el canal con el controlador de la búsqueda", () => {
+test("main conecta el canal con el controlador de la búsqueda", async () => {
     const handlers = new Map();
     const { controller } = backend(async () => []);
     const dependencies = Object.fromEntries([...read("main.js").matchAll(/require\(["']([^"']+)["']\)/g)].map((m) => [m[1], {}]));
@@ -98,8 +99,14 @@ test("main conecta el canal con el controlador de la búsqueda", () => {
         app: { whenReady() { return { then() { return { catch() {} }; } }; }, on() {} }
     };
     dependencies["./Controladores/parejaController"] = controller;
+    for (const nombre of Object.keys(dependencies).filter(n => n.startsWith("./Controladores/") && n !== "./Controladores/parejaController")) {
+        dependencies[nombre] = new Proxy({}, { get: () => () => ({ success: true }) });
+    }
+    // Este test solo comprueba el cableado; ipcSeguridad prueba la política real.
+    dependencies["./Seguridad/ipc"] = { crearSeguridadIPC: () => ({ proteger: (_canal, fn) => fn }) };
+    dependencies["./Servicios/operaciones"] = { ejecutarOperacion: fn => fn() };
     loadCommonJS("main.js", dependencies);
-    assert.equal(handlers.get("buscar-pareja-para-evaluacion"), controller.handleBuscarParejaParaEvaluacion);
+    assert.equal((await handlers.get("buscar-pareja-para-evaluacion")(null, 42)).code, "NOT_FOUND");
 });
 
 const toModuleURL = (source) => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
@@ -124,7 +131,7 @@ test("la vista impide solicitudes duplicadas y restaura los controles", async ()
     let resolve;
     let calls = 0;
     const v = await view({ buscarParejaParaEvaluacion(id) {
-        assert.equal(id, 42);
+        assert.equal(id, '42');
         calls++;
         return new Promise((done) => { resolve = done; });
     } });

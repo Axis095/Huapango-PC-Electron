@@ -52,7 +52,7 @@ export function inicializarBusquedaEvaluacion(documento = document, api = window
         estado.textContent = "Buscando pareja…";
 
         try {
-            const response = await api.buscarParejaParaEvaluacion(id);
+            const response = await api.buscarParejaParaEvaluacion(textoID);
             if (!response.success) {
                 estado.textContent = response.message || response.error || "No se pudo consultar la pareja.";
                 return;

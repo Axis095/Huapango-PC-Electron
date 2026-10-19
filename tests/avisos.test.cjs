@@ -6,6 +6,19 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
+for (const aceptar of [false, true]) {
+    test(`salida: ${aceptar ? 'confirmar llama cierre' : 'cancelar conserva sesión y campos'}`, async () => {
+        let cierres = 0;
+        const v = preparar({ cerrarSesion: async () => { cierres++; return { success: true }; } });
+        v.add('btnCerrarSesion', '', 'button'); const campo = v.add('observaciones', 'Sin guardar');
+        const pendiente = v.context.salirDeSesion();
+        assert.match(v.dialog().textContent, /trabajo sin guardar/);
+        v.choose(aceptar ? 'Cerrar sesión' : 'Cancelar'); await pendiente;
+        assert.equal(cierres, aceptar ? 1 : 0); assert.equal(campo.value, 'Sin guardar');
+        assert.equal(campo.disabled, false);
+    });
+}
+
 // DOM mínimo: las pruebas verifican flujo y estado, no el foco nativo de Electron.
 function preparar(api = {}) {
     const documento = { activeElement: null, addEventListener() {} };
@@ -36,7 +49,7 @@ function preparar(api = {}) {
     documento.querySelector = selector => all().find(e => e.className === selector.slice(1));
     documento.querySelectorAll = () => all().filter(e => ['input', 'button', 'select', 'textarea'].includes(e.tagName));
     documento.getElementById = id => all().find(e => e.id === id) || null;
-    const context = vm.createContext({ document: documento, window: { api, location: { search: '' } }, URLSearchParams,
+    const context = vm.createContext({ TextEncoder,  document: documento, window: { api, location: { search: '' } }, URLSearchParams,
         console: { log() {}, error() {}, warn() {} } });
     const sources = ['Public/js/fotos.js', 'Public/js/avisos.js', 'Public/js/validaciones.js', 'Public/js/busquedaEvaluacion.js', 'Public/js/render.js'];
     vm.runInContext(sources.map(file => read(file).replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '')).join('\n'), context);

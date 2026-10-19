@@ -8,6 +8,13 @@ export function inicializarLogin(documento = document, api = window.api) {
     let completado = false;
     estado.setAttribute("role", "status");
     estado.setAttribute("aria-live", "polite");
+    if (documento.location && new URLSearchParams(documento.location.search).get("sesion") === "expirada") {
+        estado.textContent = "Tu sesión terminó. Ingresa con la misma cuenta y rol para recuperar las ventanas y borradores. Si ingresas con otra cuenta o cambió tu rol, se cerrarán las ventanas anteriores. Cerrar este acceso termina la aplicación.";
+    }
+    const mostrarClave = documento.getElementById("show-password");
+    mostrarClave?.addEventListener("change", () => {
+        clave.type = mostrarClave.checked ? "text" : "password";
+    });
 
     formulario.addEventListener("submit", async event => {
         event.preventDefault();

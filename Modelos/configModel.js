@@ -1,11 +1,12 @@
 const fs = require("fs");
 const path = require("path");
 const { randomUUID } = require("crypto");
+const { isIP } = require("node:net");
 const { app } = require("electron");
 
 // Se conserva la ubicación anterior para instalaciones que ya tienen configuración.
 const configPath = path.join(app.getPath("userData"), "config.json");
-const configuracionInicial = Object.freeze({ host: "127.0.0.1", port: 3306, user: "", password: "", database: "" });
+const configuracionInicial = Object.freeze({ host: "127.0.0.1", port: 3306, user: "", password: "", database: "", tls: false, sslCa: "" });
 
 function normalizarConfiguracion(config) {
     if (!config || typeof config !== "object" || Array.isArray(config)) {
@@ -26,7 +27,19 @@ function normalizarConfiguracion(config) {
     if (config.password !== undefined && typeof config.password !== "string") {
         throw new Error("La contraseña debe ser texto.");
     }
-    return { ...datos, port: Number(puerto), password: config.password ?? "" };
+    const local = ["localhost", "127.0.0.1", "::1"].includes(datos.host.toLowerCase());
+    if (config.tls !== undefined && typeof config.tls !== "boolean") throw new Error("La opción TLS debe ser válida.");
+    const tls = config.tls === true;
+    if (!local && !tls) throw new Error("Las conexiones remotas requieren TLS y un certificado de servidor válido.");
+    // mysql2 verifica el nombre antes de autenticar cuando host es un nombre DNS.
+    // No aceptar IP con una garantía de identidad que esta versión no proporciona.
+    if (tls && isIP(datos.host)) throw new Error("Para TLS usa el nombre DNS incluido en el certificado, no una dirección IP.");
+    const sslCa = config.sslCa ?? "";
+    if (typeof sslCa !== "string" || sslCa.length > 65536 ||
+        (sslCa.trim() && (!sslCa.includes("-----BEGIN CERTIFICATE-----") || !sslCa.includes("-----END CERTIFICATE-----")))) {
+        throw new Error("El certificado de la autoridad debe ser PEM y no superar 64 KiB.");
+    }
+    return { ...datos, port: Number(puerto), password: config.password ?? "", tls, sslCa: sslCa.trim() };
 }
 
 function inicializarConfiguracion() {

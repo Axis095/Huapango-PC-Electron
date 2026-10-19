@@ -80,6 +80,9 @@ export function validarDatosUsuario(datos) {
     if (!datos.cContrasena) {
         throw new Error("El campo 'Contraseña' es obligatorio.");
     }
+    if (typeof datos.cContrasena !== 'string' || new TextEncoder().encode(datos.cContrasena).length > 72) {
+        throw new Error('La contraseña debe ocupar como máximo 72 bytes UTF-8. Los espacios forman parte de ella.');
+    }
 }
 
 export function validarDatosEliminarUsuario(datos) {

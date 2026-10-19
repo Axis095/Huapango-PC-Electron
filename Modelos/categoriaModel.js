@@ -1,37 +1,32 @@
 const { queryDatabase } = require("../db");
+const { registrarAsignacion } = require('./asignacionModel');
 
 // Registrar una categoría
 async function verificarCategoriaExistente(nParejaID, nIDCategoria) {
     const sql = "SELECT COUNT(*) AS total FROM t_categorias WHERE nParejaID = ? AND nIDCategoria = ?";
-    const result = await queryDatabase(sql, [nParejaID, nIDCategoria]);
+    const result = await queryDatabase(sql, [String(nParejaID), String(nIDCategoria)]);
     return result[0].total > 0; // Devuelve `true` si ya existe
 }
 
 async function verificarParejaEnCategoria(nParejaID) {
     const sql = "SELECT COUNT(*) AS total FROM t_categorias WHERE nParejaID = ?";
-    const result = await queryDatabase(sql, [nParejaID]);
+    const result = await queryDatabase(sql, [String(nParejaID)]);
     return result[0].total > 0; // Devuelve `true` si la pareja ya está registrada en cualquier categoría
 }
 
 
 async function registrarCategoria(datos) {
-    if (await verificarCategoriaExistente(datos.nParejaID, datos.nIDCategoria)) {
-        throw new Error("⚠️ Esta pareja ya está registrada en esta categoría.");
-    }
-
-    const sql = "INSERT INTO t_categorias (nIDCategoria, cCategoriaNombre, nParejaID) VALUES (?, ?, ?)";
-    const result = await queryDatabase(sql, [datos.nIDCategoria, datos.cCategoriaNombre, datos.nParejaID]);
-    return result.insertId;
+    return registrarAsignacion('categoria', datos);
 }
 
 // Buscar una Categoria por ID
 async function buscarCategoriaPorID(id) {
     const sql = "SELECT nIDCategoria, cCategoriaNombre FROM T_Categorias WHERE nParejaID = ?";
     try {
-        const result = await queryDatabase(sql, [id]);
+        const result = await queryDatabase(sql, [String(id)]);
         return result;
     } catch (err) {
-        throw new Error("Error al buscar categoria: " + err.message);
+        throw err;
     }
 }
 
@@ -56,7 +51,7 @@ async function actualizarCategoria(datos) {
 // Eliminar una categoría
 async function eliminarCategoria(categoriaId) {
     const sql = "DELETE FROM t_categorias WHERE nIDCategoria = ?";
-    const result = await queryDatabase(sql, [categoriaId]);
+    const result = await queryDatabase(sql, [String(categoriaId)]);
     return result.affectedRows;
 }
 

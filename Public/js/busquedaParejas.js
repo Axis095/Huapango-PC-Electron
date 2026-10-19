@@ -26,6 +26,7 @@ export function inicializarBusquedaParejas(documento = document, api = window.ap
                 const tarjeta = documento.createElement("div");
                 tarjeta.className = "resultado";
                 for (const [campo, valor] of Object.entries(fila)) {
+                    if (campo === 'versionEdicion') continue;
                     const linea = documento.createElement("p");
                     const etiqueta = documento.createElement("strong");
                     etiqueta.textContent = `${campo}: `;

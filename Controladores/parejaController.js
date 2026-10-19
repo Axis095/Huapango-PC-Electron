@@ -1,3 +1,4 @@
+const { mensajePublico } = require("../Seguridad/errores");
 const { registrarPareja, buscarParejaPorID, buscarParejaParaEvaluacion, buscarTodasLasParejas, eliminarPareja, actualizarParejaCompleta } = require("../Modelos/parejaModel");
 
 // Controlador para registrar una pareja
@@ -6,8 +7,8 @@ async function handleRegistrarPareja(event, datos) {
         const parejaId = await registrarPareja(datos);
         return { success: true, id: parejaId };
     } catch (err) {
-        console.error("Error en el controlador de registro de pareja:", err);
-        return { success: false, code: err.code || "REGISTER_FAILED", error: err.message };
+        console.error("Error en el controlador de registro de pareja:", err.code || "UNEXPECTED");
+        return { success: false, code: err.code || "REGISTER_FAILED", error: mensajePublico(err) };
     }
 }
 
@@ -20,8 +21,8 @@ async function handleBuscarParejaPorID(event, id) {
         }
         return { success: true, data: result };
     } catch (err) {
-        console.error("Error en el controlador de búsqueda de pareja:", err);
-        return { success: false, error: err.message };
+        console.error("Error en el controlador de búsqueda de pareja:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 
@@ -35,13 +36,13 @@ async function handleBuscarParejaParaEvaluacion(event, id) {
     }
 
     try {
-        const resultados = await buscarParejaParaEvaluacion(numeroID);
+        const resultados = await buscarParejaParaEvaluacion(textoID);
         if (resultados.length === 0) {
             return { success: false, code: "NOT_FOUND", message: "No se encontró ninguna pareja con ese ID." };
         }
         return { success: true, data: resultados[0] };
     } catch (err) {
-        console.error("Error al consultar la pareja para evaluación:", err);
+        console.error("Error al consultar la pareja para evaluación:", err.code || "UNEXPECTED");
         return { success: false, code: "QUERY_ERROR", message: "No se pudo consultar la pareja. Intenta nuevamente." };
     }
 }
@@ -52,8 +53,8 @@ async function handleBuscarTodasLasParejas(event) {
         const result = await buscarTodasLasParejas();
         return { success: true, data: result };
     } catch (err) {
-        console.error("Error en el controlador de búsqueda de todas las parejas:", err);
-        return { success: false, error: err.message };
+        console.error("Error en el controlador de búsqueda de todas las parejas:", err.code || "UNEXPECTED");
+        return { success: false, error: mensajePublico(err) };
     }
 }
 
@@ -68,11 +69,11 @@ async function handleActualizarPareja(event, datos) {
         if (resultado?.success !== true || !["UPDATED", "UNCHANGED"].includes(resultado.code)) {
             return { success: false, code: "UPDATE_FAILED", error: resultado?.error || "No se pudo confirmar la actualización de la pareja." };
         }
-        return { success: true, code: resultado.code,
+        return { success: true, code: resultado.code, versionEdicion: resultado.versionEdicion,
             message: resultado.code === "UNCHANGED" ? "La pareja ya tenía esos datos. No hubo cambios." : "Pareja actualizada exitosamente." };
     } catch (err) {
-        console.error("Error en el controlador de actualización de pareja:", err);
-        return { success: false, code: err.code || "UPDATE_FAILED", error: err.message };
+        console.error("Error en el controlador de actualización de pareja:", err.code || "UNEXPECTED");
+        return { success: false, code: err.code || "UPDATE_FAILED", error: mensajePublico(err) };
     }
 }
 
@@ -85,8 +86,8 @@ async function handleEliminarPareja(event, id) {
         }
         return { success: true, message: "Pareja eliminada exitosamente." };
     } catch (err) {
-        console.error("Error en el controlador al eliminar pareja:", err);
-        return { success: false, code: err.code || "DELETE_FAILED", error: err.message };
+        console.error("Error en el controlador al eliminar pareja:", err.code || "UNEXPECTED");
+        return { success: false, code: err.code || "DELETE_FAILED", error: mensajePublico(err) };
     }
 }
 

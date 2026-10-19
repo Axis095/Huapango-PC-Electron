@@ -6,7 +6,7 @@ const { pathToFileURL } = require("node:url");
 const root = path.resolve(__dirname, "..");
 const read = file => fs.readFileSync(path.join(root, file), "utf8");
 const url = text => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
-const modulo = import(url(read("Public/js/registroParejas.js").replace('"./fotos.js"', JSON.stringify(url(read("Public/js/fotos.js")))).replace('"./validaciones.js"', JSON.stringify(url(read("Public/js/validaciones.js"))))));
+const modulo = import(url(read("Public/js/registroParejas.js").replace('"./fotos.js"', JSON.stringify(url(read("Public/js/fotos.js")))).replace('"./borradores.js"', JSON.stringify(url(read("Public/js/borradores.js")))).replace('"./validaciones.js"', JSON.stringify(url(read("Public/js/validaciones.js"))))));
 
 async function vista(apiExtra = {}, almacen = { data: null }) {
     const elementos = new Map();
@@ -26,7 +26,7 @@ async function vista(apiExtra = {}, almacen = { data: null }) {
     const navegaciones = [], registros = [], categorias = [];
     const api = {
         async obtenerBorradorRegistro() { return { success: true, data: structuredClone(almacen.data) }; },
-        async guardarBorradorRegistro(datos) { almacen.data = structuredClone(datos); return { success: true }; },
+        async guardarBorradorRegistro(datos) { almacen.data = structuredClone({ ...datos, fotos: { ...almacen.data?.fotos, ...datos.fotos } }); return { success: true }; },
         async limpiarBorradorRegistro() { almacen.data = null; return { success: true }; },
         async registrarPareja(datos) { registros.push(datos); return { success: true, id: datos.nParejaID }; },
         async registrarCategoria(datos) { categorias.push(datos); return { success: true }; },
@@ -200,10 +200,10 @@ test("los borradores están aislados por ventana y se rechazan otras vistas y su
     const crear = () => { const frame = { url: pathToFileURL(path.join(root, "Vistas/Registros.html")).href };
         return { senderFrame: frame, sender: { mainFrame: frame } }; };
     const uno = crear(), dos = crear();
-    const datos = { version: 1, campos: { nombre: "Prueba" }, fotos: {} };
+    const datos = { version: 1, campos: { nombreMasculino: "Prueba" }, fotos: {} };
     assert.equal(c.guardarBorradorRegistro(uno, datos).success, true);
     assert.equal(c.obtenerBorradorRegistro(dos).data, null);
-    assert.equal(c.obtenerBorradorRegistro(uno).data, datos);
+    assert.deepEqual(c.obtenerBorradorRegistro(uno).data, datos);
     assert.equal(c.obtenerBorradorRegistro({ ...uno, senderFrame: { ...uno.senderFrame } }).success, false);
     uno.senderFrame.url = pathToFileURL(path.join(root, "Vistas/Resultados.html")).href;
     assert.equal(c.limpiarBorradorRegistro(uno).success, false);
@@ -219,7 +219,7 @@ test("el HTML no repite IDs y la vista de registro no utiliza alert ni confirm",
     assert.doesNotMatch(read("Public/js/registroParejas.js"), /\b(?:alert|confirm)\s*\(/);
     assert.doesNotMatch(read("Public/js/render.js"), /function inicializarRegistros\(/);
     for (const canal of ["obtener", "guardar", "limpiar"]) {
-        assert.ok(read("main.js").includes(`ipcMain.handle("${canal}-borrador-registro"`));
+        assert.ok(read("main.js").includes(`registrarIPC("${canal}-borrador-registro"`));
         assert.ok(read("preload.js").includes(`ipcRenderer.invoke("${canal}-borrador-registro"`));
     }
 });

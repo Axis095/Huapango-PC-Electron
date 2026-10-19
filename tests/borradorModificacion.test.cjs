@@ -6,7 +6,7 @@ const { pathToFileURL } = require('node:url');
 const root = path.resolve(__dirname, '..');
 const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 const url = texto => `data:text/javascript;base64,${Buffer.from(texto).toString('base64')}`;
-const modulo = import(url(read('Public/js/borradorModificacion.js').replace('"./fotos.js"', JSON.stringify(url(read('Public/js/fotos.js'))))));
+const modulo = import(url(read('Public/js/borradorModificacion.js').replace('"./fotos.js"', JSON.stringify(url(read('Public/js/fotos.js')))).replace('"./borradores.js"', JSON.stringify(url(read('Public/js/borradores.js'))))));
 // Node no implementa DataTransfer. La prueba reconstruye los mismos File/bytes.
 global.DataTransfer = class {
     files = [];
@@ -36,14 +36,15 @@ async function vista({ almacen = { data: null }, apiExtra = {}, guardar } = {}) 
     let guardados = 0;
     const api = {
         async obtenerBorradorModificacion() { return { success: true, data: structuredClone(almacen.data) }; },
-        async guardarBorradorModificacion(datos) { escrituras.push(structuredClone(datos)); almacen.data = structuredClone(datos); return { success: true }; },
+        async guardarBorradorModificacion(datos) { escrituras.push(structuredClone(datos)); almacen.data = structuredClone({ ...datos, fotos: { ...almacen.data?.fotos, ...datos.fotos } }); return { success: true }; },
         async limpiarBorradorModificacion() { almacen.data = null; return { success: true }; },
+        async buscarParejaPorID() { return { success: true, data: [{ versionEdicion: 'a'.repeat(64) }] }; },
         ...apiExtra
     };
     const { inicializarBorradorModificacion } = await modulo;
-    const listo = inicializarBorradorModificacion(async () => {
+    const listo = inicializarBorradorModificacion(async opciones => {
         guardados++;
-        return guardar ? guardar(get) : { success: false, error: 'SQL rechazado' };
+        return guardar ? guardar(get, opciones) : { success: false, error: 'SQL rechazado' };
     }, documento, api, destino => navegaciones.push(destino));
     return { get, documento, campos, listo, almacen, escrituras, navegaciones, get guardados() { return guardados; },
         click: id => get(id).handlers.click(),
@@ -115,6 +116,7 @@ test('foto demasiado grande impide salir sin perder textos; retirarla permite na
 test('guardado pendiente impide navegar o enviar una segunda modificación', async () => {
     let resolver;
     const v = await vista({ guardar: () => new Promise(r => { resolver = r; }) }); await v.listo;
+    await v.click('btnConsultarModificacion');
     const guardado = v.click('BTNUpdate');
     await v.click('BTNUpdate'); await v.navegar();
     assert.equal(v.guardados, 1); assert.equal(v.navegaciones.length, 0);
@@ -125,6 +127,7 @@ test('guardado pendiente impide navegar o enviar una segunda modificación', asy
 test('rechazo SQL conserva los datos y la foto en el borrador al regresar', async () => {
     const v = await vista(); await v.listo;
     v.get('nombreFemeninoUpdate').value = 'Ana';
+    await v.click('btnConsultarModificacion');
     v.get('fotoFemeninoUpdate').files = [new File(['foto'], 'foto.jpg')];
     await v.click('BTNUpdate'); await v.navegar();
     const otra = await vista({ almacen: v.almacen }); await otra.listo;
@@ -137,6 +140,7 @@ test('SQL confirmado actualiza el borrador sin reponer fotos ya guardadas', asyn
         get('fotoMasculinoUpdate').value = ''; get('fotoFemeninoUpdate').value = '';
         return { success: true };
     } }); await v.listo;
+    await v.click('btnConsultarModificacion');
     v.get('nParejaID').value = '7'; v.get('nombreMasculinoUpdate').value = 'Juan';
     v.get('fotoMasculinoUpdate').files = [new File(['foto'], 'foto.jpg')];
     v.get('fotoMasculinoUpdate').handlers.change();
@@ -148,6 +152,7 @@ test('SQL confirmado actualiza el borrador sin reponer fotos ya guardadas', asyn
 
 test('fallo del borrador después de SQL confirmado no pide repetir Guardar', async () => {
     const v = await vista({ guardar: async () => ({ success: true }), apiExtra: { guardarBorradorModificacion: async () => ({ success: false }) } }); await v.listo;
+    await v.click('btnConsultarModificacion');
     await v.click('BTNUpdate');
     assert.match(v.get('estadoBorradorModificacion').textContent, /confirmó en MySQL/);
     assert.match(v.get('estadoBorradorModificacion').textContent, /no necesitas repetir Guardar/);
@@ -206,8 +211,48 @@ test('vista conecta el borrador una sola vez y registra los tres canales IPC', (
     assert.match(render, /return inicializarBorradorModificacion\(modificarPareja\)/);
     assert.doesNotMatch(render, /addEventListener\("click", modificarPareja\)/);
     for (const verbo of ['obtener', 'guardar', 'limpiar']) {
-        assert.ok(read('main.js').includes(`ipcMain.handle("${verbo}-borrador-modificacion"`));
+        assert.ok(read('main.js').includes(`registrarIPC("${verbo}-borrador-modificacion"`));
         assert.ok(read('preload.js').includes(`ipcRenderer.invoke("${verbo}-borrador-modificacion"`));
     }
     assert.doesNotMatch(read('Public/js/borradorModificacion.js'), /\b(alert|confirm)\s*\(/);
+});
+
+test('texto repetido no vuelve a clonar fotos confirmadas, pero retirarlas envía null', async () => {
+    const v = await vista(); await v.listo;
+    v.get('fotoMasculinoUpdate').files = [new File(['foto'], 'foto.png')];
+    await v.navegar();
+    assert.ok(v.escrituras[0].fotos.fotoMasculinoUpdate);
+    v.editar('nombreMasculinoUpdate', 'Ana'); await tick();
+    assert.deepEqual(v.escrituras.at(-1).fotos, {});
+    assert.equal(await new Response(v.almacen.data.fotos.fotoMasculinoUpdate.bytes).text(), 'foto');
+    v.get('fotoMasculinoUpdate').value = '';
+    v.get('fotoMasculinoUpdate').handlers.change(); await tick();
+    assert.equal(v.escrituras.at(-1).fotos.fotoMasculinoUpdate, null);
+});
+
+test('sin consulta no actualiza; conflicto conserva ediciones y exige otra consulta', async () => {
+    const tokens = [];
+    const v = await vista({ guardar: async (_get, opciones) => { tokens.push(opciones.versionEdicion); return { success: false, code: 'EDIT_CONFLICT' }; },
+        apiExtra: { async buscarParejaPorID() { return { success: true, data: [{ cNombre: 'Actual', versionEdicion: 'b'.repeat(64) }] }; } }
+    }); await v.listo;
+    v.get('nParejaID').value = '7'; v.get('nombreMasculinoUpdate').value = 'Mi edición';
+    await v.click('BTNUpdate'); assert.equal(v.guardados, 0);
+    await v.click('btnConsultarModificacion');
+    assert.equal(v.get('nombreMasculino').value, 'Actual');
+    assert.equal(v.get('nombreMasculinoUpdate').value, 'Mi edición');
+    await v.click('BTNUpdate'); assert.deepEqual(tokens, ['b'.repeat(64)]);
+    assert.equal(v.almacen.data.versionEdicion, null);
+    await v.click('BTNUpdate'); assert.equal(v.guardados, 1);
+    assert.equal(v.get('nombreMasculinoUpdate').value, 'Mi edición');
+});
+
+test('respuesta de actualización renueva token y borrador lo conserva al volver', async () => {
+    const v = await vista({ guardar: async () => ({ success: true, versionEdicion: 'c'.repeat(64) }) }); await v.listo;
+    v.get('nParejaID').value = '7'; await v.click('btnConsultarModificacion');
+    await v.click('BTNUpdate'); assert.equal(v.almacen.data.versionEdicion, 'c'.repeat(64));
+    const tokens = [];
+    const otra = await vista({ almacen: v.almacen, guardar: async (_get, opciones) => { tokens.push(opciones.versionEdicion); return { success: false }; } });
+    await otra.listo; await otra.click('BTNUpdate'); assert.deepEqual(tokens, ['c'.repeat(64)]);
+    otra.editar('nParejaID', '8'); await tick(); await otra.click('BTNUpdate');
+    assert.equal(tokens.length, 1); assert.equal(otra.almacen.data.versionEdicion, null);
 });

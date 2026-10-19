@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { fileURLToPath } = require("node:url");
+const { prepararBorrador } = require('./borradorDatos');
 
 // Borradores en memoria por ventana. No se escriben fotos ni datos personales a disco.
 const borradores = new WeakMap();
@@ -18,11 +19,11 @@ function obtenerBorradorRegistro(event) {
 }
 
 function guardarBorradorRegistro(event, datos) {
-    if (!permitido(event) || !datos || datos.version !== 1 || !datos.campos || !datos.fotos) {
-        return { success: false };
-    }
+    if (!permitido(event)) return { success: false };
+    const validado = prepararBorrador(datos, borradores.get(event.sender), 'registro');
+    if (!validado) return { success: false, code: 'INVALID_DRAFT', error: 'Borrador inválido o demasiado grande.' };
     // IPC clona los datos de entrada y salida; no se comparten objetos con la vista.
-    borradores.set(event.sender, datos);
+    borradores.set(event.sender, validado);
     return { success: true };
 }
 
