@@ -19,7 +19,8 @@
     "test:smoke": "electron scripts/smoke-fase0.cjs",
     "test:smoke:dev": "node scripts/desarrollo.mjs --smoke",
     "test:integration": "node scripts/integracion-fase0.cjs",
-    "build": "electron-builder",
+    "prebuild": "node scripts/compilar-app.mjs",
+    "build": "electron-builder --publish never",
     "clean": "rimraf dist"
   },
   "dependencies": {
@@ -39,9 +40,13 @@
     "productName": "HuapangoApp",
     "asar": true,
     "directories": {
+      "app": "build/app",
       "output": "dist"
     },
+    "npmRebuild": false,
+    "afterPack": "scripts/verificar-paquete.cjs",
     "files": [
+      "electron/main.cjs",
       "main.js",
       "preload.js",
       "db.js",
@@ -50,7 +55,9 @@
       "Modelos/**/*",
       "Seguridad/**/*",
       "Servicios/**/*",
-      "Public/**/*",
+      "assets/**/*",
+      "Public/css/**/*",
+      "Public/fonts/**/*",
       "Vistas/**/*",
       "!.tmp/**/*",
       "!tests/**/*",

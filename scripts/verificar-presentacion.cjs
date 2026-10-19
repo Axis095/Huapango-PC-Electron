@@ -5,6 +5,16 @@ const path = require('node:path');
 
 async function verificarPresentacion(ventana, vista, destino) {
     ventana.setContentSize(1280, 960);
+    // El tamaño nativo puede aplicarse antes de que el renderer reciba resize.
+    // Esperar su confirmación; no comparar una página aún en el viewport inicial.
+    const resize = await ventana.webContents.executeJavaScript(`(async () => {
+        const inicio = performance.now();
+        const inicial = [innerWidth, innerHeight];
+        while ((innerWidth !== 1280 || innerHeight !== 960) && performance.now() - inicio < 3000) {
+            await new Promise(r => setTimeout(r, 30));
+        }
+        return { inicial, final: [innerWidth, innerHeight], esperaMs: Math.round(performance.now() - inicio) };
+    })()`);
     const fuentes = await ventana.webContents.executeJavaScript(`(async () => {
         const familias = ['Montserrat', 'DM Sans', 'Space Grotesk'];
         const cargadas = await Promise.all(familias.map(f => document.fonts.load('400 16px "' + f + '"', 'Huapango áéíóú ñ')));
@@ -20,9 +30,9 @@ async function verificarPresentacion(ventana, vista, destino) {
     assert.deepEqual(fuentes.cargadas, [true, true, true], 'Las familias deben existir y cargar, no usar fallback');
     assert.match(fuentes.titulo, /Space Grotesk/);
     assert.match(fuentes.cuerpo, /DM Sans/);
-    const disposicion = await ventana.webContents.executeJavaScript(`(() => {
+    const captura = await ventana.webContents.executeJavaScript(`(() => {
         const selectores = ['body', '.menu', 'h1', '.welcome-section', '.login-container', 'video'];
-        return Object.fromEntries(selectores.map(selector => {
+        const disposicion = Object.fromEntries(selectores.map(selector => {
             const nodo = document.querySelector(selector);
             if (!nodo) return [selector, null];
             const css = getComputedStyle(nodo), rect = nodo.getBoundingClientRect();
@@ -30,8 +40,22 @@ async function verificarPresentacion(ventana, vista, destino) {
                 posicion: css.position, fuente: css.fontFamily, color: css.color,
                 caja: [rect.x, rect.y, rect.width, rect.height].map(n => Math.round(n * 100) / 100) }];
         }));
+        return { disposicion, viewport: { ancho: innerWidth, alto: innerHeight,
+            cliente: document.documentElement.clientWidth, escala: devicePixelRatio } };
     })()`);
-    const presentacion = { fuentes, disposicion };
+    const presentacion = { fuentes, disposicion: captura.disposicion };
+    const entorno = {
+        contenido: ventana.getContentSize(),
+        ventana: ventana.getSize(),
+        zoom: ventana.webContents.getZoomFactor(),
+        viewport: captura.viewport, resize
+    };
+    fs.writeFileSync(path.join(destino, vista + '-entorno.json'), JSON.stringify(entorno, null, 2));
+    console.log('ENTORNO_VISUAL:', vista, JSON.stringify(entorno));
+    assert.deepEqual(entorno.contenido, [1280, 960], 'El ensayo requiere el mismo tamaño nativo');
+    assert.equal(entorno.zoom, 1, 'El ensayo requiere zoom 100%');
+    assert.equal(entorno.viewport.ancho, 1280, 'El viewport debe reflejar el tamaño solicitado');
+    assert.equal(entorno.viewport.alto, 960, 'El viewport debe reflejar el tamaño solicitado');
     fs.writeFileSync(path.join(destino, vista + '-presentacion.json'), JSON.stringify(presentacion, null, 2));
     if (process.env.HUAPANGO_SMOKE_REFERENCIA) {
         const referencia = JSON.parse(fs.readFileSync(path.join(process.env.HUAPANGO_SMOKE_REFERENCIA, vista + '-presentacion.json'), 'utf8'));

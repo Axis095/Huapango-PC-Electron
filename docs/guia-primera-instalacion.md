@@ -373,7 +373,17 @@ Get-ChildItem -LiteralPath .\dist
 
 Buscar el `.exe` de instalación en dist; el nombre depende del producto, versión y configuración. `--publish never` genera localmente sin publicar. El primer build puede descargar herramientas adicionales.
 
-El empaquetado actual usa fuentes CommonJS y HTML. El instalador **no contiene MySQL, BD, usuarios iniciales, configuración local ni fotos**. La PC destino necesita acceso al servidor y completar el paso 7; para ejecutar el paquete no necesita Node/npm/Git.
+El build compila primero Main y las diez vistas con Vite; electron-builder toma
+`build/app` y comprueba su contenido con `scripts/verificar-paquete.cjs`. Debe
+imprimir `PAQUETE_COMPILADO_OK` y generar `dist/auditoria-paquete.json`, con las
+huellas del ASAR y de la aplicación compilada. Un fallo de inspección detiene el
+build. Verificar la identidad del instalador antes del ensayo:
+
+```powershell
+Get-FileHash -LiteralPath '.\dist\HuapangoApp Setup 1.0.0.exe' -Algorithm SHA256
+```
+
+El instalador **no contiene MySQL, BD, usuarios iniciales, configuración local ni fotos**. La PC destino necesita acceso al servidor y completar el paso 7; para ejecutar el paquete no necesita Node/npm/Git.
 
 Un instalador sin firma puede mostrar avisos de Windows. La firma y distribución final requieren revisión propia; no desactivar protecciones como requisito del ensayo.
 
@@ -449,4 +459,10 @@ La base local tiene cinco tablas InnoDB, IDs VARCHAR(50), dos credenciales fuera
 
 La propuesta [003-unicidad-fase0.sql](../sql/003-unicidad-fase0.sql) se ensaya únicamente sobre una copia temporal. La aplicación protege concurrencia con transacciones incluso antes de añadirla, pero la base real sigue requiriendo revisión y aplicación administrada de esos índices.
 
-El build normal puede fallar en winCodeSign por falta del privilegio de enlaces simbólicos de Windows. Un build de laboratorio sin edición/firma del ejecutable no acredita el build normal ni una instalación validada; consultar la reevaluación antes de distribuir.
+El build puede fallar en winCodeSign por falta del privilegio para extraer enlaces
+simbólicos de macOS dentro del bundle de herramientas. No desactivar protecciones
+de Windows para resolverlo. El ensayo F1-05 usó una caché local que conserva los
+archivos de Windows del bundle oficial ya descargado, sin sus carpetas darwin/linux;
+la [bitácora](migracion/fase-1.md) registra la ubicación y el resultado. No se
+deshabilitó la edición del ejecutable. Esto no sustituye una firma Authenticode
+ni acredita instalación/actualización; ambas conservan su validación separada.

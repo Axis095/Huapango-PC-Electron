@@ -20,7 +20,10 @@ const resultado = spawnSync(process.execPath,
 if (resultado.error) throw resultado.error;
 if (resultado.status !== 0) process.exit(resultado.status || 1);
 
-for (const recurso of ['Vistas', 'Public']) {
+// Vite emite las vistas, JS e imágenes. Solo el CSS preservado y sus fuentes
+// necesitan copiarse en ese modo; compile:main conserva el ensayo sin Vite.
+const recursos = process.argv.includes('--renderer-vite') ? ['Public/css', 'Public/fonts'] : ['Vistas', 'Public'];
+for (const recurso of recursos) {
     fs.cpSync(path.join(raiz, recurso), path.join(destino, recurso), { recursive: true });
 }
 const original = JSON.parse(fs.readFileSync(path.join(raiz, 'package.json'), 'utf8'));

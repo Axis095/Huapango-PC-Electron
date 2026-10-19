@@ -30,7 +30,12 @@ Estas entradas usan la configuración local de la aplicación.
 `npm.cmd run test:smoke` prueba fuentes y `npm.cmd run test:smoke:dev` prueba Vite,
 con perfil temporal y SQL simulado. Evidencia, comparación del compilado y
 limitaciones en la [bitácora de Fase 1](docs/migracion/fase-1.md).
-La distribución aún usa la entrada anterior; su adaptación es F1-05/06.
+`npm.cmd run build` compila primero y genera NSIS desde `build/app`, sin publicar.
+El hook de empaquetado comprueba el ASAR y guarda `dist/auditoria-paquete.json`;
+rechaza datos privados, recursos ausentes o contenido distinto del compilado.
+F1-06 ya cuenta con instalación/actualización nativas de laboratorio y recursos
+offline; por decisión del usuario sigue abierta hasta probar la identidad final.
+Consultar el [control de cierre](docs/migracion/cierre-fase-1.md).
 
 Para comparar automáticamente login/menú contra capturas de fuentes, indicar el
 perfil de un smoke de fuentes (ruta `CAPTURAS_VISUALES`) que contenga `login-presentacion.json` y

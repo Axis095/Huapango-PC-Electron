@@ -23,12 +23,63 @@ Tras cada merge, volver a medir la línea base y revisar módulos reales.
 | Fase | Evidencia necesaria | Estado |
 | --- | --- | --- |
 | 0 | Cierre técnico acotado según F0-17/18; deuda con destino explícito | Cerrada en ese alcance; validación manual/operativa pendiente en [acta](cierre-fase-0.md) |
-| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | F1-01/02 verificada; F1-03/04 guardada con fallo actual de paridad dev; distribución/instalación pendientes en [bitácora](fase-1.md) |
+| 1 | TS/Main/preload, Vite multipágina, rutas y build funcionales | F1-01 a F1-05 verificadas; F1-06 de laboratorio correcta. [Fase abierta](cierre-fase-1.md) hasta ensayar identidad final, por decisión del usuario. |
 | 2 | Contratos y API específica, validación en ejecución y consumidores adaptados | Pendiente |
 | 3 | Paridad por vista, pruebas de permisos/errores y rollback | Pendiente |
 | 4 | Retirada selectiva del legado y ensayo de instalación/actualización | Pendiente |
 
-## Estado vigente · 17 de octubre de 2026
+## Estado vigente · 19 de octubre de 2026
+
+**Checkpoint de avance de Fase 1.** Por solicitud del usuario se prepara el
+commit en `codex/fase-1-vite` con los avances de distribución, sincronización del
+ensayo visual y evidencia de F1-05/06. La integración permanece en validación:
+se realizarán pruebas para comprobar que todo esté bien integrado antes de
+cerrar Fase 1 y pasar a Fase 2. El ensayo de identidad final sigue siendo una
+puerta obligatoria. Guardar este avance no aprueba el cierre ni promueve ramas.
+El [registro del checkpoint](fase-1.md#checkpoint-de-avance-para-validación-de-integración--19-de-octubre-de-2026)
+separa las comprobaciones de este acto de las pruebas históricas del 18.
+
+**Decisión vigente del usuario:** mantener Fase 1 abierta hasta probar identidad
+final. No se adopta el cierre reducido propuesto después del laboratorio; no se
+inicia Fase 2. El [control de cierre](cierre-fase-1.md) identifica la puerta y el
+kit preparado para otra cuenta/PC/VM. No se requiere repetir lo ya acreditado.
+
+**F1-06: instalación/actualización de laboratorio correctas.** El usuario solo
+dispone de la sesión actual; se usó identidad exclusiva para no sustituir Huapango.
+Catorce casos nativos con MySQL real: configuración, fotos, persistencia, roles,
+evaluación, reinicio y PDF. El EXE funciona fuera del proyecto con recursos offline
+y sin node_modules en sus ancestros. Laboratorio retirado y MySQL apagado;
+evidencia y datos ficticios conservados.
+
+El código coincide con F1-05; la identidad NSIS/manifiesto es de laboratorio.
+Instalador final sin cambios, no instalado con su identidad original. La propuesta
+de cierre reducido no fue adoptada; se conserva la fase abierta como se indica
+arriba. Evidencia al final de la bitácora.
+
+**Continuidad de Fase 1.** La diferencia de paridad se reprodujo: tamaño nativo
+1280×960, pero renderer todavía en 784×535. El ensayo ahora espera y comprueba
+su resize antes de medir, sin cambiar CSS ni relajar la comparación. Dev y ASAR
+compilado coinciden con la referencia de fuentes; evidencia de entorno guardada.
+
+**F1-05 implementada.** Build compila y empaqueta build/app; inspección del ASAR
+correcta, diez vistas y un video, sin datos privados ni herramientas del proyecto.
+NSIS generado y candidato identificado por hash; identidad final no instalada ni publicada.
+F1-06 añadió posteriormente el ensayo nativo de laboratorio indicado arriba.
+Resultados actuales, límites y siguiente paso al final de [la bitácora](fase-1.md).
+
+### Registro anterior y constancias recibidas
+
+### Constancias de evidencias recibidas · 18 de octubre de 2026
+
+- [Base estable: recorrido y PDF de Evidencia1](constancia-base-estable-2026-10-18.md).
+- [Fase 1: pruebas, recorrido y paquete de Evidencia2](constancia-fase-1-2026-10-18.md).
+
+Estas constancias añaden el material aportado por el usuario, sin ejecutar nuevas
+pruebas ni promover ramas. El lote de Fase 1 muestra smoke dev correcto y paridad
+del compilado; no acredita comparación de paridad dev con referencia para cerrar
+el fallo previo. El build aportado tampoco demuestra distribución desde build/app.
+Los registros siguientes conservan su contexto histórico del 17 de octubre;
+la continuidad de hoy arriba y en la bitácora añade la nueva evidencia.
 
 **Control Git y nueva comprobación.** El trabajo F1-03/04 quedó guardado en
 `e19042d`, rama `codex/fase-1-vite`. Regresión 252/252, tipos, compilación y smoke
@@ -87,8 +138,9 @@ ensayar instalación/actualización del candidato.
 **La preparación técnica permite avanzar; la deuda permanece abierta.**
 Historial/reporte, recuperación durable, controles de despliegue y capacidad
 conservan sus hallazgos con destino en F0-17. La siguiente acción es registrar el
-ensayo de la base y resolver el fallo actual de paridad dev de F1-03/04;
-distribución y aceptación completa de Fase 1 mantienen sus pendientes.
+ensayo de la base antes de promover su PR. La paridad dev y la distribución
+compilada se revalidaron posteriormente en F1-05; instalación/actualización y
+aceptación completa de Fase 1 mantienen sus pendientes.
 
 Correcciones recientes: [F0-14, presentación](bloque-paridad-visual-2026-10-16.md)
 y [F0-15, cuentas y salida](bloque-cuentas-salida-2026-10-17.md). La conformidad

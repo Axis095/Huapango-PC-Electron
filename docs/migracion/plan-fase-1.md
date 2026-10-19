@@ -1,6 +1,6 @@
 # Preparación de Fase 1 — Compilación conservando la aplicación
 
-Fecha: 17 de octubre de 2026. Estado: **en curso, primera y segunda entregas verificadas**;
+Fecha: 17 de octubre de 2026. Estado al 18: **F1-01 a F1-05 verificadas; laboratorio F1-06 correcto, fase abierta hasta probar identidad final por decisión del usuario**;
 evidencia actual en la [bitácora](fase-1.md). Consultar la [evaluación vigente](evaluacion-transicion-2026-10-17.md)
 y el [control de cierre](cierre-fase-0.md).
 
@@ -64,7 +64,9 @@ entrega con el pipeline completo o con contratos ya tipados.
 
 Actualización F1-03/04: Vite conectado y multipágina compilada; resolver común,
 guards y smoke en fuentes/desarrollo/compilado verificados. Evidencia y corrección
-de la cascada CSS en la bitácora. F1-05/06, distribución e instalación, pendientes.
+de la cascada CSS en la bitácora. Actualización del 18: sincronización del viewport
+del ensayo y paridad dev/ASAR revalidadas; F1-05 empaqueta build/app con inspección
+de contenido y NSIS generado. F1-06 conserva instalación/actualización y aceptación.
 
 ### Decisiones técnicas que deben quedar verificadas
 

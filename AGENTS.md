@@ -38,6 +38,10 @@ contradictorios, revisa la evidencia y señala la discrepancia.
   de vistas; HTTP solo para desarrollo explícito, archivo local en el paquete.
 - `vite.config.mjs`: multipágina y recursos de frontend. Conservar el orden CSS
   del legado al compilar; un smoke funcional no garantiza paridad visual.
+- `package.json` y `scripts/verificar-paquete.cjs`: build compila y empaqueta
+  build/app; el hook inspecciona el ASAR antes de NSIS. npmRebuild está desactivado
+  para las dependencias JavaScript actuales; revisar esa decisión si se añaden
+  módulos nativos, que el hook rechaza hasta entonces.
 
 El código usa principalmente JavaScript con CommonJS y una entrada TypeScript de
 Fase 1. Conserva las convenciones y capitalización de rutas. Consulta la bitácora
@@ -77,7 +81,7 @@ en `package.json` (`engines`).
 | `npm.cmd run test:smoke` | Smoke con Electron real y SQL simulado |
 | `npm.cmd run test:smoke:dev` | Smoke con Vite, perfil temporal y SQL simulado |
 | `npm.cmd run test:integration` | Laboratorio MySQL desechable; revisar sus requisitos antes de ejecutarlo |
-| `npm.cmd run build` | Generar la distribución con electron-builder |
+| `npm.cmd run build` | Compilar, inspeccionar ASAR y generar NSIS sin publicar |
 
 Para cambios de código, ejecuta las pruebas pertinentes y la regresión completa.
 Añade smoke al modificar ventanas, IPC, preload, vistas o arranque; integración
