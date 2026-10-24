@@ -18,7 +18,7 @@ async function handleCrearUsuario(event, datos) {
 
     } catch (err) {
         console.error("Error en el controlador al crear usuario:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 

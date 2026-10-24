@@ -16,6 +16,7 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "mysql2": "^3.24.4",
     "pdfkit": "^0.17.1"
   },

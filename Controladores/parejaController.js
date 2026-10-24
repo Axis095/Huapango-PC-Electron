@@ -65,10 +65,13 @@ async function handleActualizarPareja(event, datos) {
         if (resultado?.code === "NOT_FOUND") {
             return { success: false, code: "NOT_FOUND", error: "No se encontró ninguna pareja con ese ID para actualizar." };
         }
+        if (resultado?.code === "EDIT_CONFLICT") {
+            return { success: false, code: "EDIT_CONFLICT", error: "Otro operador modificó esta pareja. No se guardaron tus cambios. Tu borrador y las fotos seleccionadas se conservan; revisa los datos actuales antes de continuar." };
+        }
         if (resultado?.success !== true || !["UPDATED", "UNCHANGED"].includes(resultado.code)) {
             return { success: false, code: "UPDATE_FAILED", error: resultado?.error || "No se pudo confirmar la actualización de la pareja." };
         }
-        return { success: true, code: resultado.code,
+        return { success: true, code: resultado.code, versionEdicion: resultado.versionEdicion,
             message: resultado.code === "UNCHANGED" ? "La pareja ya tenía esos datos. No hubo cambios." : "Pareja actualizada exitosamente." };
     } catch (err) {
         console.error("Error en el controlador de actualización de pareja:", err);

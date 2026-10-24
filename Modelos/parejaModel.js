@@ -1,6 +1,13 @@
 const { queryDatabase, withTransaction } = require("../db");
 const { conFotos, limpiarFotos } = require("./imagenesModel");
 
+// Calculada por MySQL: no depende de la zona horaria o del reloj de cada laptop.
+// Las fotos se resumen por separado para admitir también referencias antiguas BLOB.
+const versionParejaSQL = `SHA2(CAST(JSON_ARRAY(nParejaID,
+    cNombre, cApellido, cEmail, nTelefono, dNacimiento, ISexo,
+    cNombreM, cApellidoM, cEmailM, nTelefonoM, dNacimientoM, ISexoM,
+    SHA2(oFoto, 256), SHA2(IFotoM, 256)) AS CHAR), 256)`;
+
 
 function vacioANull(valor) {
     return (valor === undefined || valor === null || valor === '') ? null : valor;
@@ -30,7 +37,7 @@ function vacioANull(valor) {
 //         ]);
 //         return result.insertId; // Devuelve el ID del registro insertado
 //     } catch (err) {
-//         throw new Error("Error al registrar pareja: " + err.message);
+//         throw Object.assign(new Error("Error al registrar pareja: " + err.message), { code: err.code });
 //     }
 // }
 
@@ -73,12 +80,12 @@ async function registrarDatosPareja(datos) {
 
 // Función para buscar pareja por ID
 async function buscarParejaPorID(id) {
-    const sql = "SELECT * FROM T_Participantes WHERE nParejaID = ?";
+    const sql = `SELECT *, ${versionParejaSQL} AS versionEdicion FROM T_Participantes WHERE nParejaID = ?`;
     try {
         const result = await queryDatabase(sql, [id]);
         return result; // Devuelve los resultados de la consulta
     } catch (err) {
-        throw new Error("Error al buscar pareja: " + err.message);
+        throw Object.assign(new Error("Error al buscar pareja: " + err.message), { code: err.code });
     }
 }
 
@@ -116,7 +123,7 @@ async function buscarTodasLasParejas() {
         const result = await queryDatabase(sql);
         return result; // Devuelve todas las parejas con los datos correctos
     } catch (err) {
-        throw new Error("Error al buscar todas las parejas: " + err.message);
+        throw Object.assign(new Error("Error al buscar todas las parejas: " + err.message), { code: err.code });
     }
 }
 
@@ -226,14 +233,23 @@ async function actualizarParejaCompleta(datos) {
         error.code = "INVALID_DATA";
         throw error;
     }
+    if (typeof datos.versionEdicion !== "string" || !/^[a-f0-9]{64}$/.test(datos.versionEdicion)) {
+        const error = new Error("Esta ficha no tiene una versión válida. Revisa los datos actuales antes de guardar; tu borrador se conserva.");
+        error.code = "VERSION_REQUIRED";
+        throw error;
+    }
     return conFotos(datos, preparados => actualizarDatosPareja(preparados, id, campos), fotoEnUso);
 }
 
 async function actualizarDatosPareja(datos, id, campos) {
     return withTransaction(["T_Participantes"], async consultar => {
         // Distinguir inexistente de sin cambios sin depender de CLIENT_FOUND_ROWS.
-        const filas = await consultar("SELECT nParejaID, oFoto, IFotoM FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [id]);
+        const filas = await consultar(`SELECT nParejaID, oFoto, IFotoM, ${versionParejaSQL} AS versionEdicion
+            FROM T_Participantes WHERE nParejaID = ? FOR UPDATE`, [id]);
         if (!filas.length) return { success: false, code: "NOT_FOUND", affectedRows: 0 };
+        if (filas[0].versionEdicion !== datos.versionEdicion) {
+            return { success: false, code: "EDIT_CONFLICT", affectedRows: 0 };
+        }
         const result = await consultar(`
             UPDATE T_Participantes
             SET cNombre = ?, cApellido = ?, cEmail = ?, nTelefono = ?, dNacimiento = ?, oFoto = COALESCE(?, oFoto),
@@ -243,7 +259,11 @@ async function actualizarDatosPareja(datos, id, campos) {
             ...campos.slice(0, 5).map(campo => datos[campo].trim()), datos.oFotoMasculino || null,
             ...campos.slice(5).map(campo => datos[campo].trim()), datos.oFotoFemenino || null, id
         ]);
-        return { success: true, code: result.changedRows === 0 ? "UNCHANGED" : "UPDATED",
+        // Leer la versión realmente almacenada antes de liberar el bloqueo.
+        const [actualizada] = await consultar(`SELECT ${versionParejaSQL} AS versionEdicion
+            FROM T_Participantes WHERE nParejaID = ? FOR UPDATE`, [id]);
+        if (!actualizada?.versionEdicion) throw new Error("No se pudo obtener la versión guardada de la pareja.");
+        return { success: true, code: result.changedRows === 0 ? "UNCHANGED" : "UPDATED", versionEdicion: actualizada.versionEdicion,
             affectedRows: result.affectedRows, changedRows: result.changedRows,
             fotosAnteriores: [datos.oFotoMasculino ? filas[0].oFoto : null, datos.oFotoFemenino ? filas[0].IFotoM : null] };
     });

@@ -15,7 +15,7 @@ async function handleRegistrarEstilo(event, datos) {
         return { success: true, id: nEstiloID };
     } catch (err) {
         console.error("Error al registrar estilo:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 
@@ -29,7 +29,7 @@ async function handleBuscarEstiloPorID(event, id) {
         return { success: true, data: result };
     } catch (err) {
         console.error("Error en el controlador al buscar estilo:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 
@@ -44,7 +44,7 @@ async function handleActualizarEstilo(event, { id, datos }) {
         }
     } catch (err) {
         console.error("Error en el controlador al actualizar estilo:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 
@@ -59,7 +59,7 @@ async function handleEliminarEstilo(event, id) {
         }
     } catch (err) {
         console.error("Error en el controlador al eliminar estilo:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 

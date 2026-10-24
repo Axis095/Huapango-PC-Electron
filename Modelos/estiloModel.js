@@ -32,7 +32,7 @@ async function buscarEstiloPorID(id) {
         const result = await queryDatabase(sql, [id]);
         return result; // Devuelve los resultados de la consulta
     } catch (err) {
-        throw new Error("Error al buscar estilo: " + err.message);
+        throw Object.assign(new Error("Error al buscar estilo: " + err.message), { code: err.code });
     }
 }
 
@@ -55,7 +55,7 @@ async function actualizarEstilo(id, datos) {
         ]);
         return result.affectedRows; // Devuelve el número de filas afectadas
     } catch (err) {
-        throw new Error("Error al actualizar estilo: " + err.message);
+        throw Object.assign(new Error("Error al actualizar estilo: " + err.message), { code: err.code });
     }
 }
 
@@ -66,7 +66,7 @@ async function eliminarEstilo(id) {
         const result = await queryDatabase(sql, [id]);
         return result.affectedRows; // Devuelve el número de filas afectadas
     } catch (err) {
-        throw new Error("Error al eliminar estilo: " + err.message);
+        throw Object.assign(new Error("Error al eliminar estilo: " + err.message), { code: err.code });
     }
 }
 

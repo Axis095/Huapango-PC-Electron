@@ -1,5 +1,7 @@
 # Estabilidad antes del piloto — 25 de septiembre de 2026
 
+Actualización del 21 de octubre: los límites y la recuperación de esperas MySQL del punto 2 se implementaron en [conexión MySQL](conexion-mysql.md). La lista histórica de pendientes de esta página no sustituye las revisiones posteriores de permisos, bcrypt y edición simultánea.
+
 ## Correcciones de esta revisión
 
 ### Evaluación: búsqueda y PDF simultáneos

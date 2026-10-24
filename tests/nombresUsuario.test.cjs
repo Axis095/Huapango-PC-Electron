@@ -13,7 +13,7 @@ function cargar(file, deps) {
     return module.exports;
 }
 function preparar(queryDatabase) {
-    const model = cargar('Modelos/adminModel.js', { '../db': { queryDatabase }, './parejaModel': {} });
+    const model = cargar('Modelos/adminModel.js', { '../db': { queryDatabase }, './parejaModel': {}, './contrasenaModel': require('../Modelos/contrasenaModel') });
     const controller = cargar('Controladores/adminController.js', { '../Modelos/adminModel': model });
     const vista = vm.createContext({});
     vm.runInContext(read('Public/js/validaciones.js').replace(/^export /gm, ''), vista);

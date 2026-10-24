@@ -53,7 +53,7 @@ async function handleRegistrarEvaluacion(event, datos) {
         return { success: true, id: result.id };
     } catch (err) {
         console.error("Error en el controlador al registrar evaluación:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 
@@ -76,7 +76,7 @@ async function handleObtenerEvaluacionesPorPareja(event, nParejaID) {
         return { success: true, data: evaluaciones };
     } catch (err) {
         console.error("Error en el controlador al obtener evaluaciones:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 

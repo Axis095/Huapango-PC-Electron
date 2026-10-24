@@ -8,7 +8,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const quiet = { log() {}, error() {}, warn() {} };
 function cargar(file, deps) {
     const module = { exports: {} };
-    vm.runInNewContext(read(file), { module, console: quiet, require(name) {
+    vm.runInNewContext(read(file), { module, setTimeout, clearTimeout, console: quiet, require(name) {
         assert.ok(name in deps, `Dependencia inesperada: ${name}`); return deps[name];
     } });
     return module.exports;
@@ -26,11 +26,15 @@ function inicial() {
         'Luis', 'Prueba', 'b@example.test', '5598765432', '2000-02-02', 'foto-b.jpg'][i]; });
     return Object.fromEntries(tablas.map(tabla => [tabla, tabla === 't_participantes' ? [fila, { ...fila, nParejaID: 9 }] : [{ nParejaID: 7 }, { nParejaID: 9 }]]));
 }
+// El driver simulado devuelve una huella que cambia con los datos confirmados.
+const huella = fila => require('node:crypto').createHash('sha256').update(JSON.stringify(fila)).digest('hex');
+datos.versionEdicion = huella(inicial().t_participantes[0]);
 
 // Driver simulado con estado confirmado y estado de transacción separados.
 // Se cargan el db, modelos y controladores reales; nunca se conecta con MySQL.
 async function preparar(opciones = {}) {
     let confirmado = inicial(); let trabajo = null; let adquisiciones = 0;
+    let turno = Promise.resolve(), liberar;
     const historial = [], consultas = [];
     const fallo = code => Object.assign(new Error(`Fallo simulado: ${code}`), { code });
     const connection = {
@@ -48,7 +52,10 @@ async function preparar(opciones = {}) {
             }
             if (normalizado.startsWith('SELECT nParejaID')) {
                 assert.match(normalizado, /FOR UPDATE$/);
-                return [trabajo.t_participantes.filter(f => f.nParejaID === params[0]).map(f => ({ nParejaID: f.nParejaID }))];
+                return [trabajo.t_participantes.filter(f => f.nParejaID === params[0]).map(f => ({ ...f, versionEdicion: huella(f) }))];
+            }
+            if (normalizado.startsWith('SELECT SHA2')) {
+                return [trabajo.t_participantes.filter(f => f.nParejaID === params[0]).map(f => ({ versionEdicion: huella(f) }))];
             }
             if (normalizado.startsWith('UPDATE ')) {
                 assert.equal((normalizado.match(/\?/g) || []).length, params.length);
@@ -76,21 +83,25 @@ async function preparar(opciones = {}) {
         async rollback() {
             historial.push('rollback'); if (opciones.rollback) throw fallo('ROLLBACK_ERROR'); trabajo = null;
         },
-        release() { historial.push('release'); assert.equal(trabajo, null, 'No devolver transacciones abiertas al pool'); },
-        destroy() { historial.push('destroy'); trabajo = null; }
+        release() { historial.push('release'); assert.equal(trabajo, null, 'No devolver transacciones abiertas al pool'); liberar(); },
+        destroy() { historial.push('destroy'); trabajo = null; liberar(); }
     };
     const db = cargar('db.js', {
         'mysql2/promise': {
             async createConnection() { return { destroy() {} }; },
             createPool() { return { async getConnection() {
-                adquisiciones++; if (opciones.acquire) throw fallo('POOL_ERROR'); return connection;
+                adquisiciones++; if (opciones.acquire) throw fallo('POOL_ERROR');
+                const anterior = turno; let resolver;
+                turno = new Promise(r => { resolver = r; });
+                await anterior; liberar = resolver;
+                return connection;
             } }; }
         },
         './Modelos/configModel': { cargarConfiguracion: () => ({}), normalizarConfiguracion: x => x }
     });
     await db.inicializarBaseDatos();
     const pareja = cargar('Modelos/parejaModel.js', { '../db': db, './imagenesModel': { conFotos: async (datos, fn) => fn({ ...datos, oFotoMasculino: null, oFotoFemenino: null }), limpiarFotos: async () => {} } });
-    const admin = cargar('Modelos/adminModel.js', { '../db': db, './parejaModel': pareja });
+    const admin = cargar('Modelos/adminModel.js', { '../db': db, './parejaModel': pareja, './contrasenaModel': require('../Modelos/contrasenaModel') });
     const controladorPareja = cargar('Controladores/parejaController.js', { '../Modelos/parejaModel': pareja });
     const controladorAdmin = cargar('Controladores/adminController.js', { '../Modelos/adminModel': admin });
     return { db, pareja, admin, controladorPareja, controladorAdmin, historial, consultas,
@@ -229,4 +240,57 @@ test('el ejecutor de consultas no puede usarse después de terminar la transacci
     const cantidad = v.consultas.length;
     await assert.rejects(consultar('DELETE FROM T_Participantes WHERE nParejaID = ?', [7]), /ya terminó/);
     assert.equal(v.consultas.length, cantidad);
+});
+
+
+test('dos operadores con la misma versión: solo uno guarda y el otro no sobrescribe', async () => {
+    const v = await preparar();
+    const [a, b] = await Promise.all([
+        v.controladorPareja.handleActualizarPareja(null, { ...datos, nTelefonoMasculino: '5555555555' }),
+        v.controladorPareja.handleActualizarPareja(null, { ...datos, cEmailFemenino: 'nuevo@example.test' })
+    ]);
+    assert.equal(a.success, true); assert.equal(b.success, false); assert.equal(b.code, 'EDIT_CONFLICT');
+    assert.match(b.error, /borrador/);
+    assert.equal(v.confirmado.t_participantes[0].nTelefono, '5555555555');
+    assert.equal(v.confirmado.t_participantes[0].cEmailM, datos.cEmailFemenino);
+    assert.equal(v.consultas.filter(c => c.sql.startsWith('UPDATE ')).length, 1);
+    assert.notEqual(a.versionEdicion, datos.versionEdicion);
+    assert.match(a.versionEdicion, /^[a-f0-9]{64}$/);
+    // Tras revisar, la segunda edición conserva el teléfono del primero.
+    const revisada = await v.controladorPareja.handleActualizarPareja(null, {
+        ...datos, versionEdicion: a.versionEdicion, nTelefonoMasculino: '5555555555', cEmailFemenino: 'nuevo@example.test'
+    });
+    assert.equal(revisada.success, true);
+    assert.equal(v.confirmado.t_participantes[0].nTelefono, '5555555555');
+    assert.equal(v.confirmado.t_participantes[0].cEmailM, 'nuevo@example.test');
+});
+
+test('sin versión, formato inválido o huella de otra pareja no permite actualizar', async () => {
+    const v = await preparar();
+    for (const versionEdicion of [undefined, null, '', 1, {}, 'a'.repeat(63), 'G'.repeat(64)]) {
+        const r = await v.controladorPareja.handleActualizarPareja(null, { ...datos, versionEdicion });
+        assert.equal(r.code, 'VERSION_REQUIRED');
+    }
+    assert.equal(v.adquisiciones, 0);
+    const r = await v.controladorPareja.handleActualizarPareja(null, { ...datos, nParejaID: '9' });
+    assert.equal(r.code, 'EDIT_CONFLICT');
+    assert.equal(v.consultas.some(c => c.sql.startsWith('UPDATE ')), false);
+});
+
+test('cambio externo de fotografía invalida una edición antigua de texto', async () => {
+    const v = await preparar();
+    v.confirmado.t_participantes[0].IFotoM = 'foto-de-otro-operador.jpg';
+    const r = await v.controladorPareja.handleActualizarPareja(null, { ...datos, cNombreMasculino: 'Cambio' });
+    assert.equal(r.code, 'EDIT_CONFLICT');
+    assert.equal(v.confirmado.t_participantes[0].cNombre, datos.cNombreMasculino);
+    assert.equal(v.confirmado.t_participantes[0].IFotoM, 'foto-de-otro-operador.jpg');
+    assert.equal(v.consultas.some(c => c.sql.startsWith('UPDATE ')), false);
+});
+
+test('un guardado sin cambios devuelve la misma versión y permite seguir editando', async () => {
+    const v = await preparar();
+    const r = await v.controladorPareja.handleActualizarPareja(null, datos);
+    assert.equal(r.code, 'UNCHANGED'); assert.equal(r.versionEdicion, datos.versionEdicion);
+    const siguiente = await v.controladorPareja.handleActualizarPareja(null, { ...datos, versionEdicion: r.versionEdicion, cNombreMasculino: 'Nuevo' });
+    assert.equal(siguiente.code, 'UPDATED');
 });

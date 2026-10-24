@@ -22,6 +22,7 @@ export async function inicializarRegistros(documento = document, api = window.ap
     const get = id => documento.getElementById(id);
     const cacheFotos = new WeakMap();
     let registrada = null, categoriaGuardada = false, estiloGuardado = false;
+    let erroresPendientes = {};
     let cargando = true, ocupado = false, recuperacionFallida = false, pendiente = Promise.resolve();
     const controles = [...campos, ...fotos].map(get);
     const iniciales = Object.fromEntries(campos.map(id => [id, get(id).value]));
@@ -49,7 +50,7 @@ export async function inicializarRegistros(documento = document, api = window.ap
     }
     function guardarBorrador() {
         const datos = { version: 1, campos: Object.fromEntries(campos.map(id => [id, get(id).value])),
-            registrada, categoriaGuardada, estiloGuardado };
+            registrada, categoriaGuardada, estiloGuardado, erroresPendientes: { ...erroresPendientes } };
         const archivos = fotos.map(id => get(id).files[0]);
         // Serializar las escrituras evita que una foto lenta sobrescriba cambios recientes.
         pendiente = pendiente.catch(() => {}).then(async () => {
@@ -94,8 +95,14 @@ export async function inicializarRegistros(documento = document, api = window.ap
         if (cargando || ocupado) return;
         ocupado = true; actualizar();
         let campoError;
+        delete erroresPendientes[estadoID];
         try { await accion(); }
-        catch (error) { mensaje(estadoID, error.message || "No se pudo completar la operación.", true); campoError = error.campo; }
+        catch (error) {
+            erroresPendientes[estadoID] = error.message || "No se pudo completar la operación. Tus datos se conservan.";
+            await conservar();
+            mensaje(estadoID, erroresPendientes[estadoID], true);
+            campoError = error.campo;
+        }
         finally { ocupado = false; actualizar(); if (campoError) get(campoError)?.focus(); }
     }
     get("BTNSave").addEventListener("click", () => ejecutar("estadoRegistroPareja", async () => {
@@ -151,6 +158,7 @@ export async function inicializarRegistros(documento = document, api = window.ap
         await pendiente.catch(() => {});
         if (!(await api.limpiarBorradorRegistro())?.success) throw new Error("No se pudo iniciar otra pareja. Conservamos el formulario.");
         registrada = null; categoriaGuardada = false; estiloGuardado = false;
+        erroresPendientes = {};
         for (const id of campos) get(id).value = iniciales[id];
         for (const id of fotos) get(id).value = "";
         for (const id of ["estadoRegistroPareja", "estadoRegistroCategoria", "estadoRegistroEstilo", "estadoPDFRegistro", "estadoBorradorRegistro"]) mensaje(id, "");
@@ -176,6 +184,10 @@ export async function inicializarRegistros(documento = document, api = window.ap
             if (categoriaGuardada) mensaje("estadoRegistroCategoria", "Categoría ya guardada correctamente.");
             if (estiloGuardado) mensaje("estadoRegistroEstilo", "Estilo ya guardado correctamente.");
             mensaje("estadoRegistroPareja", registrada === null ? "Borrador recuperado. Todavía no está guardado en la base de datos." : `Pareja ${registrada} ya guardada. Continúa con categoría y estilo o inicia otra pareja.`);
+            for (const id of ["estadoRegistroPareja", "estadoRegistroCategoria", "estadoRegistroEstilo", "estadoPDFRegistro"]) {
+                const error = datos.erroresPendientes?.[id];
+                if (typeof error === "string" && error) { erroresPendientes[id] = error; mensaje(id, error, true); }
+            }
         }
     } catch {
         recuperacionFallida = true;

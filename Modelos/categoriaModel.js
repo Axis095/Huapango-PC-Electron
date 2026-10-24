@@ -31,7 +31,7 @@ async function buscarCategoriaPorID(id) {
         const result = await queryDatabase(sql, [id]);
         return result;
     } catch (err) {
-        throw new Error("Error al buscar categoria: " + err.message);
+        throw Object.assign(new Error("Error al buscar categoria: " + err.message), { code: err.code });
     }
 }
 

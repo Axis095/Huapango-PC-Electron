@@ -69,6 +69,7 @@
     box-shadow: none;
 }
 .confirmacion-ficha .acciones-ficha { margin-top: 12px; }
+.detalle-revision { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; font: inherit; margin: 16px 0; }
 .consultas-relacionadas { margin-top: 32px; border-top: 1px solid var(--ui-line); padding-top: 18px; }
 .consultas-relacionadas summary { cursor: pointer; font-weight: 600; margin-bottom: 16px; }
 .consultas-relacionadas h3 { margin-bottom: 12px; }

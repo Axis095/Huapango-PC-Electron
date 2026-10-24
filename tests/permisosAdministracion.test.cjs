@@ -38,6 +38,7 @@ function preparar(opciones = {}) {
     const consultas = [], parejas = [], handlers = new Map();
     const sesion = cargar('Modelos/sesionModel.js', {});
     const modelo = cargar('Modelos/adminModel.js', {
+        './contrasenaModel': require('../Modelos/contrasenaModel'),
         '../db': { async queryDatabase(sql, params) {
             consultas.push({ sql, params: Array.from(params) });
             if (opciones.errorSQL) throw new Error('Error SQL simulado');

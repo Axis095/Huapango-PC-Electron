@@ -20,6 +20,14 @@
 <p id="estadoBorradorModificacion" role="status" aria-live="polite">El borrador se conserva al cambiar de módulo en esta ventana y se pierde al cerrar la aplicación.</p>
 <section id="confirmarLimpiarModificacion" class="confirmacion-ficha" hidden aria-label="Cambios pendientes"><p id="textoConfirmarCambio"></p>
 <div class="acciones-ficha"><button id="btnCancelarLimpiarModificacion" class="btn btn-neutro" type="button">Conservar cambios</button><button id="btnConfirmarLimpiarModificacion" class="btn btn-descarte" type="button">Continuar y descartar</button></div></section>
+<section id="revisionPareja" class="confirmacion-ficha" hidden aria-labelledby="tituloRevisionPareja">
+<h2 id="tituloRevisionPareja">Revisar cambios de otros operadores</h2>
+<p>Tu borrador sigue intacto. Consulta la versión actual y compara los datos propuestos antes de continuar.</p>
+<button id="btnRevisarPareja" class="btn btn-neutro" type="button">Consultar datos actuales</button>
+<pre id="detalleRevisionPareja" class="detalle-revision" tabindex="0" aria-label="Comparación de datos actuales y propuestos"></pre>
+<p>Al preparar el borrador se conservarán tus campos editados y fotos seleccionadas, incluso si otro operador cambió esos mismos datos. Los campos que no editaste tomarán el valor actual. Corrige tus campos si prefieres conservar el dato de MySQL.</p>
+<button id="btnAplicarRevision" class="btn" type="button" hidden>Revisé los datos: preparar este borrador</button>
+</section>
 <section id="fichaPareja" class="form-section resultadosBusquedaParejas" hidden>
 <div class="encabezado-ficha"><h2 id="parejaSeleccionada"></h2><button id="btnEditarPareja" class="btn">Editar</button></div>
 <div class="participantes-ficha"><section class="participante-ficha" aria-labelledby="tituloMasculino">

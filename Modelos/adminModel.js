@@ -1,5 +1,7 @@
 const { queryDatabase } = require("../db");
 const { eliminarPareja } = require("./parejaModel");
+const { crearHashContrasena } = require("./contrasenaModel");
+
 
 function normalizarNombreUsuario(nombre, minimo = 1) {
     if (typeof nombre !== "string" || !nombre.trim()) {
@@ -12,34 +14,33 @@ function normalizarNombreUsuario(nombre, minimo = 1) {
     return normalizado;
 }
 
+
 // Crear un usuario
 async function crearUsuario(datos) {
     const nombre = normalizarNombreUsuario(datos?.cNombreUsuario, 3);
-
     const sql = `
         INSERT INTO T_Usuarios (nUsuarioID, cNombreUsuario, cContrasena, rol) 
         VALUES (?, ?, ?, ?)
     `;
-    
+
     try {
         // Verificar que el rol es válido antes de insertar
         const rolesPermitidos = ["admin", "user", "juez"];
         if (!rolesPermitidos.includes(datos.rol)) {
             throw new Error(`Rol inválido: ${datos.rol}. Debe ser 'admin', 'user' o 'juez'.`);
         }
-
+        const hashedPassword = await crearHashContrasena(datos.cContrasena);
         const result = await queryDatabase(sql, [
             datos.nUsuarioID, // ID manual del usuario
             nombre,
-            datos.cContrasena,
+            hashedPassword, // Se guarda el hash en lugar del texto plano
             datos.rol // Se guarda directamente el rol ENUM
         ]);
-
         return datos.nUsuarioID;
         // return result.insertId; // Devuelve el ID del usuario creado este esta mal hay que borrarlo esto
     } catch (err) {
         console.error("Error al crear usuario:", err.message);
-        throw new Error("Error al crear usuario: " + err.message);
+        throw Object.assign(new Error("Error al crear usuario: " + err.message), { code: err.code });
     }
 }
 
@@ -56,9 +57,10 @@ async function eliminarUsuario(cNombreUsuario) {
         const result = await queryDatabase(sql, [nombre]);
         return result.affectedRows; // Devuelve el número de filas afectadas
     } catch (err) {
-        throw new Error("Error al eliminar usuario: " + err.message);
+        throw Object.assign(new Error("Error al eliminar usuario: " + err.message), { code: err.code });
     }
 }
+
 
 //Obtenemos el rol del usuario para liminar la capacidad de acciones que puede hacer al eliminar otros usuarios
 async function obtenerRolUsuario(cNombreUsuario) {
@@ -70,9 +72,7 @@ async function obtenerRolUsuario(cNombreUsuario) {
         // Si se encuentra el usuario, devolver su rol; de lo contrario, devolver null
         return result.length > 0 ? result[0].rol : null;
     } catch (err) {
-        throw new Error("Error al obtener el rol del usuario: " + err.message);
+        throw Object.assign(new Error("Error al obtener el rol del usuario: " + err.message), { code: err.code });
     }
 }
-
-
 module.exports = { crearUsuario, eliminarUsuario, eliminarPareja, obtenerRolUsuario };

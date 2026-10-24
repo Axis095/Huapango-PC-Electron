@@ -226,3 +226,35 @@ test("el HTML no repite IDs y la vista de registro no utiliza alert ni confirm",
         assert.ok(read("preload.js").includes(`ipcRenderer.invoke("${canal}-borrador-registro"`));
     }
 });
+
+
+for (const code of ['DB_ACQUIRE_TIMEOUT', 'TRANSACTION_OUTCOME_UNKNOWN']) test('fallo MySQL conserva registro y fotos al volver al módulo: ' + code, async t => {
+    const anterior = global.DataTransfer;
+    global.DataTransfer = class { files = []; items = { add: f => this.files.push(f) }; };
+    t.after(() => { if (anterior) global.DataTransfer = anterior; else delete global.DataTransfer; });
+    let llamadas = 0;
+    const error = code === 'TRANSACTION_OUTCOME_UNKNOWN' ? 'Consulta la pareja antes de repetir; no se pudo confirmar.' : 'No se envió la operación; tus datos se conservan.';
+    const v = await vista({ registrarPareja: async () => { llamadas++; return { success: false, code, error }; } });
+    v.completar(); v.get('fotoMasculino').files = [new File(['foto'], 'prueba.png', { type: 'image/png' })];
+    await v.click('BTNSave');
+    assert.equal(llamadas, 1); assert.equal(v.get('BTNSave').disabled, false);
+    assert.equal(v.get('nombreMasculino').value, 'Nombre'); assert.equal(v.get('fotoMasculino').files.length, 1);
+    await v.navegar();
+    const otra = await vista({}, v.almacen);
+    assert.equal(otra.get('nombreMasculino').value, 'Nombre');
+    assert.equal(await otra.get('fotoMasculino').files[0].text(), 'foto');
+    assert.equal(otra.get('estadoRegistroPareja').textContent, error);
+    assert.equal(llamadas, 1);
+});
+
+test('fallo de conexión en categoría conserva la pareja confirmada y la selección', async () => {
+    let llamadas = 0;
+    const v = await vista({ registrarCategoria: async () => { llamadas++; return { success: false, error: 'Se perdió la confirmación. Consulta los datos antes de repetirla.' }; } });
+    v.completar(); await v.click('BTNSave');
+    v.get('categoriaRegistro').value = '4'; v.get('nIDCategoria').value = '44';
+    await v.click('btnRegistrarCategoria');
+    assert.equal(llamadas, 1); assert.equal(v.almacen.data.registrada, '123');
+    assert.equal(v.almacen.data.categoriaGuardada, false);
+    assert.equal(v.get('nIDCategoria').value, '44');
+    assert.equal(v.get('btnRegistrarCategoria').disabled, false);
+});

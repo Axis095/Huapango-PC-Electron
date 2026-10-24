@@ -15,7 +15,7 @@ async function handleRegistrarCategoria(event, datos) {
         return { success: true, id: nIDCategoria };
     } catch (err) {
         console.error(" Error al registrar categoría:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 
@@ -29,7 +29,7 @@ async function handleBuscarCategoriaPorID(event, id) {
         return { success: true, data: result };
     } catch (err) {
         console.error("Error en el controlador al buscar estilo:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 
@@ -40,7 +40,7 @@ async function handleActualizarCategoria(event, datos) {
         return { success: true, result };
     } catch (err) {
         console.error(" Error al actualizar categoría:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 
@@ -51,7 +51,7 @@ async function handleEliminarCategoria(event, nIDCategoria) {
         return { success: true, result };
     } catch (err) {
         console.error(" Error al eliminar categoría:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 

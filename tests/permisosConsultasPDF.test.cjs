@@ -85,7 +85,10 @@ function preparar(opciones = {}) {
     };
     const deps = Object.fromEntries([...read('main.js').matchAll(/require\(["']([^"']+)["']\)/g)].map(m => [m[1], {}]));
     for (const tipo of ['pareja', 'categoria', 'estilo', 'admin', 'evaluaciones']) {
-        const modelo = cargar(`Modelos/${tipo}Model.js`, { '../db': db, './imagenesModel': {}, './parejaModel': {} });
+        const modelo = cargar(`Modelos/${tipo}Model.js`, {
+            '../db': db, './imagenesModel': {}, './parejaModel': {},
+            './contrasenaModel': require('../Modelos/contrasenaModel')
+        });
         deps[`./Controladores/${tipo}Controller`] = cargar(`Controladores/${tipo}Controller.js`, {
             [`../Modelos/${tipo}Model`]: modelo, '../Modelos/sesionModel': sesion,
             'node:path': path, 'node:url': { fileURLToPath }

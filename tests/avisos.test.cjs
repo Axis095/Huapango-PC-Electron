@@ -272,3 +272,19 @@ test('generar PDF y pulsar buscar conserva la ficha; buscar vuelve a funcionar t
     assert.equal(v.get('guardar-evaluacion').disabled, false);
     await v.get('buscar-pareja').emit('click'); assert.equal(consultas, 2);
 });
+
+
+for (const rechazo of [false, true]) test('evaluación sin respuesta conserva puntajes y comentario sin reintento: ' + rechazo, async () => {
+    let llamadas = 0;
+    const error = 'Se perdió la confirmación. Consulta los datos antes de repetirla.';
+    const v = preparar({ registrarEvaluacion: async () => { llamadas++; if (rechazo) throw Error(error); return { success: false, code: 'WRITE_OUTCOME_UNKNOWN', error }; } });
+    const boton = v.add('guardar-evaluacion', '', 'button');
+    v.add('pareja-id-info', '', 'div').innerText = '7';
+    const aspectos = Array.from({ length: 6 }, (_, i) => v.add('aspecto' + (i + 1), '5'));
+    const comentario = v.add('observaciones', 'Trabajo pendiente', 'textarea'); boton.focus();
+    await v.context.guardarEvaluacion();
+    assert.equal(llamadas, 1); assert.equal(comentario.value, 'Trabajo pendiente');
+    for (const campo of aspectos) { assert.equal(campo.value, '5'); assert.equal(campo.disabled, false); }
+    assert.equal(boton.disabled, false); assert.equal(v.documento.activeElement, boton);
+    assert.match(v.message(), /Consulta los datos antes de repetirla/);
+});

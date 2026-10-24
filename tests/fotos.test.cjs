@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const { crearAlmacenFotos, MAX_BYTES } = require('../Modelos/almacenFotos');
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS1sAAAAASUVORK5CYII=', 'base64');
 const foto = () => ({ nombre: '../../original.jpg', tipo: 'image/jpeg', bytes: Buffer.from(png) });
-const datos = { nParejaID: '1', cNombreMasculino: 'Juan', cApellidoMasculino: 'Prueba', cEmailMasculino: 'j@example.test', nTelefonoMasculino: '5512345678', dNacimientoMasculino: '2000-01-01', sexoMasculino: 'M',
+const datos = { versionEdicion: 'a'.repeat(64), nParejaID: '1', cNombreMasculino: 'Juan', cApellidoMasculino: 'Prueba', cEmailMasculino: 'j@example.test', nTelefonoMasculino: '5512345678', dNacimientoMasculino: '2000-01-01', sexoMasculino: 'M',
     cNombreFemenino: 'Ana', cApellidoFemenino: 'Prueba', cEmailFemenino: 'a@example.test', nTelefonoFemenino: '5512345679', dNacimientoFemenino: '2000-01-01', sexoFemenino: 'F' };
 async function preparar(t, opciones = {}) {
     const directorio = await fs.mkdtemp(path.join(os.tmpdir(), 'huapango-fotos-'));
@@ -25,7 +25,7 @@ async function preparar(t, opciones = {}) {
             try {
                 const resultado = await fn(async (sql, p) => {
                     estado.historial.push(sql.trim().split(/\s+/)[0]);
-                    if (sql.includes('FOR UPDATE')) return estado.fila ? [{ ...estado.fila }] : [];
+                    if (sql.trim().startsWith('SELECT')) return estado.fila ? [{ versionEdicion: 'a'.repeat(64), ...estado.fila }] : [];
                     if (opciones.sql) throw Object.assign(new Error('SQL rechazado'), { code: 'ER_DUP_ENTRY' });
                     if (sql.includes('INSERT INTO')) {
                         if (estado.fila) throw Object.assign(new Error('ID duplicado'), { code: 'ER_DUP_ENTRY' });
@@ -166,4 +166,16 @@ test('error de escritura en disco no ejecuta SQL', async t => {
     await fs.writeFile(path.join(v.directorio, 'uploads'), 'obstrucción de prueba');
     await assert.rejects(v.modelo.registrarPareja({ ...datos, fotos: { Masculino: foto() } }));
     assert.equal(v.estado.historial.length, 0);
+});
+
+
+test('conflicto de edición elimina solo las fotos recién preparadas y conserva las actuales', async t => {
+    const v = await preparar(t);
+    const anterior = await v.almacen.guardar(foto());
+    v.estado.fila = { nParejaID: 1, oFoto: anterior, versionEdicion: 'b'.repeat(64) };
+    const r = await v.modelo.actualizarParejaCompleta({ ...datos, fotos: { Masculino: foto(), Femenino: foto() } });
+    assert.equal(r.code, 'EDIT_CONFLICT'); assert.equal(r.success, false);
+    assert.equal(v.estado.historial.includes('UPDATE'), false);
+    assert.equal(v.estado.fila.oFoto, anterior); assert.equal((await v.archivos()).length, 1);
+    assert.deepEqual(await v.leer(anterior), png);
 });

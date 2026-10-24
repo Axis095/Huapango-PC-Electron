@@ -16,9 +16,8 @@ const { handleRegistrarCategoria, handleActualizarCategoria, handleEliminarCateg
 const { handleRegistrarEstilo, handleActualizarEstilo, handleEliminarEstilo, handleBuscarEstiloPorID } = require("./Controladores/estiloController");
 const { handleCrearUsuario, handleEliminarUsuario, handleEliminarPareja, handleObtenerRolUsuario } = require("./Controladores/adminController");
 const { handleRegistrarEvaluacion, handleObtenerEvaluacionesPorPareja } = require("./Controladores/evaluacionesController");
-const { handleGenerarPDFParejas, handleGenerarPDFResultados, handleGenerarPDFCategorias, handleGenerarPDFEstilos, handleGenerarPDFRegistrosGenerales, handleDescargarManualUsuario  } = require("./Controladores/pdfController");
+const { handleGenerarPDFParejas, handleGenerarPDFResultados, handleGenerarPDFCategorias, handleGenerarPDFEstilos, handleGenerarPDFRegistrosGenerales } = require("./Controladores/pdfController");
 const { handleGuardarConfiguracion, handleObtenerConfiguracion } = require("./Controladores/configController");
-
 
 
 const { obtenerBorradorRegistro, guardarBorradorRegistro, limpiarBorradorRegistro } = require("./Controladores/borradorRegistroController");
@@ -31,7 +30,6 @@ ipcMain.handle("guardar-borrador-modificacion", desdeVentanaDeSesion(guardarBorr
 ipcMain.handle("limpiar-borrador-modificacion", desdeVentanaDeSesion(limpiarBorradorModificacion));
 
 // MENSAJE GENERAL ELIMINAR POR FAVOR TODO EL CÓDIGO BASURA QUE NO SE UTILIZA, IGUAL LOS COMENTARIOS SOLO DEJAR LO QUE SEA DE UTILIDAD, IGUAL CON LAS LIBRERIAS QUE NO SE USAN
-
 
 // Escuchar el evento de login y pasar createMainWindow como argumento
 let autenticacionEnCurso = false;
@@ -51,7 +49,6 @@ ipcMain.handle("registrar-pareja", desdeVentanaDeSesion(conPermisosRegistro(hand
 ipcMain.handle("buscar-pareja-por-id", desdeVentanaDeSesion(conPermisosRegistro(handleBuscarParejaPorID, ["BusquedaParejas.html", "ModificarParejas.html"])));
 ipcMain.handle("buscar-pareja-para-evaluacion", desdeVentanaDeSesion(conPermisosRegistro(handleBuscarParejaParaEvaluacion, ["Resultados.html"], ["admin", "juez"])));
 // ipcMain.handle("actualizar-pareja", handleActualizarPareja);
-// ipcMain.handle("actualizar-pareja", (event, datos) => {
 //     console.log("Enviando solicitud de actualización con datos DESDE MAIN.JS:", datos);
 //     return handleActualizarPareja(event, datos);
 // });
@@ -179,7 +176,6 @@ function createLoginWindow() {
             contextIsolation: true,
         },
     });
-
     return global.loginWindow.loadFile(path.join(__dirname, "Vistas", "login.html"));
 
 }
@@ -209,12 +205,11 @@ function createMainWindow() {
         const sesion = sesionConsultable({ sender: nueva.webContents, senderFrame: nueva.webContents.mainFrame });
         nueva.webContents.send("set-role", sesion?.userRole || "guest");
     });
-
     global.mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => { // CODIGO QUE HAY QUE BORRAR
-    if (errorDescription.includes("Autofill.enable") || errorDescription.includes("Autofill.setAddresses")) {
-        console.warn("Error de Autofill ignorado:", errorDescription);
-    }
-});
+        if (errorDescription.includes("Autofill.enable") || errorDescription.includes("Autofill.setAddresses")) {
+            console.warn("Error de Autofill ignorado:", errorDescription);
+        }
+    });
 
     console.log("Ventana principal creada.");
     // La nueva ventana ya existe antes de cerrar las de sesiones anteriores.
@@ -226,15 +221,13 @@ function createMainWindow() {
 }
 
 
-
 // Función para abrir nuevas ventanas genéricas
 let ventanaEmergente = null; // VARIABLE GLOBAL PARA CONTROLAR LA VENTANA EMERGENTE
-
 function openNewWindow(tipo, file) {
-        if (!file || typeof file !== "string") {
+    if (!file || typeof file !== "string") {
         dialog.showErrorBox("Error", "No se especificó el archivo a abrir en la ventana emergente.");
         return;
-        }
+    }
     if (ventanaEmergente) {
         dialog.showMessageBoxSync({
             type: "warning",
@@ -244,7 +237,6 @@ function openNewWindow(tipo, file) {
         });
         return;
     }
-
     ventanaEmergente = new BrowserWindow({
         width: 800,
         height: 600,
@@ -252,15 +244,16 @@ function openNewWindow(tipo, file) {
         parent: tipo !== "consulta" ? BrowserWindow.getFocusedWindow() : null,
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
+            nodeIntegration: false,
+            contextIsolation: true,
         },
     });
 
     
     sesionesDeVentana.set(ventanaEmergente.webContents, obtenerClaveSesion());
     const filePath = path.join(__dirname, "Vistas", file);
-
     // Agregar parámetro de query SOLO para `BusquedaParejas.html`
-    if (file === "BusquedaParejas.html", "ModificarParejas.html") {
+    if (file === "BusquedaParejas.html" || file === "ModificarParejas.html") {
         ventanaEmergente.loadFile(filePath, { query: { emergente: "1" } })
             .catch(err => {
                 console.error("Error al cargar el archivo:", err);
@@ -279,20 +272,13 @@ function openNewWindow(tipo, file) {
                 }
             });
     }
-    
-
-    ventanaEmergente.on("closed", () => {
-        ventanaEmergente = null;
-    });
 
     ventanaEmergente.on("closed", () => {
         ventanaEmergente = null;
     });
 }
 
-
 // Menú principal
-
 const templateMenu = [
     {
         label: "Archivo",
@@ -374,39 +360,39 @@ const templateMenu = [
         ],
     },
     {
-    label: "Zoom",
-    submenu: [
-        {
-            label: "Aumentar Zoom",
-            accelerator: "Ctrl+=",
-            click(item, zoomVentana) {
-                if (zoomVentana) {
-                    const currentZoom = zoomVentana.webContents.getZoomFactor();
-                    const newZoom = Math.min(currentZoom + 0.1, 2.0);
-                    zoomVentana.webContents.setZoomFactor(newZoom);
-                    console.log("Zoom aumentado:", newZoom);
-                }
+        label: "Zoom",
+        submenu: [
+            {
+                label: "Aumentar Zoom",
+                accelerator: "Ctrl+=",
+                click(item, zoomVentana) {
+                    if (zoomVentana) {
+                        const currentZoom = zoomVentana.webContents.getZoomFactor();
+                        const newZoom = Math.min(currentZoom + 0.1, 2.0);
+                        zoomVentana.webContents.setZoomFactor(newZoom);
+                        console.log("Zoom aumentado:", newZoom);
+                    }
+                },
             },
-        },
-        {
-            label: "Disminuir Zoom",
-            accelerator: "Ctrl+-",
-            click(item, zoomVentana) {
-                if (zoomVentana) {
-                    const currentZoom = zoomVentana.webContents.getZoomFactor();
-                    const newZoom = Math.max(currentZoom - 0.1, 0.8);
-                    zoomVentana.webContents.setZoomFactor(newZoom);
-                    console.log("Zoom reducido:", newZoom);
-                }
+            {
+                label: "Disminuir Zoom",
+                accelerator: "Ctrl+-",
+                click(item, zoomVentana) {
+                    if (zoomVentana) {
+                        const currentZoom = zoomVentana.webContents.getZoomFactor();
+                        const newZoom = Math.max(currentZoom - 0.1, 0.8);
+                        zoomVentana.webContents.setZoomFactor(newZoom);
+                        console.log("Zoom reducido:", newZoom);
+                    }
+                },
             },
-        },
-        {
-            label: "Restablecer Zoom",
-            accelerator: "Ctrl+0",
-            click(item, zoomVentana) {
-                if (zoomVentana) {
-                    zoomVentana.webContents.setZoomFactor(1);
-                    console.log("Zoom restablecido a 100%");
+            {
+                label: "Restablecer Zoom",
+                accelerator: "Ctrl+0",
+                click(item, zoomVentana) {
+                    if (zoomVentana) {
+                        zoomVentana.webContents.setZoomFactor(1);
+                        console.log("Zoom restablecido a 100%");
                     }
                 },
             },
@@ -521,7 +507,6 @@ app.whenReady().then(async () => {
     dialog.showErrorBox("Error de inicio", "No se pudo iniciar la aplicación.");
     app.quit();
 });
-
 app.on("window-all-closed", () => { app.quit(); });
 
 

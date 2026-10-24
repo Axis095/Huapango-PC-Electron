@@ -25,7 +25,7 @@ function evento(vista) {
     return { senderFrame: frame, sender: { mainFrame: frame } };
 }
 
-const pareja = { nParejaID: '7', cNombreMasculino: 'Luis', cApellidoMasculino: 'López',
+const pareja = { versionEdicion: 'a'.repeat(64), nParejaID: '7', cNombreMasculino: 'Luis', cApellidoMasculino: 'López',
     cEmailMasculino: 'luis@example.test', nTelefonoMasculino: '1234567890', dNacimientoMasculino: '2000-01-01',
     cNombreFemenino: 'Ana', cApellidoFemenino: 'Pérez', cEmailFemenino: 'ana@example.test',
     nTelefonoFemenino: '1234567890', dNacimientoFemenino: '2000-01-01',
@@ -55,7 +55,7 @@ function preparar(opciones = {}) {
             consultas.push({ sql, params: Array.from(params || []) });
             if (opciones.errorSQL) throw new Error('Error SQL simulado');
             if (/SELECT COUNT/i.test(sql)) return [{ total: opciones.duplicado ? 1 : 0 }];
-            if (/SELECT/i.test(sql)) return opciones.noExiste ? [] : [{ nParejaID: 7, oFoto: null, IFotoM: null }];
+            if (/SELECT/i.test(sql)) return opciones.noExiste ? [] : [{ nParejaID: 7, oFoto: null, IFotoM: null, versionEdicion: 'a'.repeat(64) }];
             return { insertId: 9, affectedRows: opciones.noExiste ? 0 : 1, changedRows: 1 };
         },
         async withTransaction(tablas, fn) {
@@ -126,7 +126,7 @@ for (const rol of ['user', 'admin']) {
                     sinEfectos(v);
                 } else {
                     assert.equal(respuesta.success, true, `${canal}: ${JSON.stringify(respuesta)}`);
-                    assert.match(v.consultas.at(-1).sql, sql);
+                    assert.ok(v.consultas.some(c => sql.test(c.sql)), `No se ejecutó ${sql}`);
                     assert.equal(v.consultas.filter(c => /INSERT|UPDATE\s+\w|DELETE/i.test(c.sql)).length, 1);
                     if (canal === 'actualizar-estilo') assert.deepEqual(v.consultas.at(-1).params, [1, 0, 0, 0, 0, 0, 3]);
                     if (canal.startsWith('eliminar-')) assert.deepEqual(v.consultas.at(-1).params, [datos]);

@@ -10,6 +10,12 @@ const campos = {
     fechaNacimientoFemeninoUpdate: ["dNacimientoFemenino", "dNacimientoM"]
 };
 const lados = ["Masculino", "Femenino"];
+const etiquetas = ["Nombre (participante 1)", "Apellidos (participante 1)", "Correo (participante 1)",
+    "Teléfono (participante 1)", "Nacimiento (participante 1)", "Nombre (participante 2)",
+    "Apellidos (participante 2)", "Correo (participante 2)", "Teléfono (participante 2)", "Nacimiento (participante 2)"];
+const versionValida = valor => typeof valor === "string" && /^[a-f0-9]{64}$/.test(valor);
+const camposDeFila = fila => Object.fromEntries(Object.entries(campos).map(([campo, [, columna]]) =>
+    [campo, campo.startsWith("fecha") ? fecha(fila[columna]) : String(fila[columna] ?? "")]));
 const destinos = { btnIndex: "MenuPrincipal.html", btnRegistros: "Registros.html", btnResultados: "Resultados.html",
     btnBusquedaParejas: "BusquedaParejas.html", btnModificarParejas: "BusquedaParejas.html",
     btnAdministrador: "Administrador.html", btnRegreso: "MenuPrincipal.html" };
@@ -26,6 +32,7 @@ export async function inicializarFichaPareja(documento = document, api = window.
     const get = id => documento.getElementById(id);
     let ficha = null, editando = false, ocupado = true, falloRecuperacion = false;
     let pendiente = Promise.resolve(), accionConfirmada = null;
+    let revision = null;
     const cache = new WeakMap();
     const aviso = (texto, error = false) => {
         get("estadoBusquedaParejas").textContent = texto;
@@ -40,7 +47,11 @@ export async function inicializarFichaPareja(documento = document, api = window.
         get("btnEditarPareja").hidden = editando;
         get("btnEditarPareja").disabled = ocupado || !ficha || falloRecuperacion;
         get("BTNUpdate").hidden = !editando;
-        get("BTNUpdate").disabled = ocupado || !ficha || falloRecuperacion;
+        get("BTNUpdate").disabled = ocupado || !ficha || falloRecuperacion || !!ficha.conflicto || !versionValida(ficha.versionEdicion);
+        get("revisionPareja").hidden = !ficha || (!ficha.conflicto && versionValida(ficha.versionEdicion) && !revision);
+        get("btnRevisarPareja").disabled = ocupado || !ficha || falloRecuperacion;
+        get("btnAplicarRevision").hidden = !revision;
+        get("btnAplicarRevision").disabled = ocupado || !revision || falloRecuperacion;
         get("btnCancelarEdicion").hidden = !editando;
         get("btnCancelarEdicion").disabled = ocupado || falloRecuperacion;
         get("btnLimpiarModificacion").disabled = ocupado || falloRecuperacion;
@@ -54,6 +65,20 @@ export async function inicializarFichaPareja(documento = document, api = window.
         get("BTNUpdate").textContent = ficha ? `Guardar cambios de pareja #${ficha.id}` : "Guardar cambios";
     }
     function aplicar(original) { for (const id of Object.keys(campos)) get(id).value = original?.[id] ?? ""; }
+    function propuestaRevision() {
+        // Conservar únicamente los campos editados localmente, no la ficha antigua entera.
+        return Object.fromEntries(Object.keys(campos).map(id =>
+            [id, get(id).value !== ficha.original[id] ? get(id).value : revision.original[id]]));
+    }
+    function mostrarRevision() {
+        if (!revision) { get("detalleRevisionPareja").textContent = ""; return; }
+        const propuesta = propuestaRevision();
+        get("detalleRevisionPareja").textContent = Object.keys(campos).map((id, i) =>
+            `${etiquetas[i]}\nActual en MySQL: ${revision.original[id]}\nPropuesto: ${propuesta[id]}`
+        ).join("\n\n") + "\n\n" + lados.map((lado, i) =>
+            `Foto participante ${i + 1}: ${get(`foto${lado}Update`).files.length ? "tu foto seleccionada reemplazará la actual" : "se conservará la foto actual de MySQL"}.`
+        ).join("\n");
+    }
     function limpiarFotos() { for (const lado of lados) get(`foto${lado}Update`).value = ""; }
     function serializar(archivo) {
         if (!archivo) return Promise.resolve(null);
@@ -81,7 +106,10 @@ export async function inicializarFichaPareja(documento = document, api = window.
         get("confirmarLimpiarModificacion").hidden = true;
         ocupado = true; actualizar();
         try { await accion(); }
-        catch (error) { aviso(error.message || "No se pudo completar la operación. Tus cambios se conservan.", true); }
+        catch (error) {
+            await persistir();
+            aviso(error.message || "No se pudo completar la operación. Tus cambios se conservan.", true);
+        }
         finally {
             ocupado = false; actualizar();
             if (origen?.isConnected && !origen.disabled && !origen.hidden && !origen.closest?.("[hidden]")) origen.focus();
@@ -117,9 +145,10 @@ export async function inicializarFichaPareja(documento = document, api = window.
         }
         const fila = respuesta.data[0];
         if (Number(fila.nParejaID) !== Number(id)) throw new Error("La respuesta no corresponde al ID solicitado.");
-        const original = Object.fromEntries(Object.entries(campos).map(([campo, [, columna]]) =>
-            [campo, campo.startsWith("fecha") ? fecha(fila[columna]) : String(fila[columna] ?? "")]));
-        ficha = { id: String(fila.nParejaID), original, fotos: { Masculino: !!fila.oFoto, Femenino: !!fila.IFotoM } };
+        const original = camposDeFila(fila);
+        ficha = { id: String(fila.nParejaID), original, versionEdicion: fila.versionEdicion,
+            fotos: { Masculino: !!fila.oFoto, Femenino: !!fila.IFotoM } };
+        revision = null; mostrarRevision();
         aplicar(original); limpiarFotos(); editando = false;
         for (const lado of lados) get(`estadoFoto${lado}`).textContent = ficha.fotos[lado] ? "Foto guardada. Selecciona otra al editar para reemplazarla." : "Sin foto guardada.";
         aviso(`Pareja #${ficha.id} cargada. Pulsa Editar para modificar sus datos.`);
@@ -141,7 +170,10 @@ export async function inicializarFichaPareja(documento = document, api = window.
     });
     get("BTNUpdate").addEventListener("click", () => ejecutar(async () => {
         if (!ficha || !editando) return;
-        const datos = { nParejaID: ficha.id, fotos: {} };
+        if (ficha.conflicto || !versionValida(ficha.versionEdicion)) {
+            aviso("Revisa los datos actuales antes de guardar. Tu borrador se conserva.", true); return;
+        }
+        const datos = { nParejaID: ficha.id, versionEdicion: ficha.versionEdicion, fotos: {} };
         for (const [id, [campo]] of Object.entries(campos)) datos[campo] = get(id).value.trim();
         validarDatosPareja(datos);
         for (const lado of lados) {
@@ -150,15 +182,45 @@ export async function inicializarFichaPareja(documento = document, api = window.
         }
         aviso(`Guardando pareja #${ficha.id}…`);
         const respuesta = await api.actualizarParejaCompleta(datos);
-        if (!respuesta?.success) { await persistir(); throw new Error(respuesta?.error || "No se pudo confirmar el guardado. Tus cambios se conservan."); }
+        if (!respuesta?.success) {
+            if (["EDIT_CONFLICT", "VERSION_REQUIRED"].includes(respuesta?.code)) {
+                ficha.conflicto = true; revision = null; mostrarRevision();
+            }
+            await persistir(); throw new Error(respuesta?.error || "No se pudo confirmar el guardado. Tus cambios se conservan.");
+        }
         for (const [id, [campo]] of Object.entries(campos)) get(id).value = datos[campo];
         ficha.original = valores();
+        ficha.versionEdicion = respuesta.versionEdicion; ficha.conflicto = false;
+        revision = null; mostrarRevision();
         for (const lado of lados) if (datos.fotos[lado]) { ficha.fotos[lado] = true; get(`estadoFoto${lado}`).textContent = "Foto guardada."; }
         limpiarFotos(); editando = false;
         aviso(respuesta.message || `Cambios de pareja #${ficha.id} guardados correctamente.`);
         if (!(await persistir())) get("estadoBorradorModificacion").textContent = "MySQL confirmó los cambios, pero el borrador no pudo actualizarse. Reintenta cambiar de módulo; no repitas Guardar.";
     }));
-    const cancelar = async () => { aplicar(ficha.original); limpiarFotos(); editando = false; aviso("Edición cancelada. Se recuperaron los datos de la ficha."); await persistir(); };
+    get("btnRevisarPareja").addEventListener("click", () => ejecutar(async () => {
+        if (!ficha) return;
+        revision = null; mostrarRevision();
+        const respuesta = await api.buscarParejaPorID(ficha.id);
+        const fila = respuesta?.data?.[0];
+        if (!respuesta?.success || !fila || Number(fila.nParejaID) !== Number(ficha.id) || !versionValida(fila.versionEdicion)) {
+            throw new Error(respuesta?.message || respuesta?.error || "No se pudo cargar la versión actual. Tu borrador se conserva.");
+        }
+        revision = { original: camposDeFila(fila), versionEdicion: fila.versionEdicion,
+            fotos: { Masculino: !!fila.oFoto, Femenino: !!fila.IFotoM } };
+        mostrarRevision();
+        aviso("Compara los datos actuales con los propuestos. Puedes corregir tus campos antes de preparar el borrador. Todavía no se guardará nada en MySQL.");
+    }));
+    get("btnAplicarRevision").addEventListener("click", () => ejecutar(async () => {
+        if (!revision || !ficha) return;
+        const propuestos = propuestaRevision();
+        ficha.original = revision.original; ficha.versionEdicion = revision.versionEdicion;
+        ficha.fotos = revision.fotos; ficha.conflicto = false;
+        aplicar(propuestos); editando = true; revision = null; mostrarRevision();
+        for (const lado of lados) get(`estadoFoto${lado}`).textContent = ficha.fotos[lado] ? "Foto guardada." : "Sin foto guardada.";
+        aviso("Borrador revisado preparado. Se conservaron tus campos editados y se actualizaron los demás. Comprueba los datos y pulsa Guardar cambios cuando estés listo.");
+        await persistir();
+    }));
+    const cancelar = async () => { aplicar(ficha.original); limpiarFotos(); editando = false; revision = null; mostrarRevision(); aviso("Edición cancelada. Se recuperaron los datos de la ficha."); await persistir(); };
     get("btnCancelarEdicion").addEventListener("click", () => {
         if (!ficha) return;
         if (modificado()) confirmar("¿Descartar los cambios de esta edición?", cancelar);
@@ -168,11 +230,12 @@ export async function inicializarFichaPareja(documento = document, api = window.
         await pendiente.catch(() => {});
         if (!(await api.limpiarBorradorModificacion())?.success) throw new Error("No se pudo descartar el borrador. Los datos se conservan.");
         ficha = null; editando = false; aplicar(null); limpiarFotos(); get("nParejaID").value = "";
+        revision = null; mostrarRevision();
         aviso("Busca una pareja para comenzar."); get("estadoBorradorModificacion").textContent = "Borrador descartado.";
     }));
     for (const id of [...Object.keys(campos), ...lados.map(l => `foto${l}Update`)]) {
         for (const nombre of ["input", "change"]) get(id).addEventListener(nombre, () => {
-            if (!ocupado && !falloRecuperacion) void persistir();
+            if (!ocupado && !falloRecuperacion) { mostrarRevision(); void persistir(); }
         });
     }
     documento.querySelector(".menu").addEventListener("click", event => {
@@ -197,7 +260,7 @@ export async function inicializarFichaPareja(documento = document, api = window.
                 if (f) { const dt = new DataTransfer(); dt.items.add(new File([f.bytes], f.nombre, { type: f.tipo, lastModified: f.fecha })); get(`foto${lado}Update`).files = dt.files; }
                 get(`estadoFoto${lado}`).textContent = ficha?.fotos?.[lado] ? "Foto guardada." : "Sin foto guardada.";
             }
-            aviso(ficha ? `Ficha de pareja #${ficha.id} recuperada. Revisa tus cambios antes de guardar.` : "Busca una pareja para comenzar.");
+            aviso(ficha ? `Ficha de pareja #${ficha.id} recuperada. ${ficha.conflicto || !versionValida(ficha.versionEdicion) ? "Revisa los datos actuales antes de guardar; tu borrador se conserva." : "Revisa tus cambios antes de guardar."}` : "Busca una pareja para comenzar.");
         }
     } catch (error) { falloRecuperacion = true; aviso(error.message, true); }
     ocupado = false; actualizar();

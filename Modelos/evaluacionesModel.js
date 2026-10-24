@@ -17,7 +17,7 @@ async function registrarEvaluacion(datos) {
         return { success: true, id: result.insertId };
     } catch (err) {
         console.error("Error al registrar evaluación:", err);
-        throw new Error("Error al registrar la evaluación: " + err.message);
+        throw Object.assign(new Error("Error al registrar la evaluación: " + err.message), { code: err.code });
     }
 }
 
@@ -40,7 +40,7 @@ async function obtenerEvaluacionesPorPareja(nParejaID, nJuezID) {
         return result;
     } catch (err) {
         console.error("Error al obtener evaluaciones:", err);
-        throw new Error("Error al obtener evaluaciones: " + err.message);
+        throw Object.assign(new Error("Error al obtener evaluaciones: " + err.message), { code: err.code });
     }
 }
 

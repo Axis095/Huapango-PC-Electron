@@ -49,9 +49,9 @@ function preparar(opciones = {}) {
     }
     const db = { async queryDatabase(sql, params) {
         consultas.push({ sql, params: Array.from(params) });
-        if (/cContrasena =/.test(sql)) {
+        if (/FROM t_usuarios WHERE cNombreUsuario =/.test(sql)) {
             if (opciones.loginPendiente) await opciones.loginPendiente();
-            return params[1] === 'prueba' && cuentas[params[0]] ? [cuentas[params[0]]] : [];
+            return cuentas[params[0]] ? [{ ...cuentas[params[0]], cContrasena: 'prueba' }] : [];
         }
         return /INSERT/.test(sql) ? { insertId: 1 } : [{ nEvaluacionID: 1 }];
     } };
@@ -72,7 +72,10 @@ function preparar(opciones = {}) {
     }
     Object.assign(deps, { electron, path, url: { fileURLToPath }, './db': { inicializarBaseDatos: async () => {} },
         './Modelos/sesionModel': sesion, './Modelos/configModel': { requiereConfiguracionInicial: () => !!opciones.inicial } });
-    deps['./Controladores/authController'] = cargar('Controladores/authController.js', { '../db': db, '../Modelos/sesionModel': sesion }, { global: globals });
+    deps['./Controladores/authController'] = cargar('Controladores/authController.js', {
+        '../db': db, '../Modelos/sesionModel': sesion,
+        '../Modelos/contrasenaModel': require('../Modelos/contrasenaModel')
+    }, { global: globals });
     deps['./Controladores/evaluacionesController'] = cargar('Controladores/evaluacionesController.js', {
         '../Modelos/evaluacionesModel': cargar('Modelos/evaluacionesModel.js', { '../db': db }),
         '../Modelos/sesionModel': sesion, 'node:path': path, 'node:url': { fileURLToPath }

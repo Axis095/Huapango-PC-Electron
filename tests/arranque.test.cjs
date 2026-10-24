@@ -13,7 +13,7 @@ const configValida = { host: "127.0.0.1", port: 3306, user: "operador", password
 
 function load(file, deps, extra = {}) {
     const module = { exports: {} };
-    vm.runInNewContext(source(file), { module, console: quiet, __dirname: root,
+    vm.runInNewContext(source(file), { module, setTimeout, clearTimeout, console: quiet, __dirname: root,
         require(name) { assert.ok(name in deps, `Dependencia inesperada: ${name}`); return deps[name]; },
         ...extra
     }, { filename: file });
@@ -193,7 +193,8 @@ test("el login mantiene la sesión en memoria y no modifica MySQL config", async
     const events = [];
     const globals = { loginWindow: { isDestroyed() { return false; }, close() { events.push("cerrar-login"); } } };
     const auth = load("Controladores/authController.js", {
-        "../db": { async queryDatabase() { return [{ nUsuarioID: 9, rol: "juez" }]; } },
+        "../db": { async queryDatabase() { return [{ nUsuarioID: 9, rol: "juez", cContrasena: "clave" }]; } },
+        "../Modelos/contrasenaModel": require('../Modelos/contrasenaModel'),
         "../Modelos/sesionModel": sesion
     }, { global: globals });
     assert.equal((await auth.handleLogin(null, { username: "juez", password: "clave" }, () => {
