@@ -1,16 +1,22 @@
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="es"><head><meta charset="UTF-8">
+    <script src="../Public/js/tema.js"></script>
+    <script type="module" src="../Public/js/interfaz.js"></script><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Parejas · Buscar y editar</title><script type="module" src="../Public/js/render.js"></script>
-<link rel="stylesheet" href="../Public/css/stylesIndex.css"><link rel="stylesheet" href="../Public/css/modern-ui.css">
-<link rel="stylesheet" href="../Public/css/avisos.css"><link rel="stylesheet" href="../Public/css/fichaPareja.css"></head>
-<body>    <div class="menu">
-        <button id="btnIndex">Menú Principal</button>
-        <button id="btnRegistros" hidden disabled>Registro de Parejas</button>
-        <button id="btnResultados" hidden disabled>Resultados</button>
-        <button id="btnBusquedaParejas" hidden disabled>Parejas: buscar y editar</button>
-            <button id="btnAdministrador" hidden disabled>Administrador</button>
-            <button id="btnRegreso">Regresar al Menú</button>
-    </div>
+<link rel="stylesheet" href="../Public/css/stylesIndex.css">
+<link rel="stylesheet" href="../Public/css/avisos.css"><link rel="stylesheet" href="../Public/css/fichaPareja.css">    <link rel="stylesheet" href="../Public/css/modern-ui.css">
+</head>
+<body>    <nav class="menu" aria-label="Navegación principal">
+        <span class="menu-marca">Huapango</span>
+        <div class="menu-links">
+            <button id="btnIndex" type="button">Inicio</button>
+            <button id="btnRegistros" type="button" hidden disabled>Registro</button>
+            <button id="btnBusquedaParejas" type="button" hidden disabled>Buscar y editar</button>
+            <button id="btnResultados" type="button" hidden disabled>Evaluaciones</button>
+            <button id="btnAdministrador" type="button" hidden disabled>Administración</button>
+        </div>
+        <label class="selector-apariencia">Tema<select data-selector-tema aria-label="Apariencia"><option value="sistema">Sistema</option><option value="claro">Claro</option><option value="oscuro">Oscuro</option></select></label>
+    </nav>
 
 <main class="main-container pagina-ficha">
 <header><h1>Parejas</h1><p>Busca una pareja y edita sus datos en esta misma pantalla.</p></header>

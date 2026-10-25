@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <script src="../Public/js/tema.js"></script>
+    <script type="module" src="../Public/js/interfaz.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Registro Parejas</title>
@@ -9,109 +11,67 @@
     <link rel="stylesheet" href="../Public/css/StylesRegistros.css">
     <!-- <link rel="stylesheet" href="../Public/css/stylesRegistroCategoria.css"> ESTO DESHACE EL HTML VERIFICAR EN OTRO CSS MEJOR HECHO -->
     <link rel="stylesheet" href="../Public/css/stylesIndex.css">
-
     <link rel="stylesheet" href="../Public/css/modern-ui.css">
 </head>
 <body>
 
-        <div class="menu">
-        <button id="btnIndex">Menú Principal</button>
-        <button id="btnRegistros" hidden disabled>Registro de Parejas</button>
-        <button id="btnResultados" hidden disabled>Resultados</button>
-        <button id="btnBusquedaParejas" hidden disabled>Parejas: buscar y editar</button>
-            <button id="btnAdministrador" hidden disabled>Administrador</button>
-            <button id="btnRegreso">Regresar al Menú</button>
-    </div>
+        <nav class="menu" aria-label="Navegación principal">
+        <span class="menu-marca">Huapango</span>
+        <div class="menu-links">
+            <button id="btnIndex" type="button">Inicio</button>
+            <button id="btnRegistros" type="button" hidden disabled>Registro</button>
+            <button id="btnBusquedaParejas" type="button" hidden disabled>Buscar y editar</button>
+            <button id="btnResultados" type="button" hidden disabled>Evaluaciones</button>
+            <button id="btnAdministrador" type="button" hidden disabled>Administración</button>
+        </div>
+        <label class="selector-apariencia">Tema<select data-selector-tema aria-label="Apariencia"><option value="sistema">Sistema</option><option value="claro">Claro</option><option value="oscuro">Oscuro</option></select></label>
+    </nav>
 
     <div class="main-container">
         <header>
-            <h1>Bienvenido a Registros</h1>
-            <h2>Datos para Registro</h2>
+            <h1>Registro de parejas</h1>
+            <p class="subtitulo-pagina">Captura los datos de ambos participantes. Después podrás asignar categoría y estilo.</p>
         </header>
         
         <main>
             <p id="estadoBorradorRegistro" class="estado-registro" role="status" aria-live="polite" aria-atomic="true"></p>
             <p id="estadoPDFRegistro" class="estado-registro" role="status" aria-live="polite" aria-atomic="true"></p>
-            <section>
-                <table class="data-table">
-                    <tr>
-                        <th>Campo</th>
-                        <th>Valor</th>
-                    </tr>
-                    <tr>
-                        <td>Nombre</td>
-                        <td>Ejemplo</td>
-                    </tr>
-                </table>
-            </section>
             
             <section id="content">
-                <h2 class="section-title">Registro Parejas</h2>
-                
-                <div class="form-container">
-                    <div class="form-group">
-                        <label class="form-label">Nombres de la pareja:</label>
-                        <input type="text" id="nombreMasculino" class="form-control" placeholder="Nombre participante 1">
-                        <input type="text" id="apellidoMasculino" class="form-control" placeholder="Apellido participante 1">
-                        <input type="text" id="nombreFemenino" class="form-control" placeholder="Nombre participante 2">
-                        <input type="text" id="apellidoFemenino" class="form-control" placeholder="Apellido participante 2">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Correo electrónico:</label>
-                        <input type="email" id="emailMasculino" class="form-control" placeholder="Correo participante 1">
-                        <input type="email" id="emailFemenino" class="form-control" placeholder="Correo participante 2">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Fecha de nacimiento:</label>
-                        <input type="date" id="fechaNacimientoMasculino" aria-label="Fecha de nacimiento del participante 1" class="form-control">
-                        <input type="date" id="fechaNacimientoFemenino" aria-label="Fecha de nacimiento del participante 2" class="form-control">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Teléfonos de la pareja:</label>
-                        <input type="tel" id="telefonoMasculino" class="form-control" placeholder="Número participante 1">
-                        <input type="tel" id="telefonoFemenino" class="form-control" placeholder="Número participante 2">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Fotografías:</label>
-                        <p>Opcionales. PNG o JPEG, máximo 5 MiB y 16 megapíxeles por foto.</p>
-                        <input type="file" id="fotoMasculino" class="form-control" accept="image/png,image/jpeg" aria-label="Foto PNG o JPEG, máximo 5 MiB y 16 megapíxeles">
-                        <input type="file" id="fotoFemenino" class="form-control" accept="image/png,image/jpeg">
-                    </div>
-
-                <div class="form-group gender-section">
-    <label class="form-label">Sexo:</label>
-    <div class="gender-container">
-        <div class="gender-row">
-            <label class="gender-label">Participante 1:</label>
-            <select id="sexoMasculino" aria-label="Sexo del participante 1" class="form-control gender-select">
-                <option value="M">Masculino</option>
-                <option value="F">Femenino</option>
-            </select>
-        </div>
-        <div class="gender-row">
-            <label class="gender-label">Participante 2:</label>
-            <select id="sexoFemenino" aria-label="Sexo del participante 2" class="form-control gender-select">
-                <option value="F">Femenino</option>
-                <option value="M">Masculino</option>
-            </select>
-        </div>
+<div class="registro-identificacion"><div class="form-group"><label for="nParejaID">Número de pareja</label><input type="number" id="nParejaID" class="form-control" placeholder="Ej. 24" min="1" step="1"></div><p class="ayuda-campo">Revisa el número antes de guardar. Los dos participantes compartirán este registro.</p></div>
+<div class="form-container participantes-registro">
+<fieldset class="participante-registro">
+    <legend>Participante 1</legend>
+    <div class="fila-campos">
+        <div class="form-group"><label for="nombreMasculino">Nombre(s)</label><input type="text" id="nombreMasculino" class="form-control" placeholder="Nombre participante 1" autocomplete="off"></div>
+        <div class="form-group"><label for="apellidoMasculino">Apellidos</label><input type="text" id="apellidoMasculino" class="form-control" placeholder="Apellidos participante 1" autocomplete="off"></div>
     </div>
+    <div class="fila-campos">
+        <div class="form-group"><label for="fechaNacimientoMasculino">Fecha de nacimiento</label><input type="date" id="fechaNacimientoMasculino" aria-label="Fecha de nacimiento del participante 1" class="form-control" aria-describedby="ayudaFechaMasculino"><p id="ayudaFechaMasculino" class="ayuda-campo">Escribe la fecha o abre el calendario.</p></div>
+        <div class="form-group"><label for="sexoMasculino">Sexo</label><select id="sexoMasculino" aria-label="Sexo del participante 1" class="form-control"><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
+    </div>
+    <div class="form-group"><label for="telefonoMasculino">Teléfono</label><input type="tel" id="telefonoMasculino" class="form-control" placeholder="Teléfono participante 1" autocomplete="off"></div>
+    <div class="form-group"><label for="emailMasculino">Correo electrónico</label><input type="email" id="emailMasculino" class="form-control" placeholder="Correo participante 1" autocomplete="off"></div>
+    <div class="form-group"><label for="fotoMasculino">Fotografía <span class="ayuda-campo">(opcional)</span></label><input type="file" id="fotoMasculino" class="form-control" accept="image/png,image/jpeg" aria-label="Fotografía del participante 1" aria-describedby="ayudaFotoMasculino"><p id="ayudaFotoMasculino" class="ayuda-campo">PNG o JPEG. Hasta 5 MiB y 16 megapíxeles.</p></div>
+</fieldset>
+<fieldset class="participante-registro">
+    <legend>Participante 2</legend>
+    <div class="fila-campos">
+        <div class="form-group"><label for="nombreFemenino">Nombre(s)</label><input type="text" id="nombreFemenino" class="form-control" placeholder="Nombre participante 2" autocomplete="off"></div>
+        <div class="form-group"><label for="apellidoFemenino">Apellidos</label><input type="text" id="apellidoFemenino" class="form-control" placeholder="Apellidos participante 2" autocomplete="off"></div>
+    </div>
+    <div class="fila-campos">
+        <div class="form-group"><label for="fechaNacimientoFemenino">Fecha de nacimiento</label><input type="date" id="fechaNacimientoFemenino" aria-label="Fecha de nacimiento del participante 2" class="form-control" aria-describedby="ayudaFechaFemenino"><p id="ayudaFechaFemenino" class="ayuda-campo">Escribe la fecha o abre el calendario.</p></div>
+        <div class="form-group"><label for="sexoFemenino">Sexo</label><select id="sexoFemenino" aria-label="Sexo del participante 2" class="form-control"><option value="F">Femenino</option><option value="M">Masculino</option></select></div>
+    </div>
+    <div class="form-group"><label for="telefonoFemenino">Teléfono</label><input type="tel" id="telefonoFemenino" class="form-control" placeholder="Teléfono participante 2" autocomplete="off"></div>
+    <div class="form-group"><label for="emailFemenino">Correo electrónico</label><input type="email" id="emailFemenino" class="form-control" placeholder="Correo participante 2" autocomplete="off"></div>
+    <div class="form-group"><label for="fotoFemenino">Fotografía <span class="ayuda-campo">(opcional)</span></label><input type="file" id="fotoFemenino" class="form-control" accept="image/png,image/jpeg" aria-label="Fotografía del participante 2" aria-describedby="ayudaFotoFemenino"><p id="ayudaFotoFemenino" class="ayuda-campo">PNG o JPEG. Hasta 5 MiB y 16 megapíxeles.</p></div>
+</fieldset>
 </div>
-                    
-                    
-                    <div class="form-group">
-                        <label class="form-label">Número de pareja:</label>
-                        <input type="number" id="nParejaID" class="form-control" placeholder="Número de Pareja">
-                    </div>
-                </div>
-                
                 <div class="btn-container">
                     <p id="estadoRegistroPareja" class="estado-registro" role="status" aria-live="polite" aria-atomic="true"></p>
-                    <button id="BTNSave" class="btn btn-save">Guardar</button>
+                    <button id="BTNSave" class="btn btn-save">Guardar pareja</button>
                     <button id="btnNuevaPareja" class="btn" type="button">Nueva pareja</button>
                     <button id="btnGenerarPDF" hidden disabled class="btn btn-pdf">Generar PDF de parejas</button>
                 </div>
@@ -125,18 +85,6 @@
                 <button id="btnCancelarNuevaPareja" type="button" class="btn">Seguir con esta pareja</button>
             </div>
             <!-- HTML DE LOS REGISTROS DE CATEGORIAS Y ESTILOS -->
-            <section>
-                <table class="data-table" style="display: none;">
-                    <tr>
-                        <th>Campo</th>
-                        <th>Valor</th>
-                    </tr>
-                    <tr>
-                        <td>Nombre</td>
-                        <td>Ejemplo</td>
-                    </tr>
-                </table>
-            </section>
             
             <section id="contentCategoria" style="display: none;">
                 <h2 class="section-title">Registro de categoría para la pareja</h2>
