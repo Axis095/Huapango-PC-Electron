@@ -8,7 +8,8 @@ const { crearAlmacenFotos, MAX_BYTES } = require('../Modelos/almacenFotos');
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS1sAAAAASUVORK5CYII=', 'base64');
 const foto = () => ({ nombre: '../../original.jpg', tipo: 'image/jpeg', bytes: Buffer.from(png) });
 const datos = { versionEdicion: 'a'.repeat(64), nParejaID: '1', cNombreMasculino: 'Juan', cApellidoMasculino: 'Prueba', cEmailMasculino: 'j@example.test', nTelefonoMasculino: '5512345678', dNacimientoMasculino: '2000-01-01', sexoMasculino: 'M',
-    cNombreFemenino: 'Ana', cApellidoFemenino: 'Prueba', cEmailFemenino: 'a@example.test', nTelefonoFemenino: '5512345679', dNacimientoFemenino: '2000-01-01', sexoFemenino: 'F' };
+    cNombreFemenino: 'Ana', cApellidoFemenino: 'Prueba', cEmailFemenino: 'a@example.test', nTelefonoFemenino: '5512345679', dNacimientoFemenino: '2000-01-01', sexoFemenino: 'F',
+    categoria: { nIDCategoria: 21, cCategoriaNombre: 'Adulto (18-49 años)' }, estilo: { nEstiloID: 31, cEstiloNombre: 'Queretano' } };
 async function preparar(t, opciones = {}) {
     const directorio = await fs.mkdtemp(path.join(os.tmpdir(), 'huapango-fotos-'));
     t.after(() => fs.rm(directorio, { recursive: true, force: true }));
@@ -27,7 +28,7 @@ async function preparar(t, opciones = {}) {
                     estado.historial.push(sql.trim().split(/\s+/)[0]);
                     if (sql.trim().startsWith('SELECT')) return estado.fila ? [{ versionEdicion: 'a'.repeat(64), ...estado.fila }] : [];
                     if (opciones.sql) throw Object.assign(new Error('SQL rechazado'), { code: 'ER_DUP_ENTRY' });
-                    if (sql.includes('INSERT INTO')) {
+                    if (sql.includes('INSERT INTO T_Participantes')) {
                         if (estado.fila) throw Object.assign(new Error('ID duplicado'), { code: 'ER_DUP_ENTRY' });
                         estado.fila = { nParejaID: p[0], oFoto: p[1], IFotoM: p[14] };
                         return { affectedRows: 1 };

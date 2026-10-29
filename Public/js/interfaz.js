@@ -1,4 +1,7 @@
 import { inicializarCalendarios } from './calendarioNacimiento.js';
+import { cargarNombreSesion } from './perfilUsuario.js';
+import { inicializarSalida } from './salidaSesion.js';
+import { inicializarCierreVentana } from './cierreVentana.js';
 document.addEventListener('DOMContentLoaded', () => {
     const pagina = window.location.pathname.split('/').pop();
     const actual = {
@@ -12,4 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (button.id === actual) { button.classList.add('active'); button.setAttribute('aria-current', 'page'); }
     });
     inicializarCalendarios();
+    void cargarNombreSesion();
+    inicializarSalida();
+    inicializarCierreVentana();
 });

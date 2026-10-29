@@ -39,6 +39,10 @@ export function mostrarAviso(mensaje, documento = document) {
 
 // El diálogo pertenece al DOM. Solo el botón Eliminar confirma; Escape cancela.
 export function confirmarEliminacion(mensaje, documento = document) {
+    return confirmarAccion(mensaje, documento);
+}
+
+export function confirmarAccion(mensaje, documento = document, opciones = {}) {
     if (confirmaciones.has(documento)) return Promise.resolve(false);
     confirmaciones.add(documento);
     return new Promise(resolve => {
@@ -47,7 +51,7 @@ export function confirmarEliminacion(mensaje, documento = document) {
         dialogo.className = "confirmacion-aplicacion";
         const titulo = documento.createElement("h2");
         titulo.id = "titulo-confirmacion-eliminacion";
-        titulo.textContent = "Confirmar eliminación";
+        titulo.textContent = opciones.titulo || "Confirmar eliminación";
         const texto = documento.createElement("p");
         texto.id = "texto-confirmacion-eliminacion";
         texto.textContent = String(mensaje);
@@ -61,8 +65,8 @@ export function confirmarEliminacion(mensaje, documento = document) {
         cancelar.autofocus = true;
         const eliminar = documento.createElement("button");
         eliminar.type = "button";
-        eliminar.className = "accion-peligrosa";
-        eliminar.textContent = "Eliminar";
+        eliminar.className = opciones.neutra ? "" : "accion-peligrosa";
+        eliminar.textContent = opciones.aceptar || "Eliminar";
         let resuelto = false;
         function terminar(aceptada) {
             if (resuelto) return;
@@ -85,7 +89,7 @@ export function confirmarEliminacion(mensaje, documento = document) {
         try { dialogo.showModal(); cancelar.focus(); }
         catch {
             terminar(false);
-            mostrarAviso("No se pudo abrir la confirmación. No se eliminó ningún registro.", documento);
+            mostrarAviso(opciones.error || "No se pudo abrir la confirmación. No se eliminó ningún registro.", documento);
         }
     });
 }

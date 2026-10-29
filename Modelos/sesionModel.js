@@ -3,8 +3,8 @@ let sesion = null;
 // Identidad interna de cada inicio de sesión; nunca se envía por IPC.
 let claveSesion = null;
 
-function guardarSesion(userID, userRole) {
-    sesion = { userID, userRole };
+function guardarSesion(userID, userRole, userName) {
+    sesion = { userID, userRole, userName: typeof userName === "string" ? userName : null };
     claveSesion = Object.freeze({});
 }
 

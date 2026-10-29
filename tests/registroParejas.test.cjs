@@ -53,6 +53,12 @@ async function vista(apiExtra = {}, almacen = { data: null }) {
                 get(`fechaNacimiento${lado}`).value = "2000-01-01";
             }
             get("nParejaID").value = "123";
+            get("categoriaRegistro").value = "4";
+            get("categoriaRegistro").options[1].text = "Adulto (18-49 años)";
+            get("nIDCategoria").value = "41";
+            get("estiloRegistro").value = "1";
+            get("estiloRegistro").options[1].text = "Queretano";
+            get("nEstiloID").value = "51";
         }
     };
 }
@@ -156,7 +162,7 @@ test("evita doble guardado y navegación mientras MySQL responde", async () => {
     await v.click("BTNSave"); assert.equal(llamadas, 1);
 });
 
-test("una pareja guardada se recupera sin reinsertarla y categoría usa el ID confirmado", async () => {
+test("una pareja completa se recupera sin reinsertar participantes, categoría ni estilo", async () => {
     const almacen = { data: null };
     const v = await vista({}, almacen); v.completar(); await v.click("BTNSave");
     const otra = await vista({}, almacen);
@@ -164,8 +170,12 @@ test("una pareja guardada se recupera sin reinsertarla y categoría usa el ID co
     assert.equal(otra.get("nParejaIDCategoria").value, "123");
     otra.get("categoriaRegistro").value = "4"; otra.get("nIDCategoria").value = "4";
     await otra.click("btnRegistrarCategoria");
-    assert.equal(otra.categorias[0].nParejaID, "123");
-    await otra.click("btnRegistrarCategoria"); assert.equal(otra.categorias.length, 1);
+    assert.equal(otra.categorias.length, 0);
+    await otra.click("btnRegistrarCategoria"); assert.equal(otra.categorias.length, 0);
+    assert.equal(almacen.data.categoriaGuardada, true);
+    assert.equal(almacen.data.estiloGuardado, true);
+    assert.equal(v.registros[0].categoria.nIDCategoria, '41');
+    assert.equal(v.registros[0].estilo.nEstiloID, '51');
 });
 
 test("iniciar otra pareja requiere confirmación; cancelar conserva el borrador", async () => {
@@ -249,12 +259,61 @@ for (const code of ['DB_ACQUIRE_TIMEOUT', 'TRANSACTION_OUTCOME_UNKNOWN']) test('
 
 test('fallo de conexión en categoría conserva la pareja confirmada y la selección', async () => {
     let llamadas = 0;
-    const v = await vista({ registrarCategoria: async () => { llamadas++; return { success: false, error: 'Se perdió la confirmación. Consulta los datos antes de repetirla.' }; } });
-    v.completar(); await v.click('BTNSave');
+    const original = await vista(); original.completar(); await original.navegar();
+    original.almacen.data.registrada = '123'; // Borrador de la versión anterior, con alta parcial.
+    const v = await vista({ registrarCategoria: async () => { llamadas++; return { success: false, error: 'Se perdió la confirmación. Consulta los datos antes de repetirla.' }; } }, original.almacen);
     v.get('categoriaRegistro').value = '4'; v.get('nIDCategoria').value = '44';
     await v.click('btnRegistrarCategoria');
     assert.equal(llamadas, 1); assert.equal(v.almacen.data.registrada, '123');
     assert.equal(v.almacen.data.categoriaGuardada, false);
     assert.equal(v.get('nIDCategoria').value, '44');
     assert.equal(v.get('btnRegistrarCategoria').disabled, false);
+});
+
+for (const campo of ['categoriaRegistro', 'estiloRegistro', 'nIDCategoria', 'nEstiloID']) {
+    test(`alta completa: falta ${campo} y no se envía ninguna escritura`, async () => {
+        const v = await vista(); v.completar(); v.get(campo).value = '';
+        await v.click('BTNSave');
+        assert.equal(v.registros.length, 0); assert.equal(v.categorias.length, 0);
+        assert.equal(v.documento.activeElement, v.get(campo));
+        assert.equal(v.get('nombreMasculino').value, 'Nombre');
+        assert.equal(v.get('BTNSave').disabled, false);
+        assert.equal(v.almacen.data.registrada, null);
+    });
+}
+
+test('nombres compuestos y apóstrofos se conservan; correos se envían y muestran en minúsculas', async () => {
+    const v = await vista(); v.completar();
+    v.get('nombreMasculino').value = 'Jean-Luc'; v.get('apellidoMasculino').value = "O'Connor";
+    v.get('nombreFemenino').value = 'Anne-Marie'; v.get('apellidoFemenino').value = 'D’Arcy';
+    v.get('emailMasculino').value = ' JUAN@Example.TEST '; v.get('emailFemenino').value = 'ANA@Example.TEST';
+    await v.click('BTNSave');
+    assert.equal(v.registros.length, 1);
+    assert.equal(v.registros[0].cNombreMasculino, 'Jean-Luc');
+    assert.equal(v.registros[0].cApellidoMasculino, "O'Connor");
+    assert.equal(v.registros[0].cNombreFemenino, 'Anne-Marie');
+    assert.equal(v.registros[0].cApellidoFemenino, 'D’Arcy');
+    assert.equal(v.registros[0].cEmailMasculino, 'juan@example.test');
+    assert.equal(v.registros[0].cEmailFemenino, 'ana@example.test');
+    assert.equal(v.get('emailMasculino').value, 'juan@example.test');
+    assert.equal(v.get('emailFemenino').value, 'ana@example.test');
+    assert.equal(v.get('btnNuevaPareja').disabled, false);
+});
+
+test('borrador anterior incompleto bloquea menú y nueva pareja hasta confirmar ambas clasificaciones', async () => {
+    const original = await vista(); original.completar(); await original.navegar();
+    original.almacen.data.registrada = '123';
+    const v = await vista({}, original.almacen);
+    assert.equal(v.get('btnNuevaPareja').disabled, true);
+    await v.navegar(); assert.equal(v.navegaciones.length, 0);
+    await v.click('btnNuevaPareja'); assert.equal(v.get('confirmarNuevaPareja').hidden, true);
+    await v.click('btnConfirmarNuevaPareja'); assert.equal(v.almacen.data.registrada, '123');
+    await v.click('btnRegistrarCategoria');
+    await v.navegar(); assert.equal(v.navegaciones.length, 0);
+    assert.equal(v.categorias[0].nParejaID, '123');
+    await v.click('btnRegistrarEstilo');
+    assert.equal(v.get('btnNuevaPareja').disabled, false);
+    await v.navegar(); assert.equal(v.navegaciones.length, 1);
+    await v.click('btnNuevaPareja'); await v.click('btnConfirmarNuevaPareja');
+    assert.equal(v.get('nombreMasculino').value, '');
 });

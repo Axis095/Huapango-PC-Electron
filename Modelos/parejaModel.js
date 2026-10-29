@@ -44,11 +44,51 @@ function vacioANull(valor) {
 // Función para registrar una pareja (dos participantes)
 async function registrarPareja(datos) {
     validarIDEscritura(datos?.nParejaID);
-    return conFotos(datos, preparados => registrarDatosPareja(preparados));
+    const normalizados = normalizarParticipantes(datos);
+    normalizados.categoria = validarClasificacion(datos.categoria, "categoria");
+    normalizados.estilo = validarClasificacion(datos.estilo, "estilo");
+    return conFotos(normalizados, preparados => registrarDatosPareja(preparados));
+}
+
+function normalizarParticipantes(datos) {
+    const normalizados = { ...datos };
+    for (const lado of ["Masculino", "Femenino"]) {
+        for (const prefijo of ["cNombre", "cApellido"]) {
+            const campo = prefijo + lado;
+            const nombre = typeof datos[campo] === "string" ? datos[campo].trim().normalize("NFC") : "";
+            // Admite acentos, nombres compuestos, guiones y apóstrofos rectos o tipográficos.
+            if (!/^[\p{L}\p{M} .’'ʼ‐‑-]+$/u.test(nombre) || !/\p{L}/u.test(nombre)) {
+                throw Object.assign(new Error("Ingresa nombres y apellidos válidos; se permiten espacios, guiones y apóstrofos."), { code: "INVALID_DATA" });
+            }
+            normalizados[campo] = nombre;
+        }
+        const campo = "cEmail" + lado;
+        const correo = typeof datos[campo] === "string" ? datos[campo].trim().toLowerCase() : "";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+            throw Object.assign(new Error("Ingresa un correo electrónico válido para ambos participantes."), { code: "INVALID_DATA" });
+        }
+        normalizados[campo] = correo;
+    }
+    return normalizados;
+}
+
+function validarClasificacion(datos, tipo) {
+    const esCategoria = tipo === "categoria";
+    const campoID = esCategoria ? "nIDCategoria" : "nEstiloID";
+    const campoNombre = esCategoria ? "cCategoriaNombre" : "cEstiloNombre";
+    const permitidos = esCategoria
+        ? ["Pequeños (3-6 años)", "Infantil (7-11 años)", "Juvenil (12-17 años)", "Adulto (18-49 años)", "Grandes (50+ años)"]
+        : ["Queretano", "Veracruzano", "Hidalguense", "Potosino", "Tamaulipeco", "Poblano"];
+    const id = datos?.[campoID];
+    if (!["string", "number"].includes(typeof id) || !/^\d+$/.test(String(id).trim()) ||
+        !Number.isSafeInteger(Number(id)) || Number(id) <= 0 || !permitidos.includes(datos?.[campoNombre])) {
+        throw Object.assign(new Error(`Selecciona ${esCategoria ? "una categoría" : "un estilo"} y su ID entero positivo antes de guardar la pareja.`), { code: "CLASSIFICATION_REQUIRED" });
+    }
+    return { [campoID]: Number(id), [campoNombre]: datos[campoNombre] };
 }
 
 async function registrarDatosPareja(datos) {
-    return withTransaction(["T_Participantes"], async consultar => {
+    return withTransaction(["T_Participantes", "T_Categorias", "T_Estilos"], async consultar => {
         const sql = `
             INSERT INTO T_Participantes 
             (nParejaID, oFoto, dNacimiento, ISexo, nTelefono, cNombre, cApellido, cEmail, 
@@ -72,6 +112,11 @@ async function registrarDatosPareja(datos) {
             datos.sexoFemenino,
             datos.oFotoFemenino || null
         ]);
+        // Los tres INSERT comparten conexión y commit: un fallo revierte el alta completa.
+        await consultar("INSERT INTO T_Categorias (nIDCategoria, cCategoriaNombre, nParejaID) VALUES (?, ?, ?)",
+            [datos.categoria.nIDCategoria, datos.categoria.cCategoriaNombre, datos.nParejaID]);
+        await consultar("INSERT INTO T_Estilos (nEstiloID, cEstiloNombre, nParejaID) VALUES (?, ?, ?)",
+            [datos.estilo.nEstiloID, datos.estilo.cEstiloNombre, datos.nParejaID]);
         return datos.nParejaID;
     });
 }
@@ -238,7 +283,7 @@ async function actualizarParejaCompleta(datos) {
         error.code = "VERSION_REQUIRED";
         throw error;
     }
-    return conFotos(datos, preparados => actualizarDatosPareja(preparados, id, campos), fotoEnUso);
+    return conFotos(normalizarParticipantes(datos), preparados => actualizarDatosPareja(preparados, id, campos), fotoEnUso);
 }
 
 async function actualizarDatosPareja(datos, id, campos) {

@@ -5,7 +5,7 @@ const { guardarSesion, obtenerClaveSesion, cerrarSesion } = require("../Modelos/
 
 let autenticando = false;
 
-async function handleLogin(event, credentials, createMainWindow, sigueAutorizado = () => false) {
+async function handleLogin(event, credentials, createMainWindow, sigueAutorizado = () => false, cerrarVentana = ventana => ventana.close()) {
     const denegado = () => ({ success: false, code: "FORBIDDEN", message: "Inicia sesión desde la ventana de acceso autorizada." });
     if (!sigueAutorizado()) return denegado();
     if (autenticando) return { success: false, message: "Espera a que termine el inicio de sesión." };
@@ -30,7 +30,7 @@ async function handleLogin(event, credentials, createMainWindow, sigueAutorizado
             if (!["admin", "user", "juez"].includes(userRole) || !Number.isSafeInteger(result[0].nUsuarioID) || result[0].nUsuarioID <= 0) {
                 return { success: false, message: "La cuenta no tiene una identidad o un rol válido." };
             }
-            guardarSesion(result[0].nUsuarioID, userRole);
+            guardarSesion(result[0].nUsuarioID, userRole, result[0].cNombreUsuario);
             claveCreada = obtenerClaveSesion();
 
             global.userRole = userRole; // Almacena el rol en una variable global
@@ -39,7 +39,7 @@ async function handleLogin(event, credentials, createMainWindow, sigueAutorizado
             // Cierra la ventana de login y abre la ventana principal
             await createMainWindow();
             if (global.loginWindow && !global.loginWindow.isDestroyed()) {
-                global.loginWindow.close();
+                cerrarVentana(global.loginWindow);
             }
 
             return { success: true };
@@ -51,7 +51,7 @@ async function handleLogin(event, credentials, createMainWindow, sigueAutorizado
         if (claveCreada && obtenerClaveSesion() === claveCreada) {
             cerrarSesion();
             global.userRole = "guest";
-            if (global.mainWindow && !global.mainWindow.isDestroyed()) global.mainWindow.close();
+            if (global.mainWindow && !global.mainWindow.isDestroyed()) cerrarVentana(global.mainWindow);
         }
         console.error("Error al validar el login:", err);
         const conexion = ['DB_BUSY', 'DB_ACQUIRE_TIMEOUT', 'DB_QUERY_TIMEOUT', 'DB_CONNECTION_LOST',

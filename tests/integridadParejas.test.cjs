@@ -67,6 +67,17 @@ async function preparar(opciones = {}) {
                 columnas.forEach((columna, i) => { if (params[i] !== null) fila[columna] = params[i]; });
                 return [{ affectedRows: 1, changedRows: anterior === JSON.stringify(fila) ? 0 : 1 }];
             }
+            if (normalizado.startsWith('INSERT INTO ')) {
+                const insert = /^INSERT INTO (\w+) \(([^)]+)\) VALUES/.exec(normalizado);
+                assert.ok(insert, normalizado);
+                const tabla = insert[1].toLowerCase();
+                if (opciones.insert === tabla) throw fallo('ER_DUP_ENTRY');
+                const fila = Object.fromEntries(insert[2].split(',').map((col, i) => [col.trim(), params[i]]));
+                fila.nParejaID = Number(fila.nParejaID);
+                if (tabla === 't_participantes' && trabajo[tabla].some(f => f.nParejaID === fila.nParejaID)) throw fallo('ER_DUP_ENTRY');
+                trabajo[tabla].push(fila);
+                return [{ affectedRows: 1, insertId: fila.nParejaID }];
+            }
             const tabla = /^DELETE FROM (\w+) WHERE nParejaID = \?$/.exec(normalizado)?.[1].toLowerCase();
             assert.ok(tablas.includes(tabla), `SQL inesperado: ${normalizado}`);
             if (opciones.delete === tabla) throw fallo('DELETE_ERROR');
@@ -293,4 +304,71 @@ test('un guardado sin cambios devuelve la misma versión y permite seguir editan
     assert.equal(r.code, 'UNCHANGED'); assert.equal(r.versionEdicion, datos.versionEdicion);
     const siguiente = await v.controladorPareja.handleActualizarPareja(null, { ...datos, versionEdicion: r.versionEdicion, cNombreMasculino: 'Nuevo' });
     assert.equal(siguiente.code, 'UPDATED');
+});
+
+const altaCompleta = () => ({ ...datos, nParejaID: '21', sexoMasculino: 'M', sexoFemenino: 'F',
+    cNombreMasculino: 'Jean-Luc', cApellidoMasculino: "O'Connor", cNombreFemenino: 'Anne-Marie', cApellidoFemenino: 'D’Arcy',
+    cEmailMasculino: ' JUAN@Example.TEST ', cEmailFemenino: ' ANA@Example.TEST ',
+    categoria: { nIDCategoria: 121, cCategoriaNombre: 'Adulto (18-49 años)' },
+    estilo: { nEstiloID: 221, cEstiloNombre: 'Queretano' } });
+
+test('alta: tres registros en una transacción con correos normalizados y nombres preservados', async () => {
+    const v = await preparar();
+    const alta = altaCompleta();
+    assert.equal((await v.controladorPareja.handleRegistrarPareja(null, alta)).success, true);
+    const fila = v.confirmado.t_participantes.find(f => f.nParejaID === 21);
+    assert.equal(fila.cNombre, 'Jean-Luc'); assert.equal(fila.cApellido, "O'Connor");
+    assert.equal(fila.cNombreM, 'Anne-Marie'); assert.equal(fila.cApellidoM, 'D’Arcy');
+    assert.equal(fila.cEmail, 'juan@example.test'); assert.equal(fila.cEmailM, 'ana@example.test');
+    assert.equal(v.confirmado.t_categorias.find(f => f.nParejaID === 21).cCategoriaNombre, 'Adulto (18-49 años)');
+    assert.equal(v.confirmado.t_estilos.find(f => f.nParejaID === 21).cEstiloNombre, 'Queretano');
+    assert.equal(v.adquisiciones, 1); assert.equal(v.historial.filter(x => x === 'commit').length, 1);
+    assert.equal(v.consultas.filter(c => c.sql.startsWith('INSERT')).length, 3);
+    const motores = v.consultas.find(c => c.sql.includes('information_schema.TABLES'));
+    assert.deepEqual([...motores.params].sort(), ['t_categorias', 't_estilos', 't_participantes']);
+    assert.equal(alta.cEmailMasculino, ' JUAN@Example.TEST '); // No modifica el objeto recibido.
+});
+
+for (const tabla of ['t_participantes', 't_categorias', 't_estilos']) {
+    test(`alta: fallo en ${tabla} revierte todos los INSERT y permite reintentar`, async () => {
+        const opciones = { insert: tabla }, v = await preparar(opciones);
+        const antes = structuredClone(v.confirmado);
+        const resultado = await v.controladorPareja.handleRegistrarPareja(null, altaCompleta());
+        assert.equal(resultado.success, false); assert.equal(resultado.code, 'ER_DUP_ENTRY');
+        assert.deepEqual(v.confirmado, antes); assert.ok(v.historial.includes('rollback'));
+        assert.equal(v.historial.includes('commit'), false);
+        delete opciones.insert;
+        assert.equal((await v.controladorPareja.handleRegistrarPareja(null, altaCompleta())).success, true);
+        assert.equal(v.confirmado.t_participantes.filter(f => f.nParejaID === 21).length, 1);
+    });
+}
+
+for (const cambio of [
+    { categoria: undefined }, { estilo: undefined },
+    { categoria: { nIDCategoria: 0, cCategoriaNombre: 'Adulto (18-49 años)' } },
+    { estilo: { nEstiloID: '1 OR 1=1', cEstiloNombre: 'Queretano' } },
+    { categoria: { nIDCategoria: 1, cCategoriaNombre: 'Inventada' } }
+]) test('alta: clasificación inválida se rechaza en el modelo antes de acceder a MySQL', async () => {
+    const v = await preparar();
+    const result = await v.controladorPareja.handleRegistrarPareja(null, { ...altaCompleta(), ...cambio });
+    assert.equal(result.success, false); assert.equal(result.code, 'CLASSIFICATION_REQUIRED');
+    assert.equal(v.adquisiciones, 0); assert.equal(v.consultas.length, 0);
+});
+
+for (const tabla of ['t_categorias', 't_estilos']) test(`alta rechaza ${tabla} sin InnoDB antes de insertar`, async () => {
+    const v = await preparar({ noTransaccional: tabla });
+    const result = await v.controladorPareja.handleRegistrarPareja(null, altaCompleta());
+    assert.equal(result.success, false);
+    assert.equal(v.consultas.some(c => c.sql.startsWith('INSERT')), false);
+    assert.deepEqual(v.confirmado, inicial());
+});
+
+test('edición: normaliza ambos correos y conserva apóstrofos y guiones con control de versión', async () => {
+    const v = await preparar();
+    const cambios = { ...datos, cNombreMasculino: 'Jean-Luc', cApellidoFemenino: 'D’Arcy',
+        cEmailMasculino: ' A@EXAMPLE.TEST ', cEmailFemenino: 'B@Example.TEST' };
+    assert.equal((await v.controladorPareja.handleActualizarPareja(null, cambios)).success, true);
+    const fila = v.confirmado.t_participantes[0];
+    assert.equal(fila.cEmail, 'a@example.test'); assert.equal(fila.cEmailM, 'b@example.test');
+    assert.equal(fila.cNombre, 'Jean-Luc'); assert.equal(fila.cApellidoM, 'D’Arcy');
 });

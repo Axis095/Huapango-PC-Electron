@@ -30,18 +30,38 @@ export async function inicializarRegistros(documento = document, api = window.ap
         get(id).textContent = texto;
         get(id).dataset.tipo = error ? "error" : "info";
     };
+    const incompleta = () => registrada !== null && (!categoriaGuardada || !estiloGuardado);
+    function avisarIncompleta() {
+        mensaje("estadoRegistroPareja", "Esta pareja viene de un registro anterior incompleto. Guarda su categoría y estilo antes de cambiar de módulo o iniciar otra pareja.", true);
+        get(!categoriaGuardada ? "categoriaRegistro" : "estiloRegistro").focus();
+    }
+    function clasificacion(esCategoria) {
+        const select = get(esCategoria ? "categoriaRegistro" : "estiloRegistro");
+        const campoID = esCategoria ? "nIDCategoria" : "nEstiloID";
+        const id = get(campoID).value.trim();
+        if (!select.value) throw Object.assign(new Error(`Selecciona ${esCategoria ? "una categoría" : "un estilo"} antes de guardar.`), { campo: select.id });
+        if (!/^\d+$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+            throw Object.assign(new Error(`Ingresa un ID entero positivo para ${esCategoria ? "la categoría" : "el estilo"}.`), { campo: campoID });
+        }
+        return esCategoria ? { nIDCategoria: id, cCategoriaNombre: select.options[select.selectedIndex].text }
+            : { nEstiloID: id, cEstiloNombre: select.options[select.selectedIndex].text };
+    }
     function actualizar() {
+        if (get("btnSalir")) get("btnSalir").disabled = cargando || ocupado;
         for (const id of [...Object.keys(camposPareja), ...fotos]) get(id).disabled = cargando || ocupado || registrada !== null;
-        for (const id of ["categoriaRegistro", "nIDCategoria", "estiloRegistro", "nEstiloID"]) get(id).disabled = cargando || ocupado;
+        for (const id of ["categoriaRegistro", "nIDCategoria"]) get(id).disabled = cargando || ocupado || categoriaGuardada;
+        for (const id of ["estiloRegistro", "nEstiloID"]) get(id).disabled = cargando || ocupado || estiloGuardado;
         get("BTNSave").disabled = cargando || ocupado || registrada !== null;
-        get("btnNuevaPareja").disabled = cargando || ocupado;
+        get("btnNuevaPareja").disabled = cargando || ocupado || incompleta();
+        get("btnRegistrarCategoria").hidden = registrada === null || categoriaGuardada;
+        get("btnRegistrarEstilo").hidden = registrada === null || estiloGuardado;
         get("btnRegistrarCategoria").disabled = cargando || ocupado || registrada === null || categoriaGuardada;
         get("btnRegistrarEstilo").disabled = cargando || ocupado || registrada === null || estiloGuardado;
         for (const id of ["btnGenerarPDF", "btnGenerarPDFCategorias", "btnGenerarPDFEstilos"]) get(id).disabled = get(id).hidden || cargando || ocupado;
-        get("contentCategoria").style.display = registrada === null ? "none" : "block";
-        get("contentEstilo").style.display = registrada === null ? "none" : "block";
-        get("nParejaIDCategoria").value = registrada ?? "";
-        get("nParejaIDEstilo").value = registrada ?? "";
+        get("contentCategoria").style.display = "block";
+        get("contentEstilo").style.display = "block";
+        get("nParejaIDCategoria").value = registrada ?? get("nParejaID").value;
+        get("nParejaIDEstilo").value = registrada ?? get("nParejaID").value;
     }
     async function foto(file) {
         if (!file) return null;
@@ -71,8 +91,8 @@ export async function inicializarRegistros(documento = document, api = window.ap
         }
     }
     for (const control of controles) {
-        control.addEventListener("input", () => { if (!cargando && !ocupado) void conservar(); });
-        control.addEventListener("change", () => { if (!cargando && !ocupado) void conservar(); });
+        control.addEventListener("input", () => { if (!cargando && !ocupado) { actualizar(); void conservar(); } });
+        control.addEventListener("change", () => { if (!cargando && !ocupado) { actualizar(); void conservar(); } });
     }
     // Interceptar el menú antes de los listeners comunes de render.js.
     documento.querySelector(".menu").addEventListener("click", async event => {
@@ -85,6 +105,7 @@ export async function inicializarRegistros(documento = document, api = window.ap
             mensaje("estadoBorradorRegistro", "Espera a que termine la operación antes de cambiar de módulo.");
             return;
         }
+        if (incompleta()) { avisarIncompleta(); return; }
         ocupado = true; actualizar();
         const guardado = await conservar();
         ocupado = false; actualizar();
@@ -115,6 +136,9 @@ export async function inicializarRegistros(documento = document, api = window.ap
             }
         }
         validarDatosPareja(datos);
+        for (const [id, campo] of Object.entries(camposPareja)) get(id).value = datos[campo];
+        datos.categoria = clasificacion(true);
+        datos.estilo = clasificacion(false);
         mensaje("estadoRegistroPareja", "Guardando pareja…");
         datos.fotos = {};
         for (const lado of ["Masculino", "Femenino"]) {
@@ -124,7 +148,10 @@ export async function inicializarRegistros(documento = document, api = window.ap
         const respuesta = await api.registrarPareja(datos);
         if (!respuesta?.success) throw new Error(respuesta?.error || "No se pudo guardar la pareja. Los datos se conservan.");
         registrada = respuesta.id;
-        mensaje("estadoRegistroPareja", `Pareja guardada en la base de datos. ID: ${registrada}. Continúa con categoría y estilo.`);
+        categoriaGuardada = true; estiloGuardado = true;
+        mensaje("estadoRegistroPareja", `Pareja guardada en la base de datos. ID: ${registrada}. Categoría y estilo guardados en la misma operación.`);
+        mensaje("estadoRegistroCategoria", "Categoría guardada correctamente.");
+        mensaje("estadoRegistroEstilo", "Estilo guardado correctamente.");
         await conservar();
     }));
     for (const tipo of ["Categoria", "Estilo"]) {
@@ -141,6 +168,7 @@ export async function inicializarRegistros(documento = document, api = window.ap
             const respuesta = await api[esCategoria ? "registrarCategoria" : "registrarEstilo"](datos);
             if (!respuesta?.success) throw new Error(respuesta?.error || "No se pudo guardar. Los datos se conservan.");
             if (esCategoria) categoriaGuardada = true; else estiloGuardado = true;
+            if (!incompleta()) mensaje("estadoRegistroPareja", `Pareja ${registrada} completa: categoría y estilo guardados. Puedes iniciar otra pareja.`);
             mensaje(`estadoRegistro${tipo}`, `${esCategoria ? "Categoría guardada" : "Estilo guardado"} correctamente.`);
             await conservar();
         }));
@@ -152,9 +180,14 @@ export async function inicializarRegistros(documento = document, api = window.ap
             mensaje("estadoPDFRegistro", `PDF generado: ${respuesta.ruta}`);
         }));
     }
-    get("btnNuevaPareja").addEventListener("click", () => { get("confirmarNuevaPareja").hidden = false; });
+    get("btnNuevaPareja").addEventListener("click", () => {
+        if (cargando || ocupado) return;
+        if (incompleta()) { avisarIncompleta(); return; }
+        get("confirmarNuevaPareja").hidden = false;
+    });
     get("btnCancelarNuevaPareja").addEventListener("click", () => { get("confirmarNuevaPareja").hidden = true; });
     get("btnConfirmarNuevaPareja").addEventListener("click", () => ejecutar("estadoRegistroPareja", async () => {
+        if (incompleta()) throw new Error("Completa la categoría y el estilo antes de iniciar otra pareja.");
         await pendiente.catch(() => {});
         if (!(await api.limpiarBorradorRegistro())?.success) throw new Error("No se pudo iniciar otra pareja. Conservamos el formulario.");
         registrada = null; categoriaGuardada = false; estiloGuardado = false;
@@ -183,7 +216,8 @@ export async function inicializarRegistros(documento = document, api = window.ap
             categoriaGuardada = !!datos.categoriaGuardada; estiloGuardado = !!datos.estiloGuardado;
             if (categoriaGuardada) mensaje("estadoRegistroCategoria", "Categoría ya guardada correctamente.");
             if (estiloGuardado) mensaje("estadoRegistroEstilo", "Estilo ya guardado correctamente.");
-            mensaje("estadoRegistroPareja", registrada === null ? "Borrador recuperado. Todavía no está guardado en la base de datos." : `Pareja ${registrada} ya guardada. Continúa con categoría y estilo o inicia otra pareja.`);
+            mensaje("estadoRegistroPareja", registrada === null ? "Borrador recuperado. Todavía no está guardado en la base de datos. Completa también categoría y estilo."
+                : incompleta() ? `Pareja ${registrada} guardada anteriormente: completa la categoría y el estilo pendientes.` : `Pareja ${registrada} completa. Puedes iniciar otra pareja.`);
             for (const id of ["estadoRegistroPareja", "estadoRegistroCategoria", "estadoRegistroEstilo", "estadoPDFRegistro"]) {
                 const error = datos.erroresPendientes?.[id];
                 if (typeof error === "string" && error) { erroresPendientes[id] = error; mensaje(id, error, true); }

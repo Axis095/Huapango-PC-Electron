@@ -11,6 +11,18 @@ export function validarDatosPareja(datos) {
         throw new Error("Todos los campos del participante femenino deben estar llenos.");
     }
 
+    for (const lado of ["Masculino", "Femenino"]) {
+        for (const prefijo of ["cNombre", "cApellido"]) {
+            const campo = prefijo + lado;
+            const nombre = typeof datos[campo] === "string" ? datos[campo].trim().normalize("NFC") : "";
+            if (!/^[\p{L}\p{M} .’'ʼ‐‑-]+$/u.test(nombre) || !/\p{L}/u.test(nombre)) {
+                throw Object.assign(new Error("Ingresa nombres y apellidos válidos; se permiten espacios, guiones y apóstrofos."),
+                    { campo: (prefijo === "cNombre" ? "nombre" : "apellido") + lado });
+            }
+            datos[campo] = nombre;
+        }
+        if (typeof datos["cEmail" + lado] === "string") datos["cEmail" + lado] = datos["cEmail" + lado].trim().toLowerCase();
+    }
     validarEmail(datos.cEmailMasculino);
     validarEmail(datos.cEmailFemenino);
     validarTelefono(datos.nTelefonoMasculino);

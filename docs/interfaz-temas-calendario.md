@@ -6,7 +6,7 @@ Trabajo preparado en `feat/interfaz-modo-oscuro`, a partir de `fix-permisos-ipc`
 
 - Barra de navegación compartida con indicador de sección activa. Los botones privados conservan `hidden` y `disabled` hasta que se verifica el rol.
 - Opciones **Sistema**, **Claro** y **Oscuro**, disponibles también en login y configuración. La preferencia se conserva localmente en el perfil de Electron; no contiene datos de participantes ni credenciales. Si el almacenamiento no está disponible, se aplica durante esa ventana.
-- Paleta azul grisácea, degradado de fondo tenue, bordes discretos y fuentes locales para trabajar sin Internet.
+- El modo claro recupera los violetas, fondos lavanda, barra oscura y encabezados del diseño anterior (`9dc0aa1`), manteniendo bordes discretos y sombras suaves. El modo oscuro conserva su paleta azul grisácea. Ambos usan fuentes locales para trabajar sin Internet.
 - Registro agrupado por participante. Se conservan los identificadores de los campos y la lógica de validación, guardado y borradores.
 - Calendario HTML para fechas de nacimiento en registro y ficha de edición: escribir año, seleccionar mes y día; también se mantiene la escritura directa en el campo original. Rechaza días futuros, contempla años bisiestos y respeta campos bloqueados o de solo lectura.
 - El calendario permite flechas, Inicio/Fin y RePág/AvPág al enfocar un día. Enter en el año lleva a la cuadrícula. Escape o Cancelar cierran sin cambiar la fecha; elegir un día devuelve el foco al campo y notifica al borrador mediante los eventos habituales.
@@ -47,3 +47,17 @@ La ventana de demostración usa un perfil propio en `huapango-interfaz-preview-d
 - [ ] Probar 800 × 600 y 1280 × 900, desplazamiento vertical y navegación con Tab; todas las acciones deben ser alcanzables.
 
 Pruebas automatizadas nuevas: fechas locales y bisiestos; preferencia de tema, cambios del sistema, sincronización de ventanas y almacenamiento no disponible. La comprobación visual usa una API simulada; no sustituye la prueba funcional con MySQL antes de integrar.
+
+## Revisión visual del 28 de octubre de 2026
+
+Verificado en la vista previa de Electron, con datos ficticios y sin MySQL:
+
+- Registro y calendario en modo oscuro: textos, controles, selección y días deshabilitados legibles; la paleta oscura se conserva tras recuperar los colores del modo claro.
+- Las fechas posteriores al día actual aparecen deshabilitadas.
+- Selección de 29/02/2000 y reapertura con esa fecha marcada. Febrero de 2025 muestra 28 días.
+- Cambiar el año del calendario y cancelar conserva 29/02/2000 en el formulario.
+- Se pudo escribir en Nombre después de cerrar el calendario, sin cambiar de ventana.
+- Cambiar de Oscuro a Claro conserva el nombre y la fecha capturados.
+- Ir a Buscar y editar y regresar a Registro recupera esos datos en el borrador simulado.
+
+No se modificó código funcional durante esta revisión. La suite ejecutada tras el cambio de colores tuvo 316 pruebas aprobadas. Esta comprobación visual no repite las pruebas de guardado con MySQL ni verifica fotografías reales.

@@ -11,6 +11,8 @@ const mock = `(() => {
  const denied = async () => ({success:false,error:'Vista previa: esta operación no se envía a MySQL.'});
  window.api = {
    getUserRole: async()=>sessionStorage.getItem('preview.rol') || 'user',
+   getUsuarioNombre: async()=>({admin:'Administración de prueba',juez:'Juez de prueba',user:'Operador de prueba'}[sessionStorage.getItem('preview.rol') || 'user']),
+   cerrarSesion: async()=>{for(const key of ['preview.rol','preview.registro','preview.modificacion'])sessionStorage.removeItem(key);location.href='/Vistas/login.html';return {success:true};},
    obtenerBorradorRegistro: async()=>({success:true,data:read('preview.registro')}),
    guardarBorradorRegistro: async datos=>write('preview.registro',datos),
    limpiarBorradorRegistro: async()=>write('preview.registro',null),

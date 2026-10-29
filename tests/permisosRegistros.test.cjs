@@ -29,7 +29,9 @@ const pareja = { versionEdicion: 'a'.repeat(64), nParejaID: '7', cNombreMasculin
     cEmailMasculino: 'luis@example.test', nTelefonoMasculino: '1234567890', dNacimientoMasculino: '2000-01-01',
     cNombreFemenino: 'Ana', cApellidoFemenino: 'Pérez', cEmailFemenino: 'ana@example.test',
     nTelefonoFemenino: '1234567890', dNacimientoFemenino: '2000-01-01',
-    sexoMasculino: 'M', sexoFemenino: 'F', oFotoMasculino: null, oFotoFemenino: null };
+    sexoMasculino: 'M', sexoFemenino: 'F', oFotoMasculino: null, oFotoFemenino: null,
+    categoria: { nIDCategoria: 27, cCategoriaNombre: 'Adulto (18-49 años)' },
+    estilo: { nEstiloID: 37, cEstiloNombre: 'Queretano' } };
 const categoria = { nParejaID: 7, nIDCategoria: 2, cCategoriaNombre: 'Adultos',
     cPequenos: 0, cInfantil: 0, cJuvenil: 0, cAdulto: 1, cGrande: 0 };
 const estilo = { nParejaID: 7, nEstiloID: 3, cEstiloNombre: 'Potosino',
@@ -127,7 +129,7 @@ for (const rol of ['user', 'admin']) {
                 } else {
                     assert.equal(respuesta.success, true, `${canal}: ${JSON.stringify(respuesta)}`);
                     assert.ok(v.consultas.some(c => sql.test(c.sql)), `No se ejecutó ${sql}`);
-                    assert.equal(v.consultas.filter(c => /INSERT|UPDATE\s+\w|DELETE/i.test(c.sql)).length, 1);
+                    assert.equal(v.consultas.filter(c => /INSERT|UPDATE\s+\w|DELETE/i.test(c.sql)).length, canal === 'registrar-pareja' ? 3 : 1);
                     if (canal === 'actualizar-estilo') assert.deepEqual(v.consultas.at(-1).params, [1, 0, 0, 0, 0, 0, 3]);
                     if (canal.startsWith('eliminar-')) assert.deepEqual(v.consultas.at(-1).params, [datos]);
                     if (canal.includes('pareja')) {

@@ -74,10 +74,30 @@ const tipos = [
     { nombre: 'registro', titulo: 'Registro', vistas: ['Registros.html'], versiones: [1] },
     { nombre: 'modificacion', titulo: 'Modificacion', vistas: ['BusquedaParejas.html', 'ModificarParejas.html'], versiones: [1, 2] }
 ];
+test('nombre de perfil: cada ventana solo consulta su sesión y no puede elegir otra cuenta', () => {
+    const v = preparar();
+    for (const [id, rol, nombre, vista] of [
+        [12, 'juez', 'José Juez', 'Resultados.html'],
+        [99, 'admin', 'María Administradora', 'Administrador.html']
+    ]) {
+        v.sesion.guardarSesion(id, rol, nombre);
+        const evento = v.evento(v.ventana(vista));
+        assert.equal(v.invoke('get-usuario-nombre', evento, { userID: 1, userName: 'Falso' }), nombre);
+        const copia = v.sesion.obtenerSesion(); copia.userName = 'Modificado';
+        assert.equal(v.invoke('get-usuario-nombre', evento), nombre);
+        v.sesion.guardarSesion(55, 'admin', 'Otra cuenta');
+        assert.equal(v.invoke('get-usuario-nombre', evento), null);
+        const nueva = v.evento(v.ventana(vista));
+        assert.equal(v.invoke('get-usuario-nombre', nueva), 'Otra cuenta');
+        v.sesion.cerrarSesion();
+        assert.equal(v.invoke('get-usuario-nombre', nueva), null);
+    }
+});
 const datos = (version = 1) => ({ version, campos: { nombre: 'Nombre privado' }, fotos: { foto: 'bytes privados' } });
 function denegado(r) { assert.equal(r.success, false); assert.equal(r.code, 'FORBIDDEN'); assert.ok(r.error); }
 function identidadOculta(v, e) {
     assert.equal(v.invoke('get-role', e), 'guest'); assert.equal(v.invoke('get-usuario-id', e), null);
+    assert.equal(v.invoke('get-usuario-nombre', e), null);
 }
 
 for (const rol of ['user', 'admin', 'juez', 'guest', 'Admin', null]) {
@@ -172,13 +192,13 @@ test('sesión solo revela escalares propios en vistas conocidas y ventanas de la
         assert.equal(v.invoke('get-role', e, { rol: 'admin', userID: 99 }), 'juez');
         assert.equal(v.invoke('get-usuario-id', e, 99), 12);
     }
-    assert.deepEqual(Object.keys(v.sesion.obtenerSesion()).sort(), ['userID', 'userRole']);
+    assert.deepEqual(Object.keys(v.sesion.obtenerSesion()).sort(), ['userID', 'userName', 'userRole']);
     const copia = v.sesion.obtenerSesion(); copia.userRole = 'admin';
     assert.equal(v.sesion.obtenerSesion().userRole, 'juez');
 });
 
 test('orígenes inválidos, ventanas cerradas y ventanas no registradas no leen identidad ni borradores', () => {
-    const v = preparar(); v.sesion.guardarSesion(12, 'admin');
+    const v = preparar(); v.sesion.guardarSesion(12, 'admin', 'Administración privada');
     for (const tipo of tipos) {
         const win = v.ventana(tipo.vistas[0]), e = v.evento(win);
         const d = datos(tipo.versiones.at(-1)); v.invoke(`guardar-borrador-${tipo.nombre}`, e, d);

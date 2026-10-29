@@ -34,14 +34,25 @@ function preparar(opciones = {}) {
     const sesion = cargar('Modelos/sesionModel.js', {}), globals = {};
     let ready;
     class Window {
-        constructor() { this.webContents = { mainFrame: { url: '' }, once() {}, on() {}, send() {} }; this.events = new Map(); ventanas.push(this); }
+        constructor() {
+            this.enviados = []; this.webEvents = new Map();
+            this.webContents = { mainFrame: { url: '' }, once() {}, on: (n, fn) => this.webEvents.set(n, fn), send: (...args) => this.enviados.push(args) };
+            this.events = new Map(); ventanas.push(this);
+        }
         loadFile(file) {
             this.webContents.mainFrame.url = pathToFileURL(path.resolve(root, file)).href;
+            if (opciones.fallarLogin && file.endsWith('login.html')) return Promise.reject(Error('No carga login'));
+            if (opciones.cargarLogin && file.endsWith('login.html')) return opciones.cargarLogin();
             return opciones.fallarPrincipal && file.endsWith('MenuPrincipal.html') ? Promise.reject(Error('No carga')) : Promise.resolve();
         }
         on(n, fn) { this.events.set(n, fn); }
         isDestroyed() { return !!this.closed; }
-        close() { this.intentosCerrar = (this.intentosCerrar || 0) + 1; if (!this.retener) { this.closed = true; this.events.get('closed')?.(); } }
+        close() {
+            this.intentosCerrar = (this.intentosCerrar || 0) + 1;
+            let cancelado = false;
+            this.events.get('close')?.({ preventDefault() { cancelado = true; } });
+            if (!cancelado && !this.retener) { this.closed = true; this.events.get('closed')?.(); }
+        }
         maximize() {} focus() {}
         static fromWebContents(wc) { return ventanas.find(w => w.webContents === wc); }
         static getAllWindows() { return ventanas.filter(w => !w.closed); }
@@ -160,7 +171,7 @@ for (const cambio of ['cerrada', 'remota', 'otra-sesion']) {
         const v = preparar({ loginPendiente: () => new Promise(r => { resolver = r; }) }); await v.ready();
         const p = v.login('admin');
         assert.equal((await v.login('user')).code, 'BUSY');
-        if (cambio === 'cerrada') v.globals.loginWindow.close();
+        if (cambio === 'cerrada') v.globals.loginWindow.closed = true; // Destrucción forzada, distinta de una X interceptada.
         if (cambio === 'remota') v.globals.loginWindow.webContents.mainFrame.url = 'https://example.test/';
         if (cambio === 'otra-sesion') v.sesion.guardarSesion(99, 'juez');
         resolver(); denegado(await p);
@@ -223,6 +234,180 @@ test('open-section fue retirado del receptor y de la API genérica del preload',
         ipcRenderer: { send(...args) { enviados.push(args); } } } });
     api.send('open-section', 'Registros'); api.send('login', {});
     assert.equal(enviados.length, 0);
-    assert.equal(v.handlers.size + v.eventos.size, 37);
-    assert.equal(v.handlers.size, 36);
+    assert.equal(v.handlers.has('get-usuario-nombre'), true);
+    assert.equal(v.handlers.has('cerrar-sesion'), true);
+    assert.equal(v.handlers.has('responder-cierre-ventana'), true);
+    assert.equal(v.handlers.size + v.eventos.size, 40);
+    assert.equal(v.handlers.size, 39);
+});
+
+for (const cuenta of ['admin', 'user', 'juezA']) {
+    test(`cerrar sesión: ${cuenta} vuelve al login y revoca todas sus ventanas`, async () => {
+        const v = preparar(); await v.ready(); await v.login(cuenta);
+        const anterior = v.globals.mainWindow;
+        v.context.openNewWindow('consulta', 'BusquedaParejas.html');
+        const popup = v.ventanas.at(-1);
+        anterior.retener = true; // Aun si tarda en cerrar, pierde acceso inmediatamente.
+        const evento = v.evento(anterior);
+        assert.equal((await v.invoke('cerrar-sesion', evento)).success, true);
+        assert.equal(v.sesion.obtenerSesion(), null);
+        assert.equal(v.globals.userRole, 'guest');
+        assert.equal(v.globals.mainWindow, null);
+        assert.equal(popup.closed, true);
+        assert.ok(anterior.intentosCerrar > 0);
+        assert.match(v.globals.loginWindow.webContents.mainFrame.url, /login.html$/);
+        assert.equal(v.globals.loginWindow.closed, undefined);
+        denegado(await v.invoke('cerrar-sesion', evento));
+        assert.equal((await v.login('user')).success, true);
+        denegado(await v.invoke('cerrar-sesion', evento));
+        assert.equal(v.sesion.obtenerSesion().userID, 2);
+    });
+}
+
+test('cerrar sesión: rechaza login, ventanas ajenas y subframes sin revocar la cuenta', async () => {
+    const v = preparar(); await v.ready();
+    denegado(await v.invoke('cerrar-sesion', v.evento(v.globals.loginWindow)));
+    await v.login('admin'); const principal = v.globals.mainWindow;
+    const ajena = new v.Window(); await ajena.loadFile('Vistas/MenuPrincipal.html');
+    const evento = v.evento(principal);
+    for (const invalido of [null, {}, v.evento(ajena), { ...evento, senderFrame: { ...evento.senderFrame } }]) {
+        denegado(await v.invoke('cerrar-sesion', invalido));
+        assert.equal(v.sesion.obtenerSesion().userRole, 'admin');
+    }
+});
+
+test('cerrar sesión: fallo al cargar login conserva sesión y ventana; permite reintentar', async () => {
+    const opciones = {}, v = preparar(opciones); await v.ready(); await v.login('admin');
+    const anterior = v.globals.mainWindow, clave = v.sesion.obtenerClaveSesion();
+    opciones.fallarLogin = true;
+    assert.equal((await v.invoke('cerrar-sesion', v.evento(anterior))).success, false);
+    assert.equal(v.sesion.obtenerClaveSesion(), clave); assert.equal(anterior.closed, undefined);
+    assert.equal(v.globals.loginWindow.closed, true);
+    opciones.fallarLogin = false;
+    assert.equal((await v.invoke('cerrar-sesion', v.evento(anterior))).success, true);
+});
+
+test('cerrar sesión: espera operaciones pendientes y rechaza envíos durante la salida', async () => {
+    let finalizar;
+    const opciones = { controladorPendiente: () => new Promise(r => { finalizar = r; }) };
+    const v = preparar(opciones); await v.ready(); await v.login('admin');
+    const win = v.globals.mainWindow; await win.loadFile('Vistas/Registros.html'); const e = v.evento(win);
+    const operacion = v.invoke('registrar-pareja', e, {});
+    assert.equal((await v.invoke('cerrar-sesion', e)).code, 'BUSY');
+    finalizar(); await operacion;
+    let cargar; opciones.cargarLogin = () => new Promise(r => { cargar = r; });
+    const salida = v.invoke('cerrar-sesion', e);
+    assert.equal((await v.invoke('cerrar-sesion', e)).code, 'BUSY');
+    assert.equal((await v.invoke('registrar-pareja', e, {})).code, 'BUSY');
+    assert.equal((await v.login('user')).code, 'BUSY');
+    cargar(); assert.equal((await salida).success, true);
+});
+
+const solicitudCierre = win => win.enviados.filter(([canal]) => canal === 'solicitar-cierre-ventana').at(-1)?.[1];
+
+test('X y Alt+F4: close se cancela hasta confirmar; cancelar permite seguir y repetir', async () => {
+    const v = preparar(); await v.ready(); await v.login('user');
+    const win = v.globals.mainWindow, evento = v.evento(win), clave = v.sesion.obtenerClaveSesion();
+    win.close(); const solicitud = solicitudCierre(win);
+    assert.ok(solicitud); assert.equal(win.closed, undefined);
+    win.close(); assert.equal(solicitudCierre(win).id, solicitud.id);
+    assert.equal((await v.invoke('responder-cierre-ventana', evento, { id: solicitud.id, confirmado: false })).success, true);
+    assert.equal(v.sesion.obtenerClaveSesion(), clave); assert.equal(win.closed, undefined);
+    win.close(); const nueva = solicitudCierre(win); assert.notEqual(nueva.id, solicitud.id);
+    assert.equal((await v.invoke('responder-cierre-ventana', evento, { id: nueva.id, confirmado: true })).success, true);
+    assert.equal(win.closed, true); assert.equal(v.sesion.obtenerSesion(), null);
+    assert.equal(solicitudCierre(win).id, nueva.id); // No hay una segunda confirmación.
+});
+
+test('confirmar X principal cierra todas sus ventanas; cerrar una consulta conserva la sesión', async () => {
+    const v = preparar(); await v.ready(); await v.login('admin');
+    const main = v.globals.mainWindow, clave = v.sesion.obtenerClaveSesion();
+    v.context.openNewWindow('consulta', 'BusquedaParejas.html'); const popup = v.ventanas.at(-1);
+    popup.close(); assert.equal(solicitudCierre(popup).aplicacion, false);
+    assert.equal((await v.invoke('responder-cierre-ventana', v.evento(popup), { id: solicitudCierre(popup).id, confirmado: true })).success, true);
+    assert.equal(popup.closed, true); assert.equal(v.sesion.obtenerClaveSesion(), clave);
+    assert.equal(main.closed, undefined);
+    v.context.openNewWindow('consulta', 'BusquedaParejas.html'); const otra = v.ventanas.at(-1);
+    main.close();
+    await v.invoke('responder-cierre-ventana', v.evento(main), { id: solicitudCierre(main).id, confirmado: true });
+    assert.equal(otra.closed, true); assert.equal(solicitudCierre(otra), undefined);
+});
+
+test('confirmar X: rechaza emisores ajenos, subframes, IDs falsos, repetidos y otra sesión', async () => {
+    const v = preparar(); await v.ready(); await v.login('admin');
+    const win = v.globals.mainWindow, e = v.evento(win);
+    denegado(await v.invoke('responder-cierre-ventana', e, { id: 1, confirmado: true }));
+    win.close(); const id = solicitudCierre(win).id;
+    const ajena = new v.Window(); await ajena.loadFile('Vistas/MenuPrincipal.html');
+    for (const origen of [null, {}, v.evento(ajena), { ...e, senderFrame: { ...e.senderFrame } }]) {
+        denegado(await v.invoke('responder-cierre-ventana', origen, { id, confirmado: true }));
+    }
+    for (const respuesta of [{ id: id + 1, confirmado: true }, { id, confirmado: 'true' }]) {
+        denegado(await v.invoke('responder-cierre-ventana', e, respuesta));
+    }
+    await v.invoke('responder-cierre-ventana', e, { id, confirmado: false });
+    denegado(await v.invoke('responder-cierre-ventana', e, { id, confirmado: true }));
+    win.close(); const anterior = solicitudCierre(win).id;
+    v.sesion.guardarSesion(2, 'user');
+    denegado(await v.invoke('responder-cierre-ventana', e, { id: anterior, confirmado: true }));
+    assert.equal(win.closed, undefined);
+});
+
+test('confirmar X espera operaciones pendientes, luego permite un nuevo intento', async () => {
+    let resolver;
+    const v = preparar({ controladorPendiente: () => new Promise(r => { resolver = r; }) });
+    await v.ready(); await v.login('user'); const win = v.globals.mainWindow;
+    await win.loadFile('Vistas/Registros.html'); const e = v.evento(win);
+    win.close(); const id = solicitudCierre(win).id;
+    const operacion = v.invoke('registrar-pareja', e, {});
+    assert.equal((await v.invoke('responder-cierre-ventana', e, { id, confirmado: true })).code, 'BUSY');
+    assert.equal(win.closed, undefined); resolver(); await operacion;
+    win.close();
+    assert.equal((await v.invoke('responder-cierre-ventana', e, { id: solicitudCierre(win).id, confirmado: true })).success, true);
+});
+
+test('login y configuración inicial: una confirmación; login correcto y Salir no añaden diálogos de cierre', async () => {
+    const v = preparar(); await v.ready(); const login = v.globals.loginWindow;
+    login.close(); const id = solicitudCierre(login).id;
+    await v.invoke('responder-cierre-ventana', v.evento(login), { id, confirmado: false });
+    await v.login('admin'); assert.equal(login.closed, true);
+    const main = v.globals.mainWindow;
+    await v.invoke('cerrar-sesion', v.evento(main));
+    assert.equal(main.closed, true); assert.equal(solicitudCierre(main), undefined);
+    const nuevoLogin = v.globals.loginWindow; nuevoLogin.close();
+    await v.invoke('responder-cierre-ventana', v.evento(nuevoLogin), { id: solicitudCierre(nuevoLogin).id, confirmado: true });
+    assert.equal(nuevoLogin.closed, true);
+    const inicial = preparar({ inicial: true }); await inicial.ready(); const config = inicial.ventanas[0];
+    config.close();
+    assert.equal((await inicial.invoke('responder-cierre-ventana', inicial.evento(config), { id: solicitudCierre(config).id, confirmado: true })).success, true);
+    assert.equal(config.closed, true);
+});
+
+test('cerrar durante la carga reenvía la petición cuando termina el documento', async () => {
+    const v = preparar(); await v.ready(); await v.login('user'); const win = v.globals.mainWindow;
+    win.close(); const id = solicitudCierre(win).id;
+    win.webEvents.get('did-finish-load')();
+    assert.equal(solicitudCierre(win).id, id); assert.equal(win.closed, undefined);
+});
+
+test('preload de cierre: entrega solo la solicitud y retira el listener al salir del documento', () => {
+    let api; const listeners = new Map(), invocaciones = [];
+    cargar('preload.js', { electron: {
+        contextBridge: { exposeInMainWorld(_, value) { api = value; } },
+        ipcRenderer: {
+            on(c, fn) { listeners.set(c, fn); },
+            removeListener(c, fn) { assert.equal(listeners.get(c), fn); listeners.delete(c); },
+            invoke(...args) { invocaciones.push(args); }
+        }
+    } });
+    let recibidos;
+    const quitar = api.alSolicitarCierre((...args) => { recibidos = args; });
+    const solicitud = { id: 3, aplicacion: true };
+    listeners.get('solicitar-cierre-ventana')({ sender: 'privado' }, solicitud);
+    assert.equal(recibidos.length, 1); assert.equal(recibidos[0], solicitud);
+    api.responderCierreVentana(3, false, 'otra ventana');
+    assert.equal(invocaciones.length, 1);
+    assert.equal(invocaciones[0][0], 'responder-cierre-ventana');
+    assert.equal(invocaciones[0][1].id, 3); assert.equal(invocaciones[0][1].confirmado, false);
+    quitar(); assert.equal(listeners.size, 0);
 });

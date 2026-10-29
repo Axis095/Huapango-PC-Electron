@@ -34,7 +34,7 @@ function preparar(filas, opciones = {}) {
 
 test('cuentas antiguas: cada rol conserva ID y acepta solo su contraseña exacta sin modificar SQL', async () => {
     for (const rol of ['admin', 'user', 'juez']) {
-        const v = preparar([{ nUsuarioID: 7, rol, cContrasena: ' Clave Ántigua ' }]);
+        const v = preparar([{ nUsuarioID: 7, cNombreUsuario: 'ANA', rol, cContrasena: ' Clave Ántigua ' }]);
         for (const incorrecta of ['clave ántigua', 'Clave Ántigua', 'Otra']) {
             assert.equal((await v.login(incorrecta)).success, false);
             assert.equal(v.sesion.obtenerSesion(), null);
@@ -42,6 +42,7 @@ test('cuentas antiguas: cada rol conserva ID y acepta solo su contraseña exacta
         assert.equal((await v.login(' Clave Ántigua ')).success, true);
         assert.equal(v.sesion.obtenerSesion().userID, 7);
         assert.equal(v.sesion.obtenerSesion().userRole, rol);
+        assert.equal(v.sesion.obtenerSesion().userName, 'ANA'); // Se conserva el nombre SQL, no la entrada del formulario.
         assert.equal(v.abiertas, 1); assert.equal(v.cerradas, 1);
         for (const q of v.consultas) {
             assert.match(q.sql, /^SELECT/); assert.doesNotMatch(q.sql, /AND cContrasena/);
@@ -70,6 +71,7 @@ test('alta y login de cada rol: se guarda bcrypt real y se autentica la cuenta r
         assert.equal((await v.login(fila.cContrasena)).success, false);
         assert.equal((await v.login('Contraseña segura')).success, true);
         assert.equal(v.sesion.obtenerSesion().userRole, rol);
+        assert.equal(v.sesion.obtenerSesion().userName, fila.cNombreUsuario);
     }
 });
 

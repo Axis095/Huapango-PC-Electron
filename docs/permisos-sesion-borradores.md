@@ -4,7 +4,7 @@
 
 | Canales | Administrador | Usuario | Juez | Sin sesión o emisor no autorizado |
 | --- | --- | --- | --- | --- |
-| `get-role`, `get-usuario-id` | Identidad propia | Identidad propia | Identidad propia | `guest` / `null` |
+| `get-role`, `get-usuario-id`, `get-usuario-nombre` | Identidad propia | Identidad propia | Identidad propia | `guest` / `null` |
 | `obtener-borrador-registro`, `guardar-borrador-registro`, `limpiar-borrador-registro` | Sí | Sí | No | `FORBIDDEN` |
 | `obtener-borrador-modificacion`, `guardar-borrador-modificacion`, `limpiar-borrador-modificacion` | Sí | Sí | No | `FORBIDDEN` |
 
@@ -15,7 +15,7 @@ el formulario, argumentos adicionales y `global.userRole` no conceden acceso.
 ## Ventanas autorizadas
 
 `main.js` asocia cada ventana principal o emergente a la sesión que la abrió.
-Los ocho canales exigen esa asociación, una ventana viva y su marco principal,
+Los nueve canales exigen esa asociación, una ventana viva y su marco principal,
 cargando una vista local conocida de esta instalación. Una ventana con el mismo
 nombre de archivo pero sin registrar no queda autorizada.
 
@@ -56,6 +56,18 @@ quedan bloqueados incluso si tardan en cerrarse. No se modifican los datos ya
 confirmados en MySQL. Ver [cierre de la revisión IPC](cierre-permisos-ipc.md).
 
 ## Verificación
+
+El perfil de Registro, Evaluaciones y Administración muestra `cNombreUsuario`, obtenido
+durante el login y conservado en memoria. `get-usuario-nombre` devuelve únicamente
+el nombre de la sesión autorizada; no recibe un ID ni consulta MySQL de nuevo.
+El texto se inserta con `textContent`. No se envían contraseñas ni claves internas.
+
+Para comprobar el perfil, reiniciar Electron e iniciar sesión como juez; abrir
+Evaluaciones y comparar el nombre con la cuenta usada. Repetir con un administrador
+en Administración y Evaluaciones, y luego con otra cuenta. Debe aparecer el nombre
+de cada cuenta, también al cambiar de módulo o de tema, sin conservar el anterior.
+En Registro, comprobar la tarjeta «Cuenta activa» con usuario y administrador.
+Las pruebas automatizadas usan ventanas y consultas simuladas.
 
 `tests/permisosSesionBorradores.test.cjs` ejecuta `main.js`, sesión y controladores
 reales con ventanas Electron simuladas. Comprueba los roles, las vistas, ambos

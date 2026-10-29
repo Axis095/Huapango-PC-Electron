@@ -4,6 +4,41 @@ const path = require("path");
 const { inicializarBaseDatos } = require("./db");
 const { obtenerSesion, cerrarSesion, obtenerClaveSesion } = require("./Modelos/sesionModel");
 const sesionesDeVentana = new WeakMap();
+let saliendoDeSesion = false;
+let operacionesDeSesion = 0;
+const tiposDeVentana = new WeakMap();
+const cierresPendientes = new WeakMap();
+const cierresInternos = new WeakSet();
+let secuenciaCierre = 0;
+
+function cerrarVentanaSinConfirmar(ventana) {
+    cierresInternos.add(ventana);
+    ventana.close();
+}
+
+function protegerCierreVentana(ventana, tipo) {
+    tiposDeVentana.set(ventana, tipo);
+    const notificar = () => {
+        const solicitud = cierresPendientes.get(ventana);
+        if (solicitud && !ventana.isDestroyed()) ventana.webContents.send("solicitar-cierre-ventana", {
+            id: solicitud.id, aplicacion: tipo === "principal" || BrowserWindow.getAllWindows().length === 1
+        });
+    };
+    ventana.on("close", event => {
+        if (cierresInternos.has(ventana)) { cierresInternos.delete(ventana); return; }
+        event.preventDefault();
+        const anterior = cierresPendientes.get(ventana);
+        if (anterior && anterior.url === ventana.webContents.mainFrame.url && anterior.clave === obtenerClaveSesion()) { notificar(); return; }
+        cierresPendientes.set(ventana, { id: ++secuenciaCierre, clave: obtenerClaveSesion(), url: ventana.webContents.mainFrame.url });
+        notificar();
+    });
+    // Una petición durante la carga se entrega cuando el DOM ya puede mostrarla.
+    ventana.webContents.on("did-finish-load", () => {
+        const solicitud = cierresPendientes.get(ventana);
+        if (solicitud) solicitud.url = ventana.webContents.mainFrame.url;
+        notificar();
+    });
+}
 const { requiereConfiguracionInicial } = require("./Modelos/configModel");
 const { fileURLToPath } = require("url");
 const PDFDocument = require('pdfkit'); // Importación de libreria para creación de PDF's
@@ -34,11 +69,11 @@ ipcMain.handle("limpiar-borrador-modificacion", desdeVentanaDeSesion(limpiarBorr
 // Escuchar el evento de login y pasar createMainWindow como argumento
 let autenticacionEnCurso = false;
 ipcMain.handle("login", async (event, credentials) => {
-    if (autenticacionEnCurso || operacionConfiguracion) return { success: false, code: "BUSY", message: "Espera a que termine la operación actual." };
+    if (autenticacionEnCurso || operacionConfiguracion || saliendoDeSesion) return { success: false, code: "BUSY", message: "Espera a que termine la operación actual." };
     if (!loginPermitido(event)) return accesoDenegado();
     autenticacionEnCurso = true;
     try {
-        return await handleLogin(event, credentials, createMainWindow, () => loginPermitido(event));
+        return await handleLogin(event, credentials, createMainWindow, () => loginPermitido(event), cerrarVentanaSinConfirmar);
     } finally {
         autenticacionEnCurso = false;
         actualizarMenuConfiguracion();
@@ -99,8 +134,9 @@ ipcMain.handle("continuar-configuracion", desdeConfiguracion(async (event) => {
         if (!global.loginWindow || global.loginWindow.isDestroyed()) await createLoginWindow();
         else global.loginWindow.focus();
         for (const ventana of BrowserWindow.getAllWindows()) {
-            if (ventana !== origen && ventana !== global.loginWindow) ventana.close();
+            if (ventana !== origen && ventana !== global.loginWindow) cerrarVentanaSinConfirmar(ventana);
         }
+        cierresInternos.add(origen); // La vista se cierra al recibir success.
         return { success: true };
     } catch (error) {
         return { success: false, code: error.code, error: error.message };
@@ -176,6 +212,7 @@ function createLoginWindow() {
             contextIsolation: true,
         },
     });
+    protegerCierreVentana(global.loginWindow, "login");
     return global.loginWindow.loadFile(path.join(__dirname, "Vistas", "login.html"));
 
 }
@@ -194,6 +231,7 @@ function createMainWindow() {
     });
 
     sesionesDeVentana.set(global.mainWindow.webContents, obtenerClaveSesion());
+    protegerCierreVentana(global.mainWindow, "principal");
     global.mainWindow.maximize();
     // global.mainWindow.loadFile("Vistas/index.html");
     const nueva = global.mainWindow;
@@ -215,7 +253,7 @@ function createMainWindow() {
     // La nueva ventana ya existe antes de cerrar las de sesiones anteriores.
     for (const ventana of BrowserWindow.getAllWindows()) {
         if (ventana !== nueva && ventana !== global.loginWindow &&
-            sesionesDeVentana.get(ventana.webContents) !== obtenerClaveSesion()) ventana.close();
+            sesionesDeVentana.get(ventana.webContents) !== obtenerClaveSesion()) cerrarVentanaSinConfirmar(ventana);
     }
     return carga;
 }
@@ -251,6 +289,7 @@ function openNewWindow(tipo, file) {
 
     
     sesionesDeVentana.set(ventanaEmergente.webContents, obtenerClaveSesion());
+    protegerCierreVentana(ventanaEmergente, "consulta");
     const filePath = path.join(__dirname, "Vistas", file);
     // Agregar parámetro de query SOLO para `BusquedaParejas.html`
     if (file === "BusquedaParejas.html" || file === "ModificarParejas.html") {
@@ -258,7 +297,7 @@ function openNewWindow(tipo, file) {
             .catch(err => {
                 console.error("Error al cargar el archivo:", err);
                 if (ventanaEmergente) {
-                    ventanaEmergente.close();
+                    cerrarVentanaSinConfirmar(ventanaEmergente);
                     ventanaEmergente = null;
                 }
             });
@@ -267,7 +306,7 @@ function openNewWindow(tipo, file) {
             .catch(err => {
                 console.error("Error al cargar el archivo:", err);
                 if (ventanaEmergente) {
-                    ventanaEmergente.close();
+                    cerrarVentanaSinConfirmar(ventanaEmergente);
                     ventanaEmergente = null;
                 }
             });
@@ -314,7 +353,8 @@ const templateMenu = [
                 label: "Salir",
                 accelerator: "Ctrl+Q",
                 click() {
-                    app.quit();
+                    const ventana = global.mainWindow && !global.mainWindow.isDestroyed() ? global.mainWindow : BrowserWindow.getFocusedWindow();
+                    if (ventana) ventana.close();
                 },
             },
         ],
@@ -418,6 +458,7 @@ let configuracionInicialPermitida = false;
 let operacionConfiguracion = false;
 
 function puedeConfigurar() {
+    if (saliendoDeSesion) return false;
     const sesion = obtenerSesion();
     return (configuracionInicialPermitida && !sesion) ||
         (sesion?.userRole === "admin" && Number.isSafeInteger(sesion.userID) && sesion.userID > 0);
@@ -480,11 +521,14 @@ function abrirConfiguracion(motivo = "") {
         }
     });
     sesionesDeVentana.set(configWindow.webContents, obtenerClaveSesion());
+    protegerCierreVentana(configWindow, "configuracion");
     configWindow.on("closed", () => { configWindow = null; });
-    configWindow.loadFile(path.join(__dirname, "Vistas", "configuracionBD.html"), { query: { motivo } })
+    const nuevaConfig = configWindow;
+    nuevaConfig.loadFile(path.join(__dirname, "Vistas", "configuracionBD.html"), { query: { motivo } })
         .catch(() => {
             dialog.showErrorBox("Error de inicio", "No se pudo abrir la pantalla de configuración.");
-            app.quit();
+            // Sin documento no puede mostrarse una confirmación. Conservar las otras ventanas.
+            if (!nuevaConfig.isDestroyed()) cerrarVentanaSinConfirmar(nuevaConfig);
         });
 }
 
@@ -501,10 +545,12 @@ app.whenReady().then(async () => {
     } catch (error) {
         dialog.showErrorBox("No se pudo iniciar la conexión",
             error.message + "\nEsta instalación ya tiene configuración. Restablece MySQL o recupera una copia válida y reinicia. Los cambios desde la aplicación requieren una sesión de administrador.");
+        for (const ventana of BrowserWindow.getAllWindows()) cierresInternos.add(ventana);
         app.quit();
     }
 }).catch(() => {
     dialog.showErrorBox("Error de inicio", "No se pudo iniciar la aplicación.");
+    for (const ventana of BrowserWindow.getAllWindows()) cierresInternos.add(ventana);
     app.quit();
 });
 app.on("window-all-closed", () => { app.quit(); });
@@ -534,14 +580,23 @@ function sesionConsultable(event) {
 function desdeVentanaDeSesion(controlador) {
     return (event, ...args) => {
         if (!sesionConsultable(event)) return accesoDenegado();
+        if (saliendoDeSesion) return { success: false, code: "BUSY", error: "Espera a que termine el cierre de sesión." };
         const clave = obtenerClaveSesion();
-        const resultado = controlador(event, ...args);
         // No entregar resultados de una consulta pendiente a una sesión posterior.
         const vigente = () => clave === obtenerClaveSesion() && !!sesionConsultable(event);
-        if (resultado && typeof resultado.then === "function") {
-            return resultado.then(valor => vigente() ? valor : accesoDenegado());
+        operacionesDeSesion++;
+        try {
+            const resultado = controlador(event, ...args);
+            if (resultado && typeof resultado.then === "function") {
+                return Promise.resolve(resultado).then(valor => vigente() ? valor : accesoDenegado())
+                    .finally(() => { operacionesDeSesion--; });
+            }
+            operacionesDeSesion--;
+            return vigente() ? resultado : accesoDenegado();
+        } catch (error) {
+            operacionesDeSesion--;
+            throw error;
         }
-        return vigente() ? resultado : accesoDenegado();
     };
 }
 
@@ -571,3 +626,68 @@ function loginPermitido(event) {
 // Se conservan los tipos que espera el menú: guest/null ante falta de autorización.
 ipcMain.handle("get-role", event => sesionConsultable(event)?.userRole || "guest");
 ipcMain.handle("get-usuario-id", event => sesionConsultable(event)?.userID ?? null);
+ipcMain.handle("get-usuario-nombre", event => sesionConsultable(event)?.userName ?? null);
+
+ipcMain.handle("cerrar-sesion", async event => {
+    if (!sesionConsultable(event)) return accesoDenegado();
+    if (saliendoDeSesion || operacionesDeSesion || operacionConfiguracion || autenticacionEnCurso) {
+        return { success: false, code: "BUSY", error: "Hay una operación en curso. Espera a que termine y vuelve a intentar salir." };
+    }
+    saliendoDeSesion = true;
+    const clave = obtenerClaveSesion();
+    let loginNuevo;
+    try {
+        // Cargar el login antes de revocar la sesión: un fallo conserva los formularios.
+        const carga = createLoginWindow();
+        loginNuevo = global.loginWindow;
+        await carga;
+        if (loginNuevo.isDestroyed() || clave !== obtenerClaveSesion() || !sesionConsultable(event)) {
+            if (!loginNuevo.isDestroyed()) cerrarVentanaSinConfirmar(loginNuevo);
+            return accesoDenegado();
+        }
+    } catch {
+        if (loginNuevo && !loginNuevo.isDestroyed()) cerrarVentanaSinConfirmar(loginNuevo);
+        return { success: false, error: "No se pudo abrir el inicio de sesión. Tu sesión y formularios siguen abiertos." };
+    } finally {
+        saliendoDeSesion = false;
+    }
+    cerrarSesion();
+    global.userRole = "guest";
+    global.mainWindow = null;
+    actualizarMenuConfiguracion();
+    for (const ventana of BrowserWindow.getAllWindows()) {
+        if (ventana !== loginNuevo && sesionesDeVentana.get(ventana.webContents) === clave) cerrarVentanaSinConfirmar(ventana);
+    }
+    return { success: true };
+});
+
+ipcMain.handle("responder-cierre-ventana", (event, respuesta) => {
+    let ventana, tipo, solicitud;
+    try {
+        ventana = BrowserWindow.fromWebContents(event.sender);
+        tipo = tiposDeVentana.get(ventana);
+        solicitud = cierresPendientes.get(ventana);
+        const archivo = path.resolve(fileURLToPath(event.senderFrame.url));
+        const autorizada = tipo === "login" ? ventana === global.loginWindow && !obtenerSesion() && path.basename(archivo) === "login.html"
+            : tipo === "configuracion" ? configuracionPermitida(event) : !!sesionConsultable(event);
+        if (!tipo || !autorizada || ventana.isDestroyed() || event.senderFrame !== event.sender.mainFrame ||
+            path.dirname(archivo) !== path.join(__dirname, "Vistas") || !solicitud ||
+            solicitud.id !== respuesta?.id || solicitud.clave !== obtenerClaveSesion() || solicitud.url !== event.senderFrame.url ||
+            typeof respuesta?.confirmado !== "boolean") return accesoDenegado();
+    } catch { return accesoDenegado(); }
+    cierresPendientes.delete(ventana);
+    if (!respuesta.confirmado) return { success: true };
+    if (operacionesDeSesion || operacionConfiguracion || autenticacionEnCurso || saliendoDeSesion) {
+        return { success: false, code: "BUSY", error: "Hay una operación en curso. Espera a que termine antes de cerrar." };
+    }
+    if (tipo === "principal") {
+        cerrarSesion();
+        global.userRole = "guest";
+        global.mainWindow = null;
+        actualizarMenuConfiguracion();
+        for (const abierta of BrowserWindow.getAllWindows()) cerrarVentanaSinConfirmar(abierta);
+    } else {
+        cerrarVentanaSinConfirmar(ventana);
+    }
+    return { success: true };
+});

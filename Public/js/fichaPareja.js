@@ -41,6 +41,7 @@ export async function inicializarFichaPareja(documento = document, api = window.
     const valores = () => Object.fromEntries(Object.keys(campos).map(id => [id, get(id).value]));
     const modificado = () => !!ficha && (Object.keys(campos).some(id => get(id).value !== ficha.original[id]) || lados.some(l => get(`foto${l}Update`).files.length));
     function actualizar() {
+        if (get("btnSalir")) get("btnSalir").disabled = ocupado;
         get("fichaPareja").hidden = !ficha;
         get("btnBuscarPareja").disabled = ocupado || falloRecuperacion;
         get("nParejaID").disabled = ocupado || falloRecuperacion;

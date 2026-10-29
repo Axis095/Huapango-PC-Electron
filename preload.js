@@ -57,6 +57,14 @@ contextBridge.exposeInMainWorld("api", {
 
     abrirVentanaEmergente: () => ipcRenderer.send("abrir-ventana-emergente"), // POIBLEMENTE ESTO TENGAMOSS QUE BORRARLO SOLO ES PARA PRUEBAS
     getUsuarioID: () => ipcRenderer.invoke("get-usuario-id"),
+    getUsuarioNombre: () => ipcRenderer.invoke("get-usuario-nombre"),
+    cerrarSesion: () => ipcRenderer.invoke("cerrar-sesion"),
+    alSolicitarCierre: callback => {
+        const listener = (_event, solicitud) => callback(solicitud);
+        ipcRenderer.on("solicitar-cierre-ventana", listener);
+        return () => ipcRenderer.removeListener("solicitar-cierre-ventana", listener);
+    },
+    responderCierreVentana: (id, confirmado) => ipcRenderer.invoke("responder-cierre-ventana", { id, confirmado }),
     send: (channel, data) => {
         // Lista de canales permitidos
         const validChannels = []; // No hay canales de envío genérico autorizados.

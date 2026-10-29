@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="../Public/css/StylesRegistros.css">
     <!-- <link rel="stylesheet" href="../Public/css/stylesRegistroCategoria.css"> ESTO DESHACE EL HTML VERIFICAR EN OTRO CSS MEJOR HECHO -->
     <link rel="stylesheet" href="../Public/css/stylesIndex.css">
+    <link rel="stylesheet" href="../Public/css/avisos.css">
     <link rel="stylesheet" href="../Public/css/modern-ui.css">
 </head>
 <body>
@@ -23,14 +24,21 @@
             <button id="btnBusquedaParejas" type="button" hidden disabled>Buscar y editar</button>
             <button id="btnResultados" type="button" hidden disabled>Evaluaciones</button>
             <button id="btnAdministrador" type="button" hidden disabled>Administración</button>
+            <button id="btnSalir" type="button">Salir</button>
         </div>
         <label class="selector-apariencia">Tema<select data-selector-tema aria-label="Apariencia"><option value="sistema">Sistema</option><option value="claro">Claro</option><option value="oscuro">Oscuro</option></select></label>
     </nav>
 
     <div class="main-container">
-        <header>
-            <h1>Registro de parejas</h1>
-            <p class="subtitulo-pagina">Captura los datos de ambos participantes. Después podrás asignar categoría y estilo.</p>
+        <header class="cabecera-registro">
+            <div class="cabecera-registro-titulo">
+                <h1>Registro de parejas</h1>
+                <p class="subtitulo-pagina">Captura ambos participantes, su categoría y estilo. Se guardarán juntos al confirmar.</p>
+            </div>
+            <div class="perfil-cuenta" role="group" aria-label="Cuenta activa">
+                <span class="perfil-cuenta-etiqueta">Cuenta activa</span>
+                <span data-nombre-sesion aria-live="polite">Cargando cuenta…</span>
+            </div>
         </header>
         
         <main>
@@ -69,24 +77,12 @@
     <div class="form-group"><label for="fotoFemenino">Fotografía <span class="ayuda-campo">(opcional)</span></label><input type="file" id="fotoFemenino" class="form-control" accept="image/png,image/jpeg" aria-label="Fotografía del participante 2" aria-describedby="ayudaFotoFemenino"><p id="ayudaFotoFemenino" class="ayuda-campo">PNG o JPEG. Hasta 5 MiB y 16 megapíxeles.</p></div>
 </fieldset>
 </div>
-                <div class="btn-container">
-                    <p id="estadoRegistroPareja" class="estado-registro" role="status" aria-live="polite" aria-atomic="true"></p>
-                    <button id="BTNSave" class="btn btn-save">Guardar pareja</button>
-                    <button id="btnNuevaPareja" class="btn" type="button">Nueva pareja</button>
-                    <button id="btnGenerarPDF" hidden disabled class="btn btn-pdf">Generar PDF de parejas</button>
-                </div>
+
             </section>
 
-
-
-            <div id="confirmarNuevaPareja" hidden>
-                <p>¿Vaciar el formulario para comenzar otra pareja? Se descartará el borrador. Los registros ya guardados en la base de datos se conservan.</p>
-                <button id="btnConfirmarNuevaPareja" type="button" class="btn">Sí, comenzar otra pareja</button>
-                <button id="btnCancelarNuevaPareja" type="button" class="btn">Seguir con esta pareja</button>
-            </div>
             <!-- HTML DE LOS REGISTROS DE CATEGORIAS Y ESTILOS -->
             
-            <section id="contentCategoria" style="display: none;">
+            <section id="contentCategoria">
                 <h2 class="section-title">Registro de categoría para la pareja</h2>
                 
                 <div class="form-group">
@@ -102,21 +98,21 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="nIDCategoria" class="form-label">ID de la categoria:</label>
-                    <input id="nIDCategoria" type="text" class="form-control" placeholder="ID de la pareja">
+                    <label for="nIDCategoria" class="form-label">ID del registro de categoría:</label>
+                    <input id="nIDCategoria" type="text" class="form-control" placeholder="ID único de categoría">
                 </div>
                 <div class="form-group">
                     <label for="nParejaIDCategoria" class="form-label">ID de la pareja:</label>
                     <input id="nParejaIDCategoria" type="text" readonly class="form-control" placeholder="ID de la pareja">
                 </div>
                 
-                <div class="btn-container">
+                <div class="btn-container acciones-clasificacion">
                     <p id="estadoRegistroCategoria" class="estado-registro" role="status" aria-live="polite" aria-atomic="true"></p>
-                    <button id="btnRegistrarCategoria" class="btn btnRegistraCatEst">Registrar Categoría</button>
+                    <button id="btnRegistrarCategoria" hidden class="btn btnRegistraCatEst">Registrar Categoría</button>
                 </div>
             </section>
 
-            <section id="contentEstilo" style="display: none;">
+            <section id="contentEstilo">
                 <h2 class="section-title">Registro de estilo para la pareja</h2>
                 
                 <div class="form-group">
@@ -133,25 +129,36 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="nEstiloID" class="form-label">ID del estilo:</label>
-                    <input id="nEstiloID" type="text" class="form-control" placeholder="ID de la pareja">
+                    <label for="nEstiloID" class="form-label">ID del registro de estilo:</label>
+                    <input id="nEstiloID" type="text" class="form-control" placeholder="ID único de estilo">
                 </div>
                 <div class="form-group">
                     <label for="nParejaIDEstilo" class="form-label">ID de la pareja:</label>
                     <input id="nParejaIDEstilo" type="text" readonly class="form-control" placeholder="ID de la pareja">
                 </div>
                 
-                <div class="btn-container">
+                <div class="btn-container acciones-clasificacion">
                     <p id="estadoRegistroEstilo" class="estado-registro" role="status" aria-live="polite" aria-atomic="true"></p>
-                    <button id="btnRegistrarEstilo" class="btn btnRegistraCatEst">Registrar Estilo</button>
+                    <button id="btnRegistrarEstilo" hidden class="btn btnRegistraCatEst">Registrar Estilo</button>
                 </div>
 
-                <div>
+                <div class="acciones-exportacion">
                     <button id="btnGenerarPDFCategorias" hidden disabled class="btn btn-pdf">Generar PDF de Categorías</button>
                     <button id="btnGenerarPDFEstilos" hidden disabled class="btn btn-pdf">Generar PDF de Estilos</button>
                 </div>
             </section>
 
+                <div class="btn-container">
+                    <p id="estadoRegistroPareja" class="estado-registro" role="status" aria-live="polite" aria-atomic="true"></p>
+                    <button id="BTNSave" class="btn btn-save">Guardar pareja, categoría y estilo</button>
+                    <button id="btnNuevaPareja" class="btn" type="button">Nueva pareja</button>
+                    <button id="btnGenerarPDF" hidden disabled class="btn btn-pdf">Generar PDF de parejas</button>
+                </div>
+            <div id="confirmarNuevaPareja" hidden>
+                <p>¿Vaciar el formulario para comenzar otra pareja? Se descartará el borrador. Los registros ya guardados en la base de datos se conservan.</p>
+                <button id="btnConfirmarNuevaPareja" type="button" class="btn">Sí, comenzar otra pareja</button>
+                <button id="btnCancelarNuevaPareja" type="button" class="btn">Seguir con esta pareja</button>
+            </div>
         </main>
     </div>
 </body>

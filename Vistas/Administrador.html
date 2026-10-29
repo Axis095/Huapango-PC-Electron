@@ -22,6 +22,7 @@
             <button id="btnBusquedaParejas" type="button" hidden disabled>Buscar y editar</button>
             <button id="btnResultados" type="button" hidden disabled>Evaluaciones</button>
             <button id="btnAdministrador" type="button" hidden disabled>Administración</button>
+            <button id="btnSalir" type="button">Salir</button>
         </div>
         <label class="selector-apariencia">Tema<select data-selector-tema aria-label="Apariencia"><option value="sistema">Sistema</option><option value="claro">Claro</option><option value="oscuro">Oscuro</option></select></label>
     </nav>
@@ -33,9 +34,9 @@
             <div class="logo">
                 <img src="../Public/images/logo-huapango.png" alt="XLIX HUAPANGO">
             </div>
-            <div class="user-profile">
-                <div class="user-icon"></div>
-                <div>Usuario</div>
+            <div class="perfil-cuenta" role="group" aria-label="Cuenta activa">
+                <span class="perfil-cuenta-etiqueta">Cuenta activa</span>
+                <span data-nombre-sesion aria-live="polite">Cargando cuenta…</span>
             </div>
         </div>
         

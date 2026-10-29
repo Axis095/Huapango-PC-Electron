@@ -38,7 +38,7 @@ function preparar(api = {}) {
     documento.getElementById = id => all().find(e => e.id === id) || null;
     const context = vm.createContext({ document: documento, window: { api, location: { search: '' } }, URLSearchParams,
         console: { log() {}, error() {}, warn() {} } });
-    const sources = ['Public/js/fotos.js', 'Public/js/avisos.js', 'Public/js/validaciones.js', 'Public/js/busquedaEvaluacion.js', 'Public/js/render.js'];
+    const sources = ['Public/js/fotos.js', 'Public/js/avisos.js', 'Public/js/salidaSesion.js', 'Public/js/cierreVentana.js', 'Public/js/validaciones.js', 'Public/js/busquedaEvaluacion.js', 'Public/js/render.js'];
     vm.runInContext(sources.map(file => read(file).replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '')).join('\n'), context);
     return { documento, context,
         add(id, value = '', tag = 'input') { const e = new Elemento(tag); e.id = id; e.value = value; documento.body.append(e); return e; },
@@ -287,4 +287,112 @@ for (const rechazo of [false, true]) test('evaluación sin respuesta conserva pu
     for (const campo of aspectos) { assert.equal(campo.value, '5'); assert.equal(campo.disabled, false); }
     assert.equal(boton.disabled, false); assert.equal(v.documento.activeElement, boton);
     assert.match(v.message(), /Consulta los datos antes de repetirla/);
+});
+
+for (const paso of [1, 2]) {
+    for (const modo of ['Cancelar', 'Escape', 'cerrar']) {
+        test(`salir: ${modo} en confirmación ${paso} conserva el formulario y no cierra sesión`, async () => {
+            const v = preparar({ cerrarSesion() { assert.fail('No cerrar'); } });
+            const campo = v.add('campo', 'Borrador');
+            const boton = v.add('btnSalir', '', 'button'); boton.focus();
+            v.context.inicializarSalida();
+            const pendiente = boton.emit('click');
+            if (paso === 2) { v.choose('Sí, continuar'); await turn(); }
+            assert.match(v.dialog().textContent, new RegExp(`${paso} de 2`));
+            assert.equal(v.documento.activeElement.textContent, 'Cancelar');
+            if (modo === 'Cancelar') v.choose('Cancelar');
+            if (modo === 'Escape') v.dialog().emit('cancel');
+            if (modo === 'cerrar') v.dialog().emit('close');
+            await pendiente;
+            assert.equal(campo.value, 'Borrador'); assert.equal(campo.disabled, false);
+            assert.equal(v.documento.activeElement, boton); assert.equal(v.dialog(), undefined);
+        });
+    }
+}
+
+test('salir: exige ambas confirmaciones y evita doble envío; fallo permite reintentar', async () => {
+    let llamadas = 0;
+    const v = preparar({ cerrarSesion: async () => { llamadas++; return { success: false, error: 'Operación pendiente' }; } });
+    const boton = v.add('btnSalir', '', 'button'); v.context.inicializarSalida();
+    for (let intento = 1; intento <= 2; intento++) {
+        const pendiente = boton.emit('click'); await boton.emit('click');
+        assert.equal(llamadas, intento - 1);
+        v.choose('Sí, continuar'); await turn();
+        assert.match(v.dialog().textContent, /borradores.*perderán/);
+        assert.equal(llamadas, intento - 1);
+        v.choose('Sí, cerrar sesión'); await pendiente;
+        assert.equal(llamadas, intento); assert.equal(boton.disabled, false);
+        assert.equal(v.message(), 'Operación pendiente');
+    }
+});
+
+test('salir: una operación de la vista impide abrir confirmaciones', async () => {
+    const v = preparar({ cerrarSesion() { assert.fail('No cerrar'); } });
+    const boton = v.add('btnSalir', '', 'button'); v.context.inicializarSalida();
+    const liberar = v.context.iniciarOperacion();
+    await boton.emit('click');
+    assert.equal(v.dialog(), undefined); assert.match(v.message(), /Espera/);
+    liberar();
+});
+
+test('salir: dos aceptaciones envían una sola solicitud y no usan navegación del renderer', async () => {
+    let llamadas = 0;
+    const v = preparar({ cerrarSesion: async () => { llamadas++; return { success: true }; } });
+    const boton = v.add('btnSalir', '', 'button'); v.context.inicializarSalida();
+    const pendiente = boton.emit('click');
+    v.choose('Sí, continuar'); await turn();
+    assert.equal(llamadas, 0);
+    v.choose('Sí, cerrar sesión'); await pendiente;
+    assert.equal(llamadas, 1); assert.equal(v.dialog(), undefined);
+    assert.equal(v.context.window.location.href, undefined);
+});
+
+for (const modo of ['Cancelar', 'Escape', 'Sí, cerrar']) {
+    test(`cierre X/Alt+F4: ${modo} usa una sola confirmación y conserva el foco al cancelar`, async () => {
+        let solicitar; const respuestas = [];
+        const v = preparar({ alSolicitarCierre(fn) { solicitar = fn; return () => {}; },
+            responderCierreVentana: async (...args) => { respuestas.push(args); return { success: true }; } });
+        const campo = v.add('campo', 'Datos sin guardar'); campo.focus();
+        v.context.inicializarCierreVentana();
+        const pendiente = solicitar({ id: 5, aplicacion: true });
+        await solicitar({ id: 5, aplicacion: true }); // Un segundo clic en X no duplica el diálogo.
+        assert.match(v.dialog().textContent, /Cerrar aplicación/);
+        assert.equal(v.documento.activeElement.textContent, 'Cancelar');
+        assert.equal(respuestas.length, 0);
+        if (modo === 'Escape') v.dialog().emit('cancel'); else v.choose(modo);
+        await pendiente;
+        assert.deepEqual(respuestas, [[5, modo === 'Sí, cerrar']]);
+        assert.equal(v.dialog(), undefined); assert.equal(campo.value, 'Datos sin guardar');
+        assert.equal(v.documento.activeElement, campo);
+    });
+}
+
+test('cierre X: no se superpone al doble diálogo de Salir', async () => {
+    let solicitar; const respuestas = [];
+    const v = preparar({ alSolicitarCierre(fn) { solicitar = fn; return () => {}; },
+        responderCierreVentana: async (...args) => { respuestas.push(args); return { success: true }; } });
+    const boton = v.add('btnSalir', '', 'button');
+    v.context.inicializarSalida(); v.context.inicializarCierreVentana();
+    const salida = boton.emit('click');
+    await solicitar({ id: 9, aplicacion: true });
+    assert.deepEqual(respuestas, [[9, false]]);
+    assert.match(v.dialog().textContent, /1 de 2/);
+    v.choose('Cancelar'); await salida;
+});
+
+test('cierre X: fallo IPC libera el intento y un campo ocupado impide cerrar', async () => {
+    let solicitar, fallar = true; const respuestas = [];
+    const v = preparar({ alSolicitarCierre(fn) { solicitar = fn; return () => {}; },
+        responderCierreVentana: async (id, confirmado) => { respuestas.push([id, confirmado]); if (fallar && confirmado) throw Error('IPC'); return { success: true }; } });
+    const boton = v.add('btnSalir', '', 'button'); v.context.inicializarCierreVentana();
+    boton.disabled = true; await solicitar({ id: 1, aplicacion: true });
+    assert.equal(v.dialog(), undefined); assert.deepEqual(respuestas, [[1, false]]);
+    boton.disabled = false;
+    const pendiente = solicitar({ id: 2, aplicacion: false });
+    assert.match(v.dialog().textContent, /Cerrar ventana/);
+    v.choose('Sí, cerrar'); await pendiente;
+    assert.deepEqual(respuestas.slice(1), [[2, true], [2, false]]);
+    fallar = false;
+    const nuevo = solicitar({ id: 3, aplicacion: false }); v.choose('Cancelar'); await nuevo;
+    assert.deepEqual(respuestas.at(-1), [3, false]);
 });
