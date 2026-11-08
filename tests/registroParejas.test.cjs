@@ -84,6 +84,40 @@ test("correo vacío: conserva formulario y foto, enfoca el campo y permite corre
     assert.match(v.get("estadoRegistroPareja").textContent, /guardada en la base/);
 });
 
+test('nombre de una letra: conserva foto y borrador, enfoca el campo y permite corregir', async t => {
+    const original = global.DataTransfer;
+    global.DataTransfer = class { files = []; items = { add: f => this.files.push(f) }; };
+    t.after(() => { if (original) global.DataTransfer = original; else delete global.DataTransfer; });
+    const v = await vista(); v.completar();
+    const foto = new File(['foto'], 'prueba.png', { type: 'image/png' });
+    v.get('fotoMasculino').files = [foto];
+    v.get('nombreMasculino').value = 'A-';
+    await v.click('BTNSave');
+    assert.equal(v.registros.length, 0);
+    assert.match(v.get('estadoRegistroPareja').textContent, /dos letras/);
+    assert.equal(v.documento.activeElement, v.get('nombreMasculino'));
+    assert.equal(v.get('fotoMasculino').files[0], foto);
+    await v.navegar();
+    const recuperada = await vista({}, v.almacen);
+    assert.equal(recuperada.get('nombreMasculino').value, 'A-');
+    assert.equal(recuperada.get('fotoMasculino').files[0].name, 'prueba.png');
+    recuperada.get('nombreMasculino').value = 'Álex-José';
+    await recuperada.click('BTNSave');
+    assert.equal(recuperada.registros.length, 1);
+    assert.equal(recuperada.registros[0].cNombreMasculino, 'Álex-José');
+});
+
+test('registro rechaza IDs mal formados de pareja, categoría y estilo antes de enviar', async () => {
+    for (const campo of ['nParejaID', 'nIDCategoria', 'nEstiloID']) {
+        const v = await vista(); v.completar();
+        v.get(campo).value = '1e2';
+        await v.click('BTNSave');
+        assert.equal(v.registros.length, 0);
+        assert.equal(v.get('nombreMasculino').value, 'Nombre');
+        assert.equal(v.get(campo).value, '1e2');
+    }
+});
+
 test("foto demasiado grande no se lee ni se envía; corregirla permite guardar sin perder campos", async () => {
     const v = await vista(); v.completar();
     v.get("fotoMasculino").files = [{ name: "grande.jpg", size: 5 * 1024 * 1024 + 1,

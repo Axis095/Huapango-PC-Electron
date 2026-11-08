@@ -13,7 +13,8 @@ function cargar(file, deps, extra = {}) {
     const module = { exports: {} };
     vm.runInNewContext(read(file), {
         module, __dirname: path.dirname(path.join(root, file)), console: { log() {}, error() {}, warn() {} },
-        require(name) { assert.ok(Object.hasOwn(deps, name), name); return deps[name]; }, ...extra
+        require(name) {
+            if (name === './validacionModel' || name === '../Modelos/validacionModel') return require('../Modelos/validacionModel'); assert.ok(Object.hasOwn(deps, name), name); return deps[name]; }, ...extra
     }, { filename: file });
     return module.exports;
 }

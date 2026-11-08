@@ -1,4 +1,5 @@
 const { queryDatabase, withTransaction } = require("../db");
+const { validarID } = require("./validacionModel");
 const { conFotos, limpiarFotos } = require("./imagenesModel");
 
 // Calculada por MySQL: no depende de la zona horaria o del reloj de cada laptop.
@@ -43,7 +44,7 @@ function vacioANull(valor) {
 
 // Función para registrar una pareja (dos participantes)
 async function registrarPareja(datos) {
-    validarIDEscritura(datos?.nParejaID);
+    validarID(datos?.nParejaID);
     const normalizados = normalizarParticipantes(datos);
     normalizados.categoria = validarClasificacion(datos.categoria, "categoria");
     normalizados.estilo = validarClasificacion(datos.estilo, "estilo");
@@ -57,8 +58,10 @@ function normalizarParticipantes(datos) {
             const campo = prefijo + lado;
             const nombre = typeof datos[campo] === "string" ? datos[campo].trim().normalize("NFC") : "";
             // Admite acentos, nombres compuestos, guiones y apóstrofos rectos o tipográficos.
-            if (!/^[\p{L}\p{M} .’'ʼ‐‑-]+$/u.test(nombre) || !/\p{L}/u.test(nombre)) {
-                throw Object.assign(new Error("Ingresa nombres y apellidos válidos; se permiten espacios, guiones y apóstrofos."), { code: "INVALID_DATA" });
+            // Unicode clasifica el apóstrofo U+02BC como letra modificadora; excluirlo del mínimo.
+            const letras = nombre.replace(/ʼ/g, "").match(/\p{L}/gu) || [];
+            if (!/^[\p{L}\p{M} .’'ʼ‐‑-]+$/u.test(nombre) || letras.length < 2) {
+                throw Object.assign(new Error("Cada nombre y apellido debe contener al menos dos letras; se permiten espacios, guiones y apóstrofos."), { code: "INVALID_DATA" });
             }
             normalizados[campo] = nombre;
         }
@@ -125,6 +128,7 @@ async function registrarDatosPareja(datos) {
 
 // Función para buscar pareja por ID
 async function buscarParejaPorID(id) {
+    id = validarID(id);
     const sql = `SELECT *, ${versionParejaSQL} AS versionEdicion FROM T_Participantes WHERE nParejaID = ?`;
     try {
         const result = await queryDatabase(sql, [id]);
@@ -136,6 +140,7 @@ async function buscarParejaPorID(id) {
 
 // Proyección usada por la ficha de evaluación: filtrar antes de enviar datos por IPC.
 async function buscarParejaParaEvaluacion(id) {
+    id = validarID(id);
     const sql = `
         SELECT
             p.nParejaID,
@@ -258,18 +263,8 @@ async function buscarTodasLasParejas() {
 
 // ...existing code...
 
-function validarIDEscritura(id) {
-    const texto = typeof id === "string" ? id.trim() : typeof id === "number" ? String(id) : "";
-    if (!/^\d+$/.test(texto) || !Number.isSafeInteger(Number(texto)) || Number(texto) <= 0) {
-        const error = new Error("Ingresa un ID de pareja entero y positivo.");
-        error.code = "INVALID_ID";
-        throw error;
-    }
-    return Number(texto);
-}
-
 async function actualizarParejaCompleta(datos) {
-    const id = validarIDEscritura(datos?.nParejaID);
+    const id = validarID(datos?.nParejaID);
     const campos = ["cNombreMasculino", "cApellidoMasculino", "cEmailMasculino", "nTelefonoMasculino", "dNacimientoMasculino",
         "cNombreFemenino", "cApellidoFemenino", "cEmailFemenino", "nTelefonoFemenino", "dNacimientoFemenino"];
     if (campos.some(campo => typeof datos[campo] !== "string" || !datos[campo].trim()) ||
@@ -316,7 +311,7 @@ async function actualizarDatosPareja(datos, id, campos) {
 
 // Una única implementación para los controladores de parejas y administración.
 async function eliminarPareja(id) {
-    const parejaID = validarIDEscritura(id);
+    const parejaID = validarID(id);
     let fotosAnteriores = [];
     const resultado = await withTransaction(["T_Participantes", "T_Evaluaciones", "T_Categorias", "T_Estilos"], async consultar => {
         const filas = await consultar("SELECT nParejaID, oFoto, IFotoM FROM T_Participantes WHERE nParejaID = ? FOR UPDATE", [parejaID]);

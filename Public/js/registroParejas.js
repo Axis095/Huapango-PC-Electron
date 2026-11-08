@@ -1,5 +1,5 @@
 import { leerFoto } from "./fotos.js";
-import { validarDatosPareja, validarDatosCategoria, validarDatosEstilo } from "./validaciones.js";
+import { validarDatosPareja, validarDatosCategoria, validarDatosEstilo, restringirEntradaID } from "./validaciones.js";
 
 const camposPareja = {
     nParejaID: "nParejaID", fechaNacimientoMasculino: "dNacimientoMasculino",
@@ -31,6 +31,9 @@ export async function inicializarRegistros(documento = document, api = window.ap
         get(id).dataset.tipo = error ? "error" : "info";
     };
     const incompleta = () => registrada !== null && (!categoriaGuardada || !estiloGuardado);
+    for (const id of ["nParejaID", "nIDCategoria", "nEstiloID"]) {
+        restringirEntradaID(get(id), texto => mensaje("estadoRegistroPareja", texto, true));
+    }
     function avisarIncompleta() {
         mensaje("estadoRegistroPareja", "Esta pareja viene de un registro anterior incompleto. Guarda su categoría y estilo antes de cambiar de módulo o iniciar otra pareja.", true);
         get(!categoriaGuardada ? "categoriaRegistro" : "estiloRegistro").focus();

@@ -13,6 +13,7 @@ function cargar(file, deps, extra = {}) {
     vm.runInNewContext(read(file), {
         module, __dirname: path.dirname(path.join(root, file)), console: quiet,
         require(name) {
+            if (name === './validacionModel' || name === '../Modelos/validacionModel') return require('../Modelos/validacionModel');
             assert.ok(Object.hasOwn(deps, name), `Dependencia inesperada: ${name}`);
             return deps[name];
         }, ...extra

@@ -1,13 +1,17 @@
 const { queryDatabase } = require("../db");
+const { validarID } = require("./validacionModel");
 
 // Registrar un estilo
 async function verificarEstiloExistente(nParejaID, nEstiloID) {
+    nParejaID = validarID(nParejaID);
+    nEstiloID = validarID(nEstiloID);
     const sql = "SELECT COUNT(*) AS total FROM t_estilos WHERE nParejaID = ? AND nEstiloID = ?";
     const result = await queryDatabase(sql, [nParejaID, nEstiloID]);
     return result[0].total > 0;
 }
 
 async function verificarParejaEnEstilo(nParejaID) {
+    nParejaID = validarID(nParejaID);
     const sql = "SELECT COUNT(*) AS total FROM t_estilos WHERE nParejaID = ?";
     const result = await queryDatabase(sql, [nParejaID]);
     return result[0].total > 0; // Devuelve `true` si la pareja ya está registrada en cualquier estilo
@@ -27,6 +31,7 @@ async function registrarEstilo(datos) {
 
 // Buscar un estilo por ID
 async function buscarEstiloPorID(id) {
+    id = validarID(id);
     const sql = "SELECT nEstiloID, cEstiloNombre FROM T_Estilos WHERE nParejaID = ?";
     try {
         const result = await queryDatabase(sql, [id]);
@@ -38,6 +43,7 @@ async function buscarEstiloPorID(id) {
 
 // Actualizar un estilo
 async function actualizarEstilo(id, datos) {
+    id = validarID(id);
     const sql = `
         UPDATE t_estilos
         SET cPotosino = ?, cTamaulipeco = ?, cPoblano = ?, cQueretano = ?, cVeracruzano = ?, cHidalguense = ? 
@@ -61,6 +67,7 @@ async function actualizarEstilo(id, datos) {
 
 // Eliminar un estilo
 async function eliminarEstilo(id) {
+    id = validarID(id);
     const sql = "DELETE FROM t_estilos WHERE nEstiloID = ?";
     try {
         const result = await queryDatabase(sql, [id]);

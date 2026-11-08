@@ -21,7 +21,7 @@ async function handleBuscarParejaPorID(event, id) {
         return { success: true, data: result };
     } catch (err) {
         console.error("Error en el controlador de búsqueda de pareja:", err);
-        return { success: false, error: err.message };
+        return { success: false, code: err.code, error: err.message };
     }
 }
 

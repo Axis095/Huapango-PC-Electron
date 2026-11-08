@@ -1,13 +1,17 @@
 const { queryDatabase } = require("../db");
+const { validarID } = require("./validacionModel");
 
 // Registrar una categoría
 async function verificarCategoriaExistente(nParejaID, nIDCategoria) {
+    nParejaID = validarID(nParejaID);
+    nIDCategoria = validarID(nIDCategoria);
     const sql = "SELECT COUNT(*) AS total FROM t_categorias WHERE nParejaID = ? AND nIDCategoria = ?";
     const result = await queryDatabase(sql, [nParejaID, nIDCategoria]);
     return result[0].total > 0; // Devuelve `true` si ya existe
 }
 
 async function verificarParejaEnCategoria(nParejaID) {
+    nParejaID = validarID(nParejaID);
     const sql = "SELECT COUNT(*) AS total FROM t_categorias WHERE nParejaID = ?";
     const result = await queryDatabase(sql, [nParejaID]);
     return result[0].total > 0; // Devuelve `true` si la pareja ya está registrada en cualquier categoría
@@ -26,6 +30,7 @@ async function registrarCategoria(datos) {
 
 // Buscar una Categoria por ID
 async function buscarCategoriaPorID(id) {
+    id = validarID(id);
     const sql = "SELECT nIDCategoria, cCategoriaNombre FROM T_Categorias WHERE nParejaID = ?";
     try {
         const result = await queryDatabase(sql, [id]);
@@ -37,6 +42,7 @@ async function buscarCategoriaPorID(id) {
 
 // Actualizar una categoría
 async function actualizarCategoria(datos) {
+    const id = validarID(datos?.nIDCategoria);
     const sql = `
         UPDATE t_categorias
         SET cPequenos = ?, cInfantil = ?, cJuvenil = ?, cAdulto = ?, cGrande = ?
@@ -48,13 +54,14 @@ async function actualizarCategoria(datos) {
         datos.cJuvenil,
         datos.cAdulto,
         datos.cGrande,
-        datos.nIDCategoria,
+        id,
     ]);
     return result.affectedRows;
 }
 
 // Eliminar una categoría
 async function eliminarCategoria(categoriaId) {
+    categoriaId = validarID(categoriaId);
     const sql = "DELETE FROM t_categorias WHERE nIDCategoria = ?";
     const result = await queryDatabase(sql, [categoriaId]);
     return result.affectedRows;

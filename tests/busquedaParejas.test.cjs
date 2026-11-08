@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "Public/js/busquedaParejas.js"), "utf8");
-const vista = import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const vista = import(`data:text/javascript;base64,${Buffer.from(source.replace('"./validaciones.js"', JSON.stringify(`data:text/javascript;base64,${Buffer.from(fs.readFileSync(path.join(root, 'Public/js/validaciones.js'), 'utf8')).toString('base64')}`))).toString("base64")}`);
 const consultas = [
     ["Parejas", "nParejaID", "btnBuscarPareja", "buscarParejaPorID"],
     ["Categorias", "nIDCategoria", "btnBuscarCategoria", "buscarCategoriaPorID"],

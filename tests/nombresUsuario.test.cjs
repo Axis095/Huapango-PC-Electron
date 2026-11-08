@@ -8,6 +8,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 function cargar(file, deps) {
     const module = { exports: {} };
     vm.runInNewContext(read(file), { module, console: { log() {}, warn() {}, error() {} }, require(name) {
+            if (name === './validacionModel' || name === '../Modelos/validacionModel') return require('../Modelos/validacionModel');
         assert.ok(name in deps, `Dependencia inesperada: ${name}`); return deps[name];
     } });
     return module.exports;
@@ -20,6 +21,17 @@ function preparar(queryDatabase) {
     return { model, controller, vista };
 }
 const cuenta = { nUsuarioID: '8', cNombreUsuario: 'Ana', cContrasena: 'Prueba', rol: 'user' };
+
+test('alta de cuentas rechaza IDs inválidos en interfaz y proceso principal', async () => {
+    const v = preparar(() => assert.fail('Un ID inválido no debe alcanzar MySQL'));
+    for (const id of [null, true, [], {}, '', '1e2', '1.5', '2abc', -1, 0, '9007199254740992']) {
+        const datos = { ...cuenta, nUsuarioID: id };
+        assert.throws(() => v.vista.validarDatosUsuario(datos), /ID/);
+        const resultado = await v.controller.handleCrearUsuario(null, datos);
+        assert.equal(resultado.success, false);
+        assert.equal(resultado.code, 'INVALID_ID');
+    }
+});
 
 test('alta: vista y backend rechazan nombres inválidos sin consultar SQL', async () => {
     const v = preparar(() => assert.fail('No consultar SQL para datos inválidos'));

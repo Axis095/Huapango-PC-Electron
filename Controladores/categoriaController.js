@@ -1,8 +1,10 @@
 const { registrarCategoria, buscarCategoriaPorID ,actualizarCategoria, eliminarCategoria, verificarCategoriaExistente, verificarParejaEnCategoria  } = require("../Modelos/categoriaModel");
-//TODO TODO LO DE buscarCategoriaPorID lo  PUSE PARA VEER SI FUNCIONA SI NO QUITALO ALV
+const { validarID } = require("../Modelos/validacionModel");
 // Controlador para registrar una categoría
 async function handleRegistrarCategoria(event, datos) {
     try {
+        validarID(datos?.nIDCategoria);
+        validarID(datos?.nParejaID);
         if (await verificarParejaEnCategoria(datos.nParejaID)) {
             throw new Error("Esta pareja ya está registrada en una categoría.");
         }

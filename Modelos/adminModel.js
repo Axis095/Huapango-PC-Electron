@@ -1,4 +1,5 @@
 const { queryDatabase } = require("../db");
+const { validarID } = require("./validacionModel");
 const { eliminarPareja } = require("./parejaModel");
 const { crearHashContrasena } = require("./contrasenaModel");
 
@@ -17,6 +18,7 @@ function normalizarNombreUsuario(nombre, minimo = 1) {
 
 // Crear un usuario
 async function crearUsuario(datos) {
+    validarID(datos?.nUsuarioID);
     const nombre = normalizarNombreUsuario(datos?.cNombreUsuario, 3);
     const sql = `
         INSERT INTO T_Usuarios (nUsuarioID, cNombreUsuario, cContrasena, rol) 

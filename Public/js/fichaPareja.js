@@ -1,5 +1,5 @@
 import { leerFoto } from "./fotos.js";
-import { validarDatosPareja } from "./validaciones.js";
+import { validarDatosPareja, esIDValido as idValido, restringirEntradaID } from "./validaciones.js";
 
 const campos = {
     nombreMasculinoUpdate: ["cNombreMasculino", "cNombre"], apellidoMasculinoUpdate: ["cApellidoMasculino", "cApellido"],
@@ -25,7 +25,6 @@ function fecha(valor) {
     }
     return typeof valor === "string" ? valor.slice(0, 10) : "";
 }
-function idValido(valor) { return /^\d+$/.test(valor) && Number.isSafeInteger(Number(valor)) && Number(valor) > 0; }
 
 export async function inicializarFichaPareja(documento = document, api = window.api,
     navegar = destino => { window.location.href = `../Vistas/${destino}`; }) {
@@ -38,6 +37,7 @@ export async function inicializarFichaPareja(documento = document, api = window.
         get("estadoBusquedaParejas").textContent = texto;
         get("estadoBusquedaParejas").dataset.tipo = error ? "error" : "info";
     };
+    restringirEntradaID(get("nParejaID"), texto => aviso(texto, true));
     const valores = () => Object.fromEntries(Object.keys(campos).map(id => [id, get(id).value]));
     const modificado = () => !!ficha && (Object.keys(campos).some(id => get(id).value !== ficha.original[id]) || lados.some(l => get(`foto${l}Update`).files.length));
     function actualizar() {
@@ -102,7 +102,7 @@ export async function inicializarFichaPareja(documento = document, api = window.
     }
     async function ejecutar(accion) {
         if (ocupado || falloRecuperacion) return;
-        const origen = documento.activeElement;
+        let origen = documento.activeElement;
         accionConfirmada = null;
         get("confirmarLimpiarModificacion").hidden = true;
         ocupado = true; actualizar();
@@ -110,6 +110,7 @@ export async function inicializarFichaPareja(documento = document, api = window.
         catch (error) {
             await persistir();
             aviso(error.message || "No se pudo completar la operación. Tus cambios se conservan.", true);
+            if (error.campo) origen = get(`${error.campo}Update`);
         }
         finally {
             ocupado = false; actualizar();
@@ -159,7 +160,7 @@ export async function inicializarFichaPareja(documento = document, api = window.
         event.preventDefault();
         if (ocupado || falloRecuperacion) return;
         const id = get("nParejaID").value.trim();
-        if (!idValido(id)) { aviso("Ingresa un ID de pareja entero y positivo.", true); return; }
+        if (!idValido(id)) { aviso("Ingresa un ID de pareja entero y positivo.", true); get("nParejaID").focus(); return; }
         if (modificado()) confirmar("Hay cambios sin guardar. ¿Descartarlos si se encuentra la pareja solicitada?", () => cargar(id));
         else return ejecutar(() => cargar(id));
     }

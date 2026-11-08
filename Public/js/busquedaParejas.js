@@ -1,3 +1,5 @@
+import { restringirEntradaID } from "./validaciones.js";
+
 // Avisos dentro de la vista: no abrir diálogos nativos que puedan perder el foco.
 export function inicializarBusquedaParejas(documento = document, api = window.api) {
     const consultas = [
@@ -20,6 +22,7 @@ export function inicializarBusquedaParejas(documento = document, api = window.ap
             estado.textContent = texto;
             estado.dataset.tipo = tipo;
         }
+        restringirEntradaID(input, texto => avisar(texto, "error"));
 
         // Los datos se muestran como texto, nunca como HTML ejecutable.
         function mostrar(filas) {

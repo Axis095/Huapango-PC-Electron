@@ -1,4 +1,5 @@
 import { inicializarFichaPareja } from "./fichaPareja.js";
+import { esIDValido, restringirEntradaID } from "./validaciones.js";
 import { configurarMenu } from "./menu.js";
 import { validarDatosPareja, validarDatosCategoria, validarDatosModificarPareja, validarEvaluacion } from "./validaciones.js";
 import { validarIDPareja, validarDatosEstilo, validarIDCategoria, validarIDEstilo, validarDatosUsuario, validarDatosEliminarUsuario } from "./validaciones.js";
@@ -132,6 +133,10 @@ document.addEventListener("DOMContentLoaded", () => {
 // Inicializar la lógica para la sección de Registros
 // Inicializar la lógica para la sección de Parejas
 function inicializarParejas() {
+    for (const id of ["nIDCategoria", "nParejaIDCategoria", "nEstiloID", "nParejaIDEstilo"]) {
+        const campo = document.getElementById(id);
+        if (campo) restringirEntradaID(campo, mostrarAviso);
+    }
     document.getElementById("btnRegistrarCategoria")?.addEventListener("click", registrarCategoria);
     document.getElementById("btnRegistrarEstilo")?.addEventListener("click", registrarEstilo);
     vincularPDF("btnGenerarPDFCategorias", "generarPDFCategorias");
@@ -262,6 +267,10 @@ function inicializarResultados() {
 
 
 function inicializaAdministrador() {
+    for (const id of ["nuevoID", "nuevoJuezID", "nParejaID"]) {
+        const campo = document.getElementById(id);
+        if (campo) restringirEntradaID(campo, mostrarAviso);
+    }
     document.getElementById("btnCrearUsuario")?.addEventListener("click", crearUsuario);
     document.getElementById("btnEliminarUsuario")?.addEventListener("click", eliminarUsuario);
     document.getElementById("btnEliminarPareja")?.addEventListener("click", eliminarPareja);
@@ -380,7 +389,7 @@ async function crearUsuario() {
             const esJuez = document.getElementById("juez")?.checked || false; // Checkbox de juez
 
             // Validar que el ID sea un número positivo
-            if (!nUsuarioID || isNaN(nUsuarioID) || parseInt(nUsuarioID) <= 0) {
+            if (!esIDValido(nUsuarioID)) {
                 mostrarAviso("Debes ingresar un ID de usuario válido (número positivo).");
                 return;
             }
@@ -426,7 +435,7 @@ async function crearJuez() {
             const esJuez = document.getElementById("juez").checked; // Checkbox para jueces
 
             // Validar que el ID sea un número positivo
-            if (!nUsuarioID || isNaN(nUsuarioID) || parseInt(nUsuarioID) <= 0) {
+            if (!esIDValido(nUsuarioID)) {
                 mostrarAviso("Debes ingresar un ID de usuario válido (número positivo).");
                 return;
             }

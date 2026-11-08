@@ -11,7 +11,8 @@ function cargar(file, deps, extra = {}) {
     const module = { exports: {} };
     vm.runInNewContext(fs.readFileSync(path.join(root, file), 'utf8'), {
         module, console: { log() {}, error() {}, warn() {} },
-        require(name) { assert.ok(Object.hasOwn(deps, name), name); return deps[name]; }, ...extra
+        require(name) {
+            if (name === './validacionModel' || name === '../Modelos/validacionModel') return require('../Modelos/validacionModel'); assert.ok(Object.hasOwn(deps, name), name); return deps[name]; }, ...extra
     }, { filename: file });
     return module.exports;
 }

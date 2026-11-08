@@ -1,9 +1,31 @@
+export function esIDValido(id) {
+    const texto = typeof id === "string" ? id.trim() : typeof id === "number" ? String(id) : "";
+    return /^\d+$/.test(texto) && Number.isSafeInteger(Number(texto)) && Number(texto) > 0;
+}
+
+function exigirID(id, campo) {
+    if (!esIDValido(id)) {
+        throw Object.assign(new Error("Ingresa un ID entero y positivo, usando solo dígitos."), { campo });
+    }
+}
+
+// Rechazar la inserción completa evita convertir accidentalmente «12a3» en «123».
+// La validación al enviar sigue siendo obligatoria para valores restaurados o programáticos.
+export function restringirEntradaID(input, avisar) {
+    const comprobar = (event, texto) => {
+        if (typeof texto === "string" && /[^0-9]/.test(texto)) {
+            event.preventDefault();
+            avisar("El ID solo admite dígitos del 0 al 9.");
+        }
+    };
+    input.addEventListener("beforeinput", event => comprobar(event, event.data));
+    input.addEventListener("paste", event => comprobar(event, event.clipboardData?.getData("text")));
+}
+
 // Validar los datos de una pareja
 export function validarDatosPareja(datos) {
 
-    if (!datos.nParejaID) {
-        throw new Error("El campo 'Número de pareja' es obligatorio.");
-    }
+    exigirID(datos.nParejaID, "nParejaID");
     if (!datos.dNacimientoMasculino || !datos.nTelefonoMasculino || !datos.cNombreMasculino || !datos.cApellidoMasculino || !datos.cEmailMasculino) {
         throw new Error("Todos los campos del participante masculino deben estar llenos.");
     }
@@ -15,8 +37,10 @@ export function validarDatosPareja(datos) {
         for (const prefijo of ["cNombre", "cApellido"]) {
             const campo = prefijo + lado;
             const nombre = typeof datos[campo] === "string" ? datos[campo].trim().normalize("NFC") : "";
-            if (!/^[\p{L}\p{M} .’'ʼ‐‑-]+$/u.test(nombre) || !/\p{L}/u.test(nombre)) {
-                throw Object.assign(new Error("Ingresa nombres y apellidos válidos; se permiten espacios, guiones y apóstrofos."),
+            // Unicode clasifica el apóstrofo U+02BC como letra modificadora; excluirlo del mínimo.
+            const letras = nombre.replace(/ʼ/g, "").match(/\p{L}/gu) || [];
+            if (!/^[\p{L}\p{M} .’'ʼ‐‑-]+$/u.test(nombre) || letras.length < 2) {
+                throw Object.assign(new Error("Cada nombre y apellido debe contener al menos dos letras; se permiten espacios, guiones y apóstrofos."),
                     { campo: (prefijo === "cNombre" ? "nombre" : "apellido") + lado });
             }
             datos[campo] = nombre;
@@ -34,45 +58,34 @@ export function validarDatosPareja(datos) {
 
 // Validar los datos de una categoría
 export function validarDatosCategoria(datos) {
-    if (!datos.nIDCategoria || !datos.nParejaID) {
-        throw new Error("Los campos 'ID de la categoría' y 'ID de la pareja' deben estar llenos.");
-    }
+    exigirID(datos.nIDCategoria, "nIDCategoria");
+    exigirID(datos.nParejaID, "nParejaIDCategoria");
 }
 
 // Validar los datos de un estilo
 export function validarDatosEstilo(datos) {
-    if (!datos.nEstiloID || !datos.nParejaID) {
-        throw new Error("Los campos 'ID del estilo' y 'ID de la pareja' son obligatorios.");
-        
-    }
+    exigirID(datos.nEstiloID, "nEstiloID");
+    exigirID(datos.nParejaID, "nParejaIDEstilo");
 }
 
 // Validar el ID de la pareja para la búsqueda
 export function validarIDPareja(id) {
-    if (!id) {
-        throw new Error("El campo 'ID de pareja' es obligatorio.");
-    }
+    exigirID(id, "nParejaID");
 }
 
 // Validar el ID de la categoría para la búsqueda
 export function validarIDCategoria(id) {
-    if (!id || isNaN(id) || id <= 0) {
-        throw new Error("El ID de la categoría es inválido.");
-    }
+    exigirID(id, "nIDCategoria");
 }
 
 // Validar el ID del estilo para la búsqueda
 export function validarIDEstilo(id) {
-    if (!id || isNaN(id) || id <= 0) {
-        throw new Error("El ID del estilo es inválido.");
-    }
+    exigirID(id, "nEstiloID");
 }
 
 // Validar los datos para modificar una pareja
 export function validarDatosModificarPareja(datos) {
-    if (!datos.nParejaID) {
-        throw new Error("El campo 'ID de pareja' es obligatorio.");
-    }
+    exigirID(datos.nParejaID, "nParejaID");
     if (!datos.cNombre && !datos.cNombreM) {
         throw new Error("Debes ingresar al menos un nombre para actualizar.");
     }
@@ -83,6 +96,7 @@ export function validarDatosModificarPareja(datos) {
 }
 
 export function validarDatosUsuario(datos) {
+    exigirID(datos?.nUsuarioID, "nuevoID");
     if (typeof datos?.cNombreUsuario !== "string" || !datos.cNombreUsuario.trim()) {
         throw new Error("El campo 'Nombre de usuario' es obligatorio.");
     }
@@ -107,7 +121,7 @@ export function validarDatosParejaResultados(parejaData) {
     }
 
     // Validar que nParejaID sea un número válido
-    if (!parejaData.nParejaID || isNaN(Number(parejaData.nParejaID))) {
+    if (!esIDValido(parejaData.nParejaID)) {
         throw new Error("El ID de la pareja es inválido.");
     }
 
@@ -125,7 +139,7 @@ export function validarEvaluacion(datos) {
     const { nParejaID, nPuntaje, cComentario } = datos;
 
     // La identidad del evaluador se obtiene exclusivamente en el proceso principal.
-    if (!nParejaID || isNaN(nParejaID) || nParejaID <= 0) {
+    if (!esIDValido(nParejaID)) {
         return { success: false, error: "ID de la pareja inválido." };
     }
 

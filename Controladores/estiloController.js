@@ -1,8 +1,11 @@
 const { registrarEstilo, buscarEstiloPorID, actualizarEstilo, eliminarEstilo, verificarEstiloExistente, verificarParejaEnEstilo   } = require("../Modelos/estiloModel");
+const { validarID } = require("../Modelos/validacionModel");
 
 // Controlador para registrar un estilo
 async function handleRegistrarEstilo(event, datos) {
     try {
+        validarID(datos?.nEstiloID);
+        validarID(datos?.nParejaID);
         if (await verificarParejaEnEstilo(datos.nParejaID)) {
             throw new Error("Esta pareja ya está registrada en un estilo.");
         }

@@ -9,6 +9,7 @@ const quiet = { log() {}, error() {}, warn() {} };
 function cargar(file, deps) {
     const module = { exports: {} };
     vm.runInNewContext(read(file), { module, setTimeout, clearTimeout, console: quiet, require(name) {
+            if (name === './validacionModel' || name === '../Modelos/validacionModel') return require('../Modelos/validacionModel');
         assert.ok(name in deps, `Dependencia inesperada: ${name}`); return deps[name];
     } });
     return module.exports;

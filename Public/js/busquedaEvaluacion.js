@@ -1,4 +1,4 @@
-import { validarDatosParejaResultados } from "./validaciones.js";
+import { validarDatosParejaResultados, restringirEntradaID } from "./validaciones.js";
 import { iniciarOperacion } from "./avisos.js";
 
 // Vista de búsqueda: el controlador decide qué consultar y cómo responder.
@@ -15,6 +15,7 @@ export function inicializarBusquedaEvaluacion(documento = document, api = window
         estilo: "estiloNombre"
     };
     let buscando = false;
+    restringirEntradaID(input, texto => { estado.textContent = texto; });
 
     function limpiarFicha() {
         for (const id of Object.keys(campos)) {

@@ -15,6 +15,7 @@ function loadCommonJS(file, dependencies) {
         module, exports: module.exports, console: quietConsole,
         __dirname: path.dirname(path.join(root, file)),
         require(name) {
+            if (name === './validacionModel' || name === '../Modelos/validacionModel') return require('../Modelos/validacionModel');
             assert.ok(name in dependencies, `Dependencia no simulada: ${name}`);
             return dependencies[name];
         }

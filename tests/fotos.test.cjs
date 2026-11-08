@@ -58,6 +58,7 @@ async function preparar(t, opciones = {}) {
     const module = { exports: {} };
     const codigo = await fs.readFile(path.join(__dirname, '../Modelos/parejaModel.js'), 'utf8');
     vm.runInNewContext(codigo, { module, console, require(nombre) {
+        if (nombre === './validacionModel') return require('../Modelos/validacionModel');
         if (nombre === '../db') return db;
         if (nombre === './imagenesModel') return { conFotos: almacen.conFotos, limpiarFotos: almacen.limpiar };
         throw new Error(nombre);

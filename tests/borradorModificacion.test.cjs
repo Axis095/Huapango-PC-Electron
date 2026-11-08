@@ -55,6 +55,23 @@ test('buscar precarga ambos participantes, convierte fechas y abre en lectura si
     assert.equal(v.get('ayudaFotosFicha').hidden, true);
     assert.match(v.get('parejaSeleccionada').textContent, /#7/); assert.equal(v.actualizaciones.length, 0);
 });
+
+test('nombre inválido al editar conserva el borrador, enfoca el campo y permite guardarlo corregido', async () => {
+    const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
+    v.get('apellidoFemeninoUpdate').hidden = false;
+    v.editar('apellidoFemeninoUpdate', "A'");
+    await v.click('BTNUpdate');
+    assert.equal(v.actualizaciones.length, 0);
+    assert.match(v.get('estadoBusquedaParejas').textContent, /dos letras/);
+    assert.equal(v.documento.activeElement, v.get('apellidoFemeninoUpdate'));
+    await v.navegar();
+    const recuperada = await vista({}, v.almacen); await recuperada.listo;
+    assert.equal(recuperada.get('apellidoFemeninoUpdate').value, "A'");
+    recuperada.editar('apellidoFemeninoUpdate', "O'Neill");
+    await recuperada.click('BTNUpdate');
+    assert.equal(recuperada.actualizaciones.length, 1);
+    assert.equal(recuperada.actualizaciones[0].cApellidoFemenino, "O'Neill");
+});
 test('editar y guardar usa el ID de la ficha aunque el buscador tenga otro número', async () => {
     const v = await vista(); await v.listo; await v.buscar(); await v.click('btnEditarPareja');
     for (const lado of ['Masculino', 'Femenino']) {

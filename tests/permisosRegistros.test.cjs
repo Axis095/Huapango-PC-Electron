@@ -13,6 +13,7 @@ function cargar(file, deps, extra = {}) {
         module, __dirname: path.dirname(path.join(root, file)),
         console: { log() {}, warn() {}, error() {} },
         require(name) {
+            if (name === './validacionModel' || name === '../Modelos/validacionModel') return require('../Modelos/validacionModel');
             assert.ok(Object.hasOwn(deps, name), `Dependencia inesperada: ${name}`);
             return deps[name];
         }, ...extra
@@ -100,6 +101,63 @@ function sinEfectos(v) {
     assert.equal(v.fotos.length, 0);
     assert.equal(v.transacciones.length, 0);
 }
+
+test('IPC: IDs inválidos en búsquedas, altas, edición y bajas se rechazan antes de SQL', async () => {
+    const v = preparar();
+    v.sesion.guardarSesion(1, 'admin');
+    const invalidos = [undefined, null, true, {}, [], '', ' ', '12abc', '1e2', '0x10', '-1', '1.2', 0, -1, Infinity, '9007199254740992'];
+    for (const id of invalidos) {
+        const casos = [
+            ['buscar-pareja-por-id', id, 'BusquedaParejas.html'],
+            ['buscar-categoria-por-id', id, 'BusquedaParejas.html'],
+            ['buscar-estilo-por-id', id, 'BusquedaParejas.html'],
+            ['registrar-pareja', { ...pareja, nParejaID: id }, 'Registros.html'],
+            ['actualizar-pareja-completa', { ...pareja, nParejaID: id }, 'BusquedaParejas.html'],
+            ['registrar-categoria', { ...categoria, nIDCategoria: id }, 'RegistroCategoriasEstilos.html'],
+            ['registrar-categoria', { ...categoria, nParejaID: id }, 'RegistroCategoriasEstilos.html'],
+            ['registrar-estilo', { ...estilo, nEstiloID: id }, 'RegistroCategoriasEstilos.html'],
+            ['registrar-estilo', { ...estilo, nParejaID: id }, 'RegistroCategoriasEstilos.html'],
+            ['actualizar-categoria', { ...categoria, nIDCategoria: id }, 'RegistroCategoriasEstilos.html'],
+            ['actualizar-estilo', { id, datos: estilo }, 'RegistroCategoriasEstilos.html'],
+            ['eliminar-categoria', id, 'RegistroCategoriasEstilos.html'],
+            ['eliminar-estilo', id, 'RegistroCategoriasEstilos.html']
+        ];
+        for (const [canal, datos, vista] of casos) {
+            const resultado = await v.invoke(canal, evento(vista), datos);
+            assert.equal(resultado.success, false, canal);
+            assert.equal(resultado.code, 'INVALID_ID', canal);
+            sinEfectos(v);
+        }
+    }
+});
+
+test('IPC: registro y edición exigen dos letras en cada nombre y apellido antes de fotos o SQL', async () => {
+    const v = preparar();
+    v.sesion.guardarSesion(1, 'admin');
+    for (const campo of ['cNombreMasculino', 'cApellidoMasculino', 'cNombreFemenino', 'cApellidoFemenino']) {
+        for (const valor of ['A', ' A ', 'A-', "A'", 'Aʼ', 'ʼʼ', 'A .', 'Á', 'A\u0301', '\u0301\u0301', '--']) {
+            for (const [canal, vista] of [['registrar-pareja', 'Registros.html'], ['actualizar-pareja-completa', 'BusquedaParejas.html']]) {
+                const resultado = await v.invoke(canal, evento(vista), { ...pareja, [campo]: valor });
+                assert.equal(resultado.success, false);
+                assert.equal(resultado.code, 'INVALID_DATA');
+                assert.match(resultado.error, /dos letras/);
+                sinEfectos(v);
+            }
+        }
+    }
+});
+
+test('IPC: nombres breves legítimos, guiones, apóstrofos y acentos se conservan al guardar', async () => {
+    const v = preparar();
+    v.sesion.guardarSesion(1, 'admin');
+    for (const nombre of ['Li', 'Jo', 'María-José', "O'Neill", 'D’Ávila', 'A\u0301l']) {
+        for (const [canal, vista] of [['registrar-pareja', 'Registros.html'], ['actualizar-pareja-completa', 'BusquedaParejas.html']]) {
+            const resultado = await v.invoke(canal, evento(vista), { ...pareja, cNombreMasculino: nombre });
+            assert.equal(resultado.success, true, nombre);
+            assert.equal(v.fotos.at(-1).cNombreMasculino, nombre.normalize('NFC'));
+        }
+    }
+});
 
 for (const rol of [null, 'juez', 'guest', 'desconocido', 'Admin', 'usuario']) {
     test(`registros IPC: ${rol ?? 'sin sesión'} no consulta SQL ni procesa fotos`, async () => {
