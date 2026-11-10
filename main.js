@@ -71,6 +71,10 @@ let autenticacionEnCurso = false;
 ipcMain.handle("login", async (event, credentials) => {
     if (autenticacionEnCurso || operacionConfiguracion || saliendoDeSesion) return { success: false, code: "BUSY", message: "Espera a que termine la operación actual." };
     if (!loginPermitido(event)) return accesoDenegado();
+    if (configWindow && !configWindow.isDestroyed() && sesionesDeVentana.get(configWindow.webContents) === obtenerClaveSesion()) {
+        return { success: false, code: "BUSY", message: "Cierra la configuración antes de iniciar sesión." };
+    }
+    if (errorConexionInicial) return { success: false, message: "Configura y comprueba la conexión desde Ayuda → Configuración → Base de Datos." };
     autenticacionEnCurso = true;
     try {
         return await handleLogin(event, credentials, createMainWindow, () => loginPermitido(event), cerrarVentanaSinConfirmar);
@@ -127,12 +131,15 @@ ipcMain.handle("continuar-configuracion", desdeConfiguracion(async (event) => {
         await inicializarBaseDatos(() => configuracionPermitida(event) &&
             obtenerClaveSesion() === identidad);
         configuracionInicialPermitida = false;
+        errorConexionInicial = "";
+        configuracionesFinalizadas.add(event.sender);
         cerrarSesion();
         global.userRole = "guest";
         actualizarMenuConfiguracion();
         const origen = BrowserWindow.fromWebContents(event.sender);
         if (!global.loginWindow || global.loginWindow.isDestroyed()) await createLoginWindow();
         else global.loginWindow.focus();
+        actualizarMenuConfiguracion();
         for (const ventana of BrowserWindow.getAllWindows()) {
             if (ventana !== origen && ventana !== global.loginWindow) cerrarVentanaSinConfirmar(ventana);
         }
@@ -456,17 +463,21 @@ let configWindow = null;
 let continuandoConfiguracion = false;
 let configuracionInicialPermitida = false;
 let operacionConfiguracion = false;
+let errorConexionInicial = "";
+const configuracionesFinalizadas = new WeakSet();
 
 function puedeConfigurar() {
     if (saliendoDeSesion) return false;
     const sesion = obtenerSesion();
-    return (configuracionInicialPermitida && !sesion) ||
+    return (!sesion && (configuracionInicialPermitida ||
+        (global.loginWindow && !global.loginWindow.isDestroyed()))) ||
         (sesion?.userRole === "admin" && Number.isSafeInteger(sesion.userID) && sesion.userID > 0);
 }
 
 function configuracionPermitida(event) {
     try {
         return puedeConfigurar() && configWindow && !configWindow.isDestroyed() &&
+            !configuracionesFinalizadas.has(event?.sender) &&
             sesionesDeVentana.has(event?.sender) &&
             sesionesDeVentana.get(event.sender) === obtenerClaveSesion() &&
             event?.sender === configWindow.webContents &&
@@ -496,9 +507,9 @@ function actualizarMenuConfiguracion() {
 function desdeConfiguracion(handler, modifica = false) {
     return async (event, ...args) => {
         if (!configuracionPermitida(event)) {
-            return { success: false, code: "FORBIDDEN", error: "La configuración requiere una sesión de administrador y la ventana de configuración autorizada." };
+            return { success: false, code: "FORBIDDEN", error: "Abre la configuración desde Ayuda en el login o desde una sesión de administrador." };
         }
-        if (modifica && (operacionConfiguracion || autenticacionEnCurso)) {
+        if (modifica && (operacionConfiguracion || autenticacionEnCurso || operacionesDeSesion)) {
             return { success: false, code: "BUSY", error: "Espera a que termine la operación de configuración actual." };
         }
         if (modifica) operacionConfiguracion = true;
@@ -508,7 +519,7 @@ function desdeConfiguracion(handler, modifica = false) {
 }
 
 function abrirConfiguracion(motivo = "") {
-    if (!puedeConfigurar()) return;
+    if (!puedeConfigurar() || autenticacionEnCurso || saliendoDeSesion) return;
     if (configWindow && !configWindow.isDestroyed()) {
         configWindow.focus();
         return;
@@ -522,8 +533,9 @@ function abrirConfiguracion(motivo = "") {
     });
     sesionesDeVentana.set(configWindow.webContents, obtenerClaveSesion());
     protegerCierreVentana(configWindow, "configuracion");
-    configWindow.on("closed", () => { configWindow = null; });
     const nuevaConfig = configWindow;
+    // En closed Electron ya destruyó el objeto nativo: no leer webContents aquí.
+    nuevaConfig.on("closed", () => { if (configWindow === nuevaConfig) configWindow = null; });
     nuevaConfig.loadFile(path.join(__dirname, "Vistas", "configuracionBD.html"), { query: { motivo } })
         .catch(() => {
             dialog.showErrorBox("Error de inicio", "No se pudo abrir la pantalla de configuración.");
@@ -541,13 +553,12 @@ app.whenReady().then(async () => {
     }
     try {
         await inicializarBaseDatos();
-        await createLoginWindow();
     } catch (error) {
-        dialog.showErrorBox("No se pudo iniciar la conexión",
-            error.message + "\nEsta instalación ya tiene configuración. Restablece MySQL o recupera una copia válida y reinicia. Los cambios desde la aplicación requieren una sesión de administrador.");
-        for (const ventana of BrowserWindow.getAllWindows()) cierresInternos.add(ventana);
-        app.quit();
+        errorConexionInicial = error.message;
     }
+    await createLoginWindow();
+    actualizarMenuConfiguracion();
+    if (errorConexionInicial) abrirConfiguracion(errorConexionInicial);
 }).catch(() => {
     dialog.showErrorBox("Error de inicio", "No se pudo iniciar la aplicación.");
     for (const ventana of BrowserWindow.getAllWindows()) cierresInternos.add(ventana);
@@ -580,7 +591,7 @@ function sesionConsultable(event) {
 function desdeVentanaDeSesion(controlador) {
     return (event, ...args) => {
         if (!sesionConsultable(event)) return accesoDenegado();
-        if (saliendoDeSesion) return { success: false, code: "BUSY", error: "Espera a que termine el cierre de sesión." };
+        if (saliendoDeSesion || operacionConfiguracion) return { success: false, code: "BUSY", error: "Espera a que termine el cierre de sesión o el cambio de conexión." };
         const clave = obtenerClaveSesion();
         // No entregar resultados de una consulta pendiente a una sesión posterior.
         const vigente = () => clave === obtenerClaveSesion() && !!sesionConsultable(event);

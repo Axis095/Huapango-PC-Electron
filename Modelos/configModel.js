@@ -69,10 +69,7 @@ function guardarConfiguracion(nuevaConfig) {
         const config = normalizarConfiguracion(nuevaConfig);
         fs.mkdirSync(path.dirname(configPath), { recursive: true });
         if (fs.existsSync(configPath)) {
-            let invalida = false;
-            const anterior = fs.readFileSync(configPath, "utf8");
-            try { normalizarConfiguracion(JSON.parse(anterior)); } catch { invalida = true; }
-            if (invalida) fs.copyFileSync(configPath, `${configPath}.backup-${randomUUID()}`);
+            fs.copyFileSync(configPath, `${configPath}.backup-${randomUUID()}`);
         }
         fs.writeFileSync(temporal, JSON.stringify(config, null, 2), { encoding: "utf8", flag: "wx", mode: 0o600 });
         // El archivo anterior permanece intacto si falla la escritura del temporal.

@@ -1,6 +1,6 @@
 {
   "name": "huapango-app",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "main": "main.js",
   "description": "Aplicación de registro para el evento Huapango",
   "author": "Perro Virolo Industries",
@@ -39,7 +39,10 @@
       "Vistas/**/*",
       "!tools/**/*",
       "!config.json",
-      "!config.json.*"
+      "!config.json.*",
+      "!recuperacion.json",
+      "!recuperacion.json.*",
+      "!*.zip"
     ],
     "extraResources": [
       {

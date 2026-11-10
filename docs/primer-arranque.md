@@ -1,5 +1,7 @@
 # Primer arranque y recuperación de configuración
 
+Actualizado para 1.0.3. Ver [configuración desde Ayuda y checklist](configuracion-desde-login.md).
+
 ## Uso
 
 1. Ejecutar `npm.cmd start` desde el proyecto.
@@ -15,8 +17,8 @@ a la base no garantiza que tenga todas las tablas del esquema requerido por la a
 
 ## Modificar una instalación configurada
 
-Iniciar sesión con una cuenta administradora y abrir **Ayuda → Configuración →
-Base de Datos**. El menú se deshabilita para usuarios y jueces. El proceso
+Desde el login, abrir **Ayuda → Configuración → Base de Datos**, sin clave local.
+Con una sesión activa se requiere una cuenta administradora. El menú se deshabilita para usuarios y jueces. El proceso
 principal comprueba también los permisos aunque se invoque el IPC directamente.
 
 Obtener, guardar y continuar requieren la instancia de ventana de configuración
@@ -38,13 +40,13 @@ se rechaza la operación. El formulario muestra el error y se bloquea ante
 
 Un servidor detenido, una contraseña rechazada, un JSON dañado o una configuración
 incompleta no habilitan la excepción inicial. Si la conexión existente falla
-durante el arranque, la aplicación muestra el problema y termina sin abrir el editor.
+durante el arranque, la aplicación conserva el login y abre el formulario habitual con el error.
 
-Restablecer el servicio/red/credenciales del servidor, o recuperar una copia
-conocida de la configuración mediante el responsable del equipo, y reiniciar.
-Una vez que se pueda iniciar sesión, el administrador puede cambiar la conexión
-desde la aplicación. No se incorpora todavía un procedimiento de recuperación
-offline con autenticación propia; no borrar la configuración como solución rutinaria.
+Corregir los datos de conexión en ese formulario y pulsar **Comprobar y guardar**.
+Después, pulsar **Continuar al inicio de sesión**. La nueva conexión se comprueba
+antes de guardarla. No es necesario editar config.json para cambiar la IP del servidor.
+La configuración desde el login queda disponible para quien tenga acceso a esa instalación;
+no requiere clave local ni otorga acceso a las operaciones del evento.
 
 ## Archivos y compatibilidad
 
@@ -55,9 +57,8 @@ offline con autenticación propia; no borrar la configuración como solución ru
   configuración del repositorio ni una plantilla con credenciales.
 - Una configuración previa válida no se modifica al arrancar. El formato antiguo
   sin `port` sigue funcionando con `3306`.
-- Un JSON dañado o datos incompatibles al arrancar requieren recuperación; no
-  abren el editor sin autorización. Si un administrador ya autenticado repara
-  datos inválidos desde el formulario, se conserva el archivo anterior como
+- Un JSON dañado o datos incompatibles se pueden corregir desde el formulario
+  abierto en el login. Cada cambio comprobado conserva el archivo anterior como
   `config.json.backup-*`.
 - La escritura utiliza un archivo temporal y un reemplazo, evitando truncar la
   configuración anterior si la escritura falla. No es una garantía frente a todos
@@ -81,8 +82,8 @@ se registra en los mensajes de este flujo.
 - Cerrar la última ventana termina la aplicación; no provoca un relanzamiento.
 - `sesionModel.js` conserva ID y rol solo en memoria. El login no escribe sobre
   las credenciales MySQL. Al cambiar de conexión se cierra la sesión anterior.
-- Obtener/guardar configuración y continuar exigen rol administrador, salvo el
-  flujo inicial descrito arriba. También se verifican ventana y marco emisor.
+- Obtener/guardar configuración y continuar están permitidos desde la ventana de configuración
+  abierta sin sesión o por un administrador. También se verifican ventana y marco emisor.
 
 ## Verificación
 

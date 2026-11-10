@@ -34,6 +34,8 @@ logs/
 # Configuración local y sus respaldos
 config.json
 config.json.backup-*
+recuperacion.json
+recuperacion.json.*
 
 # Reportes generados
 /output/

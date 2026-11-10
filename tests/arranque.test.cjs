@@ -315,25 +315,26 @@ test("PC nueva permite guardar y continuar; después revoca la excepción inicia
     assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).success, true);
     assert.equal(h.guardados, 1);
     assert.equal((await h.handlers.get("continuar-configuracion")(e)).success, true);
-    assert.equal(h.opcion.enabled, false);
+    assert.equal(h.opcion.enabled, true);
     for (const canal of ["obtener-configuracion", "guardar-configuracion", "continuar-configuracion"]) {
         assert.equal((await h.handlers.get(canal)(e, configValida)).code, "FORBIDDEN");
     }
 });
 
-test("una conexión existente fallida no habilita configuración sin autenticar", async () => {
+test("una conexión fallida abre login y el formulario anterior para corregirla", async () => {
     const h = mainHarness(async () => { throw new Error("MySQL detenido"); });
     await h.ready();
-    assert.equal(h.windows.length, 0);
-    assert.equal(h.errores.length, 1);
-    assert.match(h.errores[0][1], /MySQL detenido/);
-    assert.equal(h.quit, 1);
-    assert.equal(h.opcion.enabled, false);
+    assert.equal(h.windows.length, 2);
+    assert.equal(h.errores.length, 0);
+    assert.match(h.configWindow.loadOptions.query.motivo, /MySQL detenido/);
+    assert.equal(h.quit, 0);
+    assert.equal(h.opcion.enabled, true);
     h.opcion.click();
-    assert.equal(h.windows.length, 0);
+    assert.equal(h.windows.length, 2);
+    assert.equal((await h.handlers.get('obtener-configuracion')(h.evento(h.configWindow))).success, true);
 });
 
-for (const rol of [null, "user", "juez", "desconocido"]) {
+for (const rol of ["user", "juez", "desconocido"]) {
     test(`configuración existente: ${rol ?? "sin sesión"} no abre ni utiliza el formulario`, async () => {
         let pruebas = 0;
         const h = mainHarness(async () => {}, { probarConexion: async () => { pruebas++; } });
@@ -369,7 +370,7 @@ test("admin abre por IPC, guarda y continúa cerrando la sesión anterior", asyn
     assert.equal(h.guardados, 1);
     assert.equal(h.sesion.obtenerSesion(), null);
     assert.equal(principal.closed, true);
-    assert.equal(h.opcion.enabled, false);
+    assert.equal(h.opcion.enabled, true);
     assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).code, "FORBIDDEN");
 });
 
@@ -433,6 +434,9 @@ test("guardar y continuar no se solapan, ni permiten iniciar otra sesión durant
     assert.equal((await h.handlers.get("guardar-configuracion")(e, configValida)).code, "BUSY");
     assert.equal((await h.handlers.get("continuar-configuracion")(e)).code, "BUSY");
     assert.equal((await h.login("user")).success, false);
+    const principal = h.windows.find(w => path.basename(w.file) === 'MenuPrincipal.html');
+    principal.webContents.mainFrame.url = pathToFileURL(path.join(root, 'Vistas/Registros.html')).href;
+    assert.equal((await h.handlers.get('registrar-pareja')(h.evento(principal), {})).code, 'BUSY');
     resolver();
     assert.equal((await pendiente).success, true);
     assert.equal(h.guardados, 1);
@@ -453,4 +457,64 @@ test("continuar revalida autorización antes de activar y no cierra una sesión 
     assert.equal((await pendiente).code, "FORBIDDEN");
     assert.equal(activaciones, 0);
     assert.equal(h.sesion.obtenerSesion().userID, 2);
+});
+
+test('desde Ayuda en login se configura sin clave; no habilita operaciones del evento', async () => {
+    const h = mainHarness(async () => {});
+    await h.ready(); h.opcion.click();
+    const e = h.evento(h.configWindow);
+    assert.equal((await h.handlers.get('obtener-configuracion')(e)).success, true);
+    assert.equal((await h.handlers.get('guardar-configuracion')(e, configValida)).success, true);
+    assert.equal((await h.handlers.get('registrar-pareja')(e, {})).code, 'FORBIDDEN');
+    assert.equal((await h.handlers.get('crear-usuario')(e, {})).code, 'FORBIDDEN');
+    assert.equal(h.sesion.obtenerSesion(), null);
+    assert.equal((await h.login('admin')).code, 'BUSY');
+    assert.equal((await h.handlers.get('continuar-configuracion')(e)).success, true);
+    assert.equal((await h.handlers.get('guardar-configuracion')(e, configValida)).code, 'FORBIDDEN');
+    h.configWindow.close();
+    assert.equal((await h.login('admin')).success, true);
+});
+
+test('cerrar configuración no lee webContents después de que Electron lo destruye', async () => {
+    const h = mainHarness(async () => {});
+    await h.ready(); h.opcion.click();
+    const ventana = h.configWindow;
+    const wc = ventana.webContents;
+    Object.defineProperty(ventana, 'webContents', { get() {
+        if (ventana.closed) throw new Error('Object has been destroyed');
+        return wc;
+    } });
+    assert.doesNotThrow(() => ventana.close());
+    assert.equal(h.configWindow, undefined);
+    h.opcion.click();
+    assert.notEqual(h.configWindow, ventana);
+    assert.equal((await h.handlers.get('obtener-configuracion')(h.evento(h.configWindow))).success, true);
+});
+
+test('login no puede usar los IPC de configuración directamente ni desde un subframe', async () => {
+    const h = mainHarness(async () => {});
+    await h.ready(); const login = h.evento(h.windows[0]); h.opcion.click();
+    const e = h.evento(h.configWindow);
+    for (const origen of [login, null, {}, { ...e, senderFrame: { ...e.senderFrame } }]) {
+        for (const c of ['obtener-configuracion', 'guardar-configuracion', 'continuar-configuracion']) {
+            assert.equal((await h.handlers.get(c)(origen, configValida)).code, 'FORBIDDEN');
+        }
+    }
+});
+
+test('fallo al guardar desde login conserva configuración y permite corregir', async () => {
+    let falla = true;
+    const h = mainHarness(async () => {}, { probarConexion: async () => { if (falla) throw Error('Sin MySQL'); } });
+    await h.ready(); h.opcion.click(); const e = h.evento(h.configWindow);
+    assert.equal((await h.handlers.get('guardar-configuracion')(e, configValida)).success, false);
+    assert.equal(h.guardados, 0);
+    falla = false;
+    assert.equal((await h.handlers.get('guardar-configuracion')(e, configValida)).success, true);
+    assert.equal(h.guardados, 1);
+});
+
+test('formulario y preload ya no incluyen clave local ni botón de conexión en login', () => {
+    assert.doesNotMatch(source('Vistas/login.html'), /configurarConexion|Conexión a MySQL/);
+    assert.doesNotMatch(source('Vistas/configuracionBD.html'), /claveRecuperacion|panelCrearClave|formDesbloqueo/);
+    assert.doesNotMatch(source('preload.js'), /desbloquear-configuracion|estado-recuperacion|guardar-clave-recuperacion/);
 });
